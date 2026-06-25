@@ -46,7 +46,18 @@
             "settings": {
                 "terminal.integrated.defaultProfile.linux": "bash",
                 "editor.formatOnSave": true,
-                "dotnet.defaultSolution": "disable"
+                "dotnet.defaultSolution": "disable",
+                // TXC MCP Server — exposed to VS Code Copilot Chat
+                // dnx downloads and runs TALXIS.CLI.MCP on demand (no pre-install needed)
+                "mcp": {
+                    "servers": {
+                        "TALXIS CLI": {
+                            "type": "stdio",
+                            "command": "dnx",
+                            "args": ["TALXIS.CLI.MCP", "--yes"]
+                        }
+                    }
+                }
             }
         },
         "codespaces": {
@@ -79,13 +90,12 @@
 
     // Auto-run on container start: keep pac + txc up to date, configure az devops
     "postStartCommand": {
-        "update-pac": "[ -f /etc/devcontainer-pac-cli/auto-update ] && dotnet tool update --global Microsoft.PowerPlatform.Cli 2>/dev/null || true",
+        "update-pac": "[ -f /etc/devcontainer-pac-cli/auto-update ] && dotnet tool update --global Microsoft.PowerApps.CLI.Tool 2>/dev/null || true",
         "update-txc": "[ -f /etc/devcontainer-txc-cli/auto-update ] && dotnet tool update --global TALXIS.CLI 2>/dev/null || true",
         "configure-devops": "[ -n \"${AZURE_DEVOPS_EXT_PAT:-}\" ] && az devops configure --defaults organization=https://dev.azure.com/TALXIS 2>/dev/null || true"
     },
 
-    // Run once after container creation
-    "postCreateCommand": "echo '✅ Power Platform dev container ready. Run `pac auth create` or `txc config profile create` to connect to an environment.'",
+    "postCreateCommand": "echo '✅ Power Platform dev container ready.'",
 
     // Minimum machine spec — 2 CPUs / 8 GB for free Codespaces tier (60 hrs/month)
     "hostRequirements": {
