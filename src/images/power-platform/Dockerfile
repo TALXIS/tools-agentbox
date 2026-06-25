@@ -80,8 +80,8 @@ RUN echo 'export PATH="$PATH:$HOME/.dotnet/tools"' > /etc/profile.d/dotnet-tools
     && echo 'export PATH="$PATH:/root/.dotnet/tools"' >> /root/.profile
 
 # ── Create vscode user (standard devcontainer user) ──────────────────────────
-RUN groupadd --gid 1000 vscode \
-    && useradd --uid 1000 --gid 1000 -m -s /bin/bash vscode \
+RUN groupadd --gid 1000 vscode 2>/dev/null || groupmod -n vscode "$(getent group 1000 | cut -d: -f1)" 2>/dev/null || true \
+    && (id vscode &>/dev/null || useradd --uid 1000 --gid 1000 -m -s /bin/bash vscode) \
     && echo 'vscode ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
     # Install tools for vscode user too
     && su vscode -c 'dotnet tool install --global Microsoft.PowerApps.CLI.Tool 2>/dev/null || dotnet tool update --global Microsoft.PowerApps.CLI.Tool 2>/dev/null || true' \
