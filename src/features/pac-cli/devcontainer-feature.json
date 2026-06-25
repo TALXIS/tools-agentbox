@@ -1,0 +1,36 @@
+{
+    "id": "pac-cli",
+    "version": "1.0.0",
+    "name": "Power Platform CLI (pac)",
+    "description": "Installs the Microsoft Power Platform CLI (pac). When version is 'latest', auto-updates on every container start via postStartCommand.",
+    "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/features/pac-cli",
+    "licenseURL": "https://github.com/TALXIS/tools-agentbox/blob/master/LICENSE",
+    "options": {
+        "version": {
+            "type": "string",
+            "proposals": [
+                "latest"
+            ],
+            "default": "latest",
+            "description": "Version of the Power Platform CLI to install. Use 'latest' for auto-updates on each start."
+        }
+    },
+    "postStartCommand": "[ -f /etc/devcontainer-pac-cli/auto-update ] && dotnet tool update --global Microsoft.PowerPlatform.Cli 2>/dev/null || true",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "microsoft-IsvExpTools.powerplatform-vscode"
+            ],
+            "settings": {
+                "github.copilot.chat.codeGeneration.instructions": [
+                    {
+                        "text": "This dev container includes the Power Platform CLI (`pac`), which is pre-installed and available on the `PATH`. Use `pac auth create`, `pac solution`, `pac pcf`, `pac plugin`, and other pac commands for Power Platform development."
+                    }
+                ]
+            }
+        }
+    },
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/dotnet"
+    ]
+}

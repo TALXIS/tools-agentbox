@@ -1,0 +1,141 @@
+// Power Platform dev container template
+// Docs: https://github.com/TALXIS/tools-agentbox/tree/master/src/templates/power-platform
+{
+    "name": "Power Platform",
+
+    // Use the pre-built image for fast startup (~30s), or comment out and use features for flexibility
+    "image": "ghcr.io/talxis/tools-agentbox/image:latest",
+
+    // Alternatively, build from scratch using community + custom features:
+    // "image": "mcr.microsoft.com/dotnet/sdk:10.0",
+    // "features": {
+    //     "ghcr.io/devcontainers/features/git:1": {},
+    //     "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+    //     "ghcr.io/devcontainers/features/azure-cli:1": { "version": "latest", "extensions": "azure-devops" },
+    //     "ghcr.io/devcontainers/features/powershell:1": { "version": "latest" },
+    //     "ghcr.io/devcontainers/features/terraform:1": { "version": "latest" },
+    //     "ghcr.io/devcontainers/features/github-cli:1": { "version": "latest" },
+    //     "ghcr.io/devcontainers/features/copilot-cli:1": { "version": "latest" },
+    //     "ghcr.io/jlaundry/devcontainer-features/azure-functions-core-tools:1": {},
+    //     "ghcr.io/talxis/tools-agentbox/pac-cli:1": { "version": "latest" },
+    //     "ghcr.io/talxis/tools-agentbox/txc-cli:1": { "version": "latest" }
+    // },
+
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                // .NET / C#
+                "ms-dotnettools.csdevkit",
+                "ms-dotnettools.vscode-dotnet-runtime",
+                // Power Platform
+                "microsoft-IsvExpTools.powerplatform-vscode",
+                // Azure
+                "ms-vscode.azurecli",
+                "ms-azuretools.vscode-azurefunctions",
+                // GitHub
+                "GitHub.copilot",
+                "GitHub.copilot-chat",
+                "GitHub.vscode-github-actions",
+                "GitHub.vscode-pull-request-github",
+                // General
+                "ms-vscode.powershell",
+                "hashicorp.terraform",
+                "redhat.vscode-yaml",
+                "editorconfig.editorconfig"
+            ],
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "bash",
+                "editor.formatOnSave": true,
+                "dotnet.defaultSolution": "disable",
+                // TXC MCP Server — exposed to VS Code Copilot Chat
+                // dnx downloads and runs TALXIS.CLI.MCP on demand (no pre-install needed)
+                "mcp": {
+                    "servers": {
+                        "TALXIS CLI": {
+                            "type": "stdio",
+                            "command": "dnx",
+                            "args": ["TALXIS.CLI.MCP", "--yes"]
+                        }
+                    }
+                }
+            }
+        },
+        "codespaces": {
+            // Auto-open the welcome guide when first starting the Codespace
+            "openFiles": [
+                "README.md"
+            ]
+        }
+    },
+
+    // Recommended secrets — users are prompted for these when creating a Codespace
+    "secrets": {
+        "DATAVERSE_ENV_URL": {
+            "description": "Your Dataverse / Power Platform environment URL (e.g. https://contoso.crm4.dynamics.com). Used by pac and txc to connect to your environment.",
+            "documentationUrl": "https://learn.microsoft.com/power-platform/developer/cli/reference/auth#pac-auth-create"
+        },
+        "AZURE_TENANT_ID": {
+            "description": "Azure Active Directory tenant ID. Used by Azure CLI and Power Platform authentication.",
+            "documentationUrl": "https://learn.microsoft.com/azure/active-directory/fundamentals/how-to-find-tenant"
+        },
+        "GH_TOKEN": {
+            "description": "GitHub personal access token. Needed for private repos, GitHub Packages (NuGet), and GitHub CLI.",
+            "documentationUrl": "https://docs.github.com/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens"
+        },
+        "AZURE_DEVOPS_EXT_PAT": {
+            "description": "Azure DevOps Personal Access Token. Used by the Azure DevOps CLI extension for work items, pipelines, and repos.",
+            "documentationUrl": "https://learn.microsoft.com/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate"
+        }
+    },
+
+    // Auto-run on container start: keep pac + txc up to date, configure az devops
+    "postStartCommand": {
+        "update-pac": "[ -f /etc/devcontainer-pac-cli/auto-update ] && dotnet tool update --global Microsoft.PowerApps.CLI.Tool 2>/dev/null || true",
+        "update-txc": "[ -f /etc/devcontainer-txc-cli/auto-update ] && dotnet tool update --global TALXIS.CLI 2>/dev/null || true",
+        "configure-devops": "[ -n \"${AZURE_DEVOPS_EXT_PAT:-}\" ] && az devops configure --defaults organization=https://dev.azure.com/TALXIS 2>/dev/null || true"
+    },
+
+    "postCreateCommand": "echo '✅ Power Platform dev container ready.'",
+
+    // Minimum machine spec — 2 CPUs / 8 GB for free Codespaces tier (60 hrs/month)
+    "hostRequirements": {
+        "cpus": 2,
+        "memory": "8gb",
+        "storage": "32gb"
+    },
+
+    "forwardPorts": [
+        // Azure Functions local runtime
+        7071,
+        // Azurite blob storage
+        10000,
+        // Azurite queue storage
+        10001,
+        // Azurite table storage
+        10002
+    ],
+
+    "portsAttributes": {
+        "7071": {
+            "label": "Azure Functions",
+            "onAutoForward": "notify"
+        },
+        "10000": {
+            "label": "Azurite (Blob)",
+            "onAutoForward": "silent"
+        },
+        "10001": {
+            "label": "Azurite (Queue)",
+            "onAutoForward": "silent"
+        },
+        "10002": {
+            "label": "Azurite (Table)",
+            "onAutoForward": "silent"
+        }
+    },
+
+    "remoteEnv": {
+        // Ensure dotnet global tools are on PATH
+        "PATH": "${containerEnv:PATH}:${containerEnv:HOME}/.dotnet/tools"
+    }
+}

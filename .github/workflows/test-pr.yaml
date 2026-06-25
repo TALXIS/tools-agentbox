@@ -1,0 +1,34 @@
+name: "CI - Test Features & Templates"
+on:
+  pull_request:
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      features: ${{ steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            pac-cli: ./**/pac-cli/**
+            txc-cli: ./**/txc-cli/**
+            power-platform: ./**/power-platform/**
+
+  test-features:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.features != '[]'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      matrix:
+        feature: ${{ fromJSON(needs.detect-changes.outputs.features) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Smoke test '${{ matrix.feature }}'
+        uses: ./.github/actions/smoke-test
+        with:
+          feature: "${{ matrix.feature }}"
