@@ -41,7 +41,7 @@ echo "--- copilot ---"
 run "copilot --version || copilot version || echo 'copilot installed'"
 
 echo "--- pac ---"
-run 'PATH="$PATH:/home/vscode/.dotnet/tools" pac --version'
+run 'PATH="$PATH:/home/vscode/.dotnet/tools" pac help'
 
 echo "--- txc ---"
 run 'PATH="$PATH:/home/vscode/.dotnet/tools" txc --version'
