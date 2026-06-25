@@ -140,12 +140,6 @@ https://github.com/orgs/TALXIS/packages/container/tools-agentbox%2Ftxc-cli/setti
 https://github.com/orgs/TALXIS/packages/container/tools-agentbox%2Fimage/settings
 ```
 
-## Relationship to NETWORG/AgentBox
-
-[AgentBox](https://github.com/NETWORG/AgentBox) is a separate product — ephemeral dev containers with code-server, ttyd, and SSH for AI coding agents running in Azure Container Instances. This repo focuses on **developer-facing** Codespace tooling.
-
-Future: The ACI runtime components from AgentBox will be extracted into a dedicated feature/image in this repo, extending the power-platform base image with the AgentBox runtime.
-
 ## License
 
 MIT — TALXIS / NETWORG s.r.o.
