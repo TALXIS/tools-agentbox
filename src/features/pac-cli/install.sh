@@ -64,5 +64,5 @@ if [ "${CLI_VERSION}" = "latest" ]; then
     echo "Auto-update enabled: pac will update on each container start."
 fi
 
-echo "Power Platform CLI installed: $(su "${REMOTE_USER}" -c "PATH=\"${DOTNET_TOOLS_PATH}:\$PATH\" pac --version" 2>/dev/null || echo 'installed')"
+echo "Power Platform CLI installed: $(su "${REMOTE_USER}" -c "PATH=\"${DOTNET_TOOLS_PATH}:\$PATH\" pac help" 2>/dev/null || echo 'installed')"
 echo "Done!"
