@@ -2,29 +2,6 @@
 
 Devcontainer features, templates, and pre-built Docker images for Power Platform / Dataverse developers. Works in GitHub Codespaces, VS Code Dev Containers, and Azure Container Instances.
 
-## Repository structure
-
-```
-src/
-├── features/
-│   ├── pac-cli/          # Power Platform CLI (pac) devcontainer feature
-│   └── txc-cli/          # TALXIS DevKit CLI (txc) devcontainer feature
-├── templates/
-│   └── power-platform/   # Full Power Platform devcontainer template
-└── images/
-    └── power-platform/   # Pre-built Docker image (Dockerfile)
-test/
-├── pac-cli/              # Smoke tests for pac-cli feature
-├── txc-cli/              # Smoke tests for txc-cli feature
-└── power-platform/       # Smoke tests for the pre-built image
-.github/
-└── workflows/
-    ├── release-features.yaml   # Publish features to GHCR
-    ├── release-templates.yaml  # Publish templates to GHCR
-    ├── build-image.yaml        # Build & push pre-built image (weekly + on change)
-    └── test-pr.yaml            # CI: smoke-test changed features/templates on PRs
-```
-
 ## Published artifacts
 
 | Artifact | GHCR Reference |
