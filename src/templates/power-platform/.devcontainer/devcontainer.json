@@ -90,8 +90,8 @@
 
     // Auto-run on container start: keep pac + txc + devkit templates up to date, configure az devops
     "postStartCommand": {
-        "update-pac": "[ -f /etc/devcontainer-pac-cli/auto-update ] && dotnet tool update --global Microsoft.PowerApps.CLI.Tool 2>/dev/null || true",
-        "update-txc": "[ -f /etc/devcontainer-txc-cli/auto-update ] && dotnet tool update --global TALXIS.CLI 2>/dev/null || true",
+        "update-pac": "[ -f /etc/devcontainer-pac-cli/auto-update ] && dotnet tool update --tool-path /usr/local/bin Microsoft.PowerApps.CLI.Tool 2>/dev/null || true",
+        "update-txc": "dotnet tool update --tool-path /usr/local/bin TALXIS.CLI 2>/dev/null || true",
         "update-devkit-templates": "dotnet new install TALXIS.DevKit.Templates.Dataverse 2>/dev/null || true",
         "configure-devops": "[ -n \"${AZURE_DEVOPS_EXT_PAT:-}\" ] && az devops configure --defaults organization=https://dev.azure.com/TALXIS 2>/dev/null || true"
     },
