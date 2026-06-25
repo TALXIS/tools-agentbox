@@ -32,11 +32,16 @@ RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
     && rm -rf /var/lib/apt/lists/* /tmp/*
 
 # ── PowerShell ────────────────────────────────────────────────────────────────
-RUN . /etc/os-release \
-    && wget -q "https://packages.microsoft.com/config/${ID}/${VERSION_ID}/packages-microsoft-prod.deb" \
-    && dpkg -i packages-microsoft-prod.deb \
-    && rm packages-microsoft-prod.deb \
-    && apt-get update && apt-get install -y powershell \
+# Direct .deb from GitHub releases — avoids PMC/dotnet package conflicts and
+# works on amd64 + arm64 without adding Microsoft apt repos to the base image.
+RUN ARCH=$(dpkg --print-architecture) \
+    && PWSH_VERSION=$(curl -fsSL https://api.github.com/repos/PowerShell/PowerShell/releases/latest \
+        | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/') \
+    && curl -fsSL "https://github.com/PowerShell/PowerShell/releases/download/v${PWSH_VERSION}/powershell_${PWSH_VERSION}-1.deb_${ARCH}.deb" \
+        -o /tmp/powershell.deb \
+    && dpkg -i /tmp/powershell.deb \
+    && apt-get install -f -y \
+    && rm /tmp/powershell.deb \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Terraform ─────────────────────────────────────────────────────────────────
