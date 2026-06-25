@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0
 
-LABEL org.opencontainers.image.description="Power Platform dev container image — .NET 10, Node.js 22, Azure CLI, PowerShell, Terraform, GitHub CLI, GitHub Copilot CLI, PAC CLI, TXC CLI, Azure Functions Core Tools"
+LABEL org.opencontainers.image.description="Power Platform dev container image — .NET 10, Node.js 22, Azure CLI, PowerShell, Terraform, GitHub CLI, GitHub Copilot CLI, PAC CLI, TXC CLI, TALXIS DevKit Templates, Azure Functions Core Tools"
 LABEL org.opencontainers.image.source="https://github.com/TALXIS/tools-agentbox"
 LABEL org.opencontainers.image.version="1.0.0"
 
@@ -79,6 +79,9 @@ RUN dotnet tool install --tool-path /usr/local/bin Microsoft.PowerApps.CLI.Tool 
     && mkdir -p /etc/devcontainer-pac-cli && touch /etc/devcontainer-pac-cli/auto-update \
     && dotnet tool install --tool-path /usr/local/bin TALXIS.CLI \
     && mkdir -p /etc/devcontainer-txc-cli && touch /etc/devcontainer-txc-cli/auto-update
+
+# ── TALXIS DevKit Templates ──────────────────────────────────────────────────
+RUN dotnet new install TALXIS.DevKit.Templates.Dataverse
 
 # ── TXC MCP Server config (GitHub Copilot CLI) ───────────────────────────────
 # Place in /etc/skel so it is copied to any new user's home by devcontainer runtime
