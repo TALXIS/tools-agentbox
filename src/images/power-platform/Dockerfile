@@ -48,13 +48,8 @@ https://apt.releases.hashicorp.com $(lsb_release -cs) main" > /etc/apt/sources.l
     && rm -rf /var/lib/apt/lists/*
 
 # ── Azure Functions Core Tools v4 ────────────────────────────────────────────
-RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
-        | gpg --dearmor -o /usr/share/keyrings/microsoft-prod-keyring.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/microsoft-prod-keyring.gpg] \
-https://packages.microsoft.com/repos/azure-functions/ $(lsb_release -cs) main" \
-        > /etc/apt/sources.list.d/azure-functions.list \
-    && apt-get update && apt-get install -y azure-functions-core-tools-4 \
-    && rm -rf /var/lib/apt/lists/*
+# Install via npm - the apt repo does not support Ubuntu 24.04 (Noble)
+RUN npm install -g azure-functions-core-tools@4 --unsafe-perm true
 
 # ── GitHub Copilot CLI ────────────────────────────────────────────────────────
 RUN ARCH=$(dpkg --print-architecture) \
@@ -68,7 +63,7 @@ RUN ARCH=$(dpkg --print-architecture) \
 
 # ── PAC CLI (Power Platform CLI) ─────────────────────────────────────────────
 # Install as root first, then configure for the container user
-RUN dotnet tool install --global Microsoft.PowerPlatform.Cli \
+RUN dotnet tool install --global Microsoft.PowerApps.CLI.Tool \
     && mkdir -p /etc/devcontainer-pac-cli \
     && touch /etc/devcontainer-pac-cli/auto-update
 
@@ -89,7 +84,7 @@ RUN groupadd --gid 1000 vscode \
     && useradd --uid 1000 --gid 1000 -m -s /bin/bash vscode \
     && echo 'vscode ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
     # Install tools for vscode user too
-    && su vscode -c 'dotnet tool install --global Microsoft.PowerPlatform.Cli 2>/dev/null || dotnet tool update --global Microsoft.PowerPlatform.Cli 2>/dev/null || true' \
+    && su vscode -c 'dotnet tool install --global Microsoft.PowerApps.CLI.Tool 2>/dev/null || dotnet tool update --global Microsoft.PowerApps.CLI.Tool 2>/dev/null || true' \
     && su vscode -c 'dotnet tool install --global TALXIS.CLI 2>/dev/null || dotnet tool update --global TALXIS.CLI 2>/dev/null || true' \
     && echo 'export PATH="$PATH:/home/vscode/.dotnet/tools"' >> /home/vscode/.bashrc \
     && echo 'export PATH="$PATH:/home/vscode/.dotnet/tools"' >> /home/vscode/.profile \
