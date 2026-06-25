@@ -24,11 +24,11 @@ echo "Installing Power Platform CLI for user: ${REMOTE_USER}"
 
 install_pac() {
     if [ "${CLI_VERSION}" = "latest" ]; then
-        su "${REMOTE_USER}" -c "dotnet tool install --global Microsoft.PowerApps.CLI" \
-            || su "${REMOTE_USER}" -c "dotnet tool update --global Microsoft.PowerApps.CLI"
+        su "${REMOTE_USER}" -c "dotnet tool install --global Microsoft.PowerApps.CLI.Tool" \
+            || su "${REMOTE_USER}" -c "dotnet tool update --global Microsoft.PowerApps.CLI.Tool"
     else
-        su "${REMOTE_USER}" -c "dotnet tool install --global Microsoft.PowerApps.CLI --version ${CLI_VERSION}" \
-            || su "${REMOTE_USER}" -c "dotnet tool update --global Microsoft.PowerApps.CLI --version ${CLI_VERSION}"
+        su "${REMOTE_USER}" -c "dotnet tool install --global Microsoft.PowerApps.CLI.Tool --version ${CLI_VERSION}" \
+            || su "${REMOTE_USER}" -c "dotnet tool update --global Microsoft.PowerApps.CLI.Tool --version ${CLI_VERSION}"
     fi
 }
 
