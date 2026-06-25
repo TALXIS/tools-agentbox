@@ -1,0 +1,15 @@
+{
+    "id": "power-platform",
+    "version": "1.0.0",
+    "name": "Power Platform",
+    "description": "Full Power Platform / Dataverse development environment. Includes .NET 10 SDK, Node.js 22, Azure CLI, PowerShell, Terraform, GitHub CLI, GitHub Copilot CLI, Power Platform CLI (pac), TALXIS DevKit CLI (txc), and Azure Functions Core Tools.",
+    "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/templates/power-platform",
+    "licenseURL": "https://github.com/TALXIS/tools-agentbox/blob/master/LICENSE",
+    "platforms": [
+        "Power Platform",
+        "Dataverse",
+        ".NET",
+        "Azure"
+    ],
+    "publisher": "TALXIS"
+}

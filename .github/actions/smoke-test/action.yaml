@@ -1,0 +1,21 @@
+name: "Smoke Test"
+description: "Runs smoke test for a devcontainer feature or template"
+inputs:
+  feature:
+    description: "Feature or template ID to test"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Run smoke test
+      shell: bash
+      run: |
+        if [ -f "test/${{ inputs.feature }}/test.sh" ]; then
+          chmod +x "test/${{ inputs.feature }}/test.sh"
+          bash "test/${{ inputs.feature }}/test.sh"
+        else
+          echo "No test.sh found for ${{ inputs.feature }}, skipping."
+        fi

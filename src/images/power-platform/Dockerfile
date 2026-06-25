@@ -1,0 +1,99 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+
+LABEL org.opencontainers.image.description="Power Platform dev container image — .NET 10, Node.js 22, Azure CLI, PowerShell, Terraform, GitHub CLI, GitHub Copilot CLI, PAC CLI, TXC CLI, Azure Functions Core Tools"
+LABEL org.opencontainers.image.source="https://github.com/TALXIS/tools-agentbox"
+LABEL org.opencontainers.image.version="1.0.0"
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ── Base system dependencies ──────────────────────────────────────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl wget git zip unzip jq ca-certificates gnupg lsb-release \
+    apt-transport-https software-properties-common \
+    sudo procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Node.js 22 ────────────────────────────────────────────────────────────────
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── GitHub CLI ────────────────────────────────────────────────────────────────
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+        | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] \
+https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update && apt-get install -y gh \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Azure CLI ─────────────────────────────────────────────────────────────────
+RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
+    && az extension add --name azure-devops --yes \
+    && rm -rf /var/lib/apt/lists/* /tmp/*
+
+# ── PowerShell ────────────────────────────────────────────────────────────────
+RUN . /etc/os-release \
+    && wget -q "https://packages.microsoft.com/config/${ID}/${VERSION_ID}/packages-microsoft-prod.deb" \
+    && dpkg -i packages-microsoft-prod.deb \
+    && rm packages-microsoft-prod.deb \
+    && apt-get update && apt-get install -y powershell \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Terraform ─────────────────────────────────────────────────────────────────
+RUN curl -fsSL https://apt.releases.hashicorp.com/gpg \
+        | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] \
+https://apt.releases.hashicorp.com $(lsb_release -cs) main" > /etc/apt/sources.list.d/hashicorp.list \
+    && apt-get update && apt-get install -y terraform \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Azure Functions Core Tools v4 ────────────────────────────────────────────
+RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
+        | gpg --dearmor -o /usr/share/keyrings/microsoft-prod-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/microsoft-prod-keyring.gpg] \
+https://packages.microsoft.com/repos/azure-functions/ $(lsb_release -cs) main" \
+        > /etc/apt/sources.list.d/azure-functions.list \
+    && apt-get update && apt-get install -y azure-functions-core-tools-4 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── GitHub Copilot CLI ────────────────────────────────────────────────────────
+RUN ARCH=$(dpkg --print-architecture) \
+    && [ "${ARCH}" = "amd64" ] && ARCH="x64" || true \
+    && curl -fsSL "https://github.com/github/copilot-cli/releases/latest/download/copilot-linux-${ARCH}.tar.gz" \
+        | tar -xz -C /usr/local/bin \
+    && chmod +x /usr/local/bin/copilot \
+    # Enable auto-update on container start (mirrors copilot-cli feature behavior)
+    && mkdir -p /etc/devcontainer-copilot-cli \
+    && touch /etc/devcontainer-copilot-cli/auto-update
+
+# ── PAC CLI (Power Platform CLI) ─────────────────────────────────────────────
+# Install as root first, then configure for the container user
+RUN dotnet tool install --global Microsoft.PowerPlatform.Cli \
+    && mkdir -p /etc/devcontainer-pac-cli \
+    && touch /etc/devcontainer-pac-cli/auto-update
+
+# ── TXC CLI (TALXIS DevKit CLI) ──────────────────────────────────────────────
+RUN dotnet tool install --global TALXIS.CLI \
+    && mkdir -p /etc/devcontainer-txc-cli \
+    && touch /etc/devcontainer-txc-cli/auto-update
+
+# ── Ensure dotnet global tools are on PATH for all users ─────────────────────
+RUN echo 'export PATH="$PATH:$HOME/.dotnet/tools"' > /etc/profile.d/dotnet-tools.sh \
+    && chmod 644 /etc/profile.d/dotnet-tools.sh \
+    # Also add to root's shell profiles
+    && echo 'export PATH="$PATH:/root/.dotnet/tools"' >> /root/.bashrc \
+    && echo 'export PATH="$PATH:/root/.dotnet/tools"' >> /root/.profile
+
+# ── Create vscode user (standard devcontainer user) ──────────────────────────
+RUN groupadd --gid 1000 vscode \
+    && useradd --uid 1000 --gid 1000 -m -s /bin/bash vscode \
+    && echo 'vscode ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
+    # Install tools for vscode user too
+    && su vscode -c 'dotnet tool install --global Microsoft.PowerPlatform.Cli 2>/dev/null || dotnet tool update --global Microsoft.PowerPlatform.Cli 2>/dev/null || true' \
+    && su vscode -c 'dotnet tool install --global TALXIS.CLI 2>/dev/null || dotnet tool update --global TALXIS.CLI 2>/dev/null || true' \
+    && echo 'export PATH="$PATH:/home/vscode/.dotnet/tools"' >> /home/vscode/.bashrc \
+    && echo 'export PATH="$PATH:/home/vscode/.dotnet/tools"' >> /home/vscode/.profile \
+    && chown -R vscode:vscode /home/vscode/.dotnet
+
+USER vscode
+ENV PATH="${PATH}:/home/vscode/.dotnet/tools"
