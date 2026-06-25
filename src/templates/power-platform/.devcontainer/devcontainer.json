@@ -85,6 +85,10 @@
         "AZURE_DEVOPS_EXT_PAT": {
             "description": "Azure DevOps Personal Access Token. Used by the Azure DevOps CLI extension for work items, pipelines, and repos.",
             "documentationUrl": "https://learn.microsoft.com/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate"
+        },
+        "AZURE_DEVOPS_ORGANIZATION": {
+            "description": "Your Azure DevOps organization URL (e.g. https://dev.azure.com/myorg). Used to set the default org for the Azure DevOps CLI.",
+            "documentationUrl": "https://learn.microsoft.com/azure/devops/cli/get-started"
         }
     },
 
@@ -93,7 +97,7 @@
         "update-pac": "[ -f /etc/devcontainer-pac-cli/auto-update ] && dotnet tool update --tool-path /usr/local/bin Microsoft.PowerApps.CLI.Tool 2>/dev/null || true",
         "update-txc": "dotnet tool update --tool-path /usr/local/bin TALXIS.CLI 2>/dev/null || true",
         "update-devkit-templates": "dotnet new install TALXIS.DevKit.Templates.Dataverse 2>/dev/null || true",
-        "configure-devops": "[ -n \"${AZURE_DEVOPS_EXT_PAT:-}\" ] && az devops configure --defaults organization=https://dev.azure.com/TALXIS 2>/dev/null || true"
+        "configure-devops": "[ -n \"${AZURE_DEVOPS_EXT_PAT:-}\" ] && [ -n \"${AZURE_DEVOPS_ORGANIZATION:-}\" ] && az devops configure --defaults organization=${AZURE_DEVOPS_ORGANIZATION} 2>/dev/null || true"
     },
 
     "postCreateCommand": "echo '✅ Power Platform dev container ready.'",
