@@ -80,9 +80,6 @@ RUN dotnet tool install --tool-path /usr/local/bin Microsoft.PowerApps.CLI.Tool 
     && dotnet tool install --tool-path /usr/local/bin TALXIS.CLI \
     && mkdir -p /etc/devcontainer-txc-cli && touch /etc/devcontainer-txc-cli/auto-update
 
-# ── TALXIS DevKit Templates ──────────────────────────────────────────────────
-RUN dotnet new install TALXIS.DevKit.Templates.Dataverse
-
 # ── TXC MCP Server config (GitHub Copilot CLI) ───────────────────────────────
 # Place in /etc/skel so it is copied to any new user's home by devcontainer runtime
 RUN mkdir -p /etc/skel/.copilot \
