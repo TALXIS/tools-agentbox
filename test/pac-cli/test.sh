@@ -25,7 +25,7 @@ echo "--- Checking pac command exists ---"
 docker run --rm \
     -e PATH="${PATH}:/root/.dotnet/tools" \
     "devcontainer-feature-test-${FEATURE_ID}" \
-    bash -c 'PATH="$PATH:/root/.dotnet/tools" pac --version'
+    bash -c 'PATH="$PATH:/root/.dotnet/tools" pac help'
 
 echo "--- Checking auto-update flag file exists ---"
 docker run --rm \
