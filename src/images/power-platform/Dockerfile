@@ -32,16 +32,22 @@ RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
     && rm -rf /var/lib/apt/lists/* /tmp/*
 
 # ── PowerShell ────────────────────────────────────────────────────────────────
-# Direct .deb from GitHub releases — avoids PMC/dotnet package conflicts and
-# works on amd64 + arm64 without adding Microsoft apt repos to the base image.
+# amd64: .deb from GitHub releases (no PMC repo = no dotnet package conflicts)
+# arm64: .tar.gz (no arm64 .deb is published)
 RUN ARCH=$(dpkg --print-architecture) \
     && PWSH_VERSION=$(curl -fsSL https://api.github.com/repos/PowerShell/PowerShell/releases/latest \
         | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/') \
-    && curl -fsSL "https://github.com/PowerShell/PowerShell/releases/download/v${PWSH_VERSION}/powershell_${PWSH_VERSION}-1.deb_${ARCH}.deb" \
-        -o /tmp/powershell.deb \
-    && dpkg -i /tmp/powershell.deb \
-    && apt-get install -f -y \
-    && rm /tmp/powershell.deb \
+    && if [ "$ARCH" = "amd64" ]; then \
+        curl -fsSL "https://github.com/PowerShell/PowerShell/releases/download/v${PWSH_VERSION}/powershell_${PWSH_VERSION}-1.deb_amd64.deb" \
+            -o /tmp/powershell.deb \
+        && dpkg -i /tmp/powershell.deb && apt-get install -f -y && rm /tmp/powershell.deb; \
+    else \
+        mkdir -p /opt/microsoft/powershell/7 \
+        && curl -fsSL "https://github.com/PowerShell/PowerShell/releases/download/v${PWSH_VERSION}/powershell-${PWSH_VERSION}-linux-arm64.tar.gz" \
+            | tar -xz -C /opt/microsoft/powershell/7 \
+        && chmod +x /opt/microsoft/powershell/7/pwsh \
+        && ln -sf /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh; \
+    fi \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Terraform ─────────────────────────────────────────────────────────────────
