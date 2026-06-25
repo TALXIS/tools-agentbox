@@ -90,5 +90,13 @@ RUN groupadd --gid 1000 vscode \
     && echo 'export PATH="$PATH:/home/vscode/.dotnet/tools"' >> /home/vscode/.profile \
     && chown -R vscode:vscode /home/vscode/.dotnet
 
+# ── TXC MCP Server config (GitHub Copilot CLI) ───────────────────────────────
+# dnx runs TALXIS.CLI.MCP on demand — no pre-install needed, just the config
+RUN mkdir -p /home/vscode/.copilot \
+    && echo '{"mcpServers":{"TXC":{"type":"stdio","command":"dnx","args":["TALXIS.CLI.MCP","--yes"]}}}' \
+        > /home/vscode/.copilot/mcp-config.json \
+    && chown -R vscode:vscode /home/vscode/.copilot
+
+
 USER vscode
 ENV PATH="${PATH}:/home/vscode/.dotnet/tools"
