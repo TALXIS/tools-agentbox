@@ -32,8 +32,17 @@ RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash \
     && rm -rf /var/lib/apt/lists/* /tmp/*
 
 # ── PowerShell ────────────────────────────────────────────────────────────────
-# Use official install script — works on amd64 and arm64, Ubuntu 24.04+
-RUN curl -fsSL https://aka.ms/install-powershell.sh | bash
+# Direct .deb from GitHub releases — avoids PMC/dotnet package conflicts and
+# works on amd64 + arm64 without adding Microsoft apt repos to the base image.
+RUN ARCH=$(dpkg --print-architecture) \
+    && PWSH_VERSION=$(curl -fsSL https://api.github.com/repos/PowerShell/PowerShell/releases/latest \
+        | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/') \
+    && curl -fsSL "https://github.com/PowerShell/PowerShell/releases/download/v${PWSH_VERSION}/powershell_${PWSH_VERSION}-1.deb_${ARCH}.deb" \
+        -o /tmp/powershell.deb \
+    && dpkg -i /tmp/powershell.deb \
+    && apt-get install -f -y \
+    && rm /tmp/powershell.deb \
+    && rm -rf /var/lib/apt/lists/*
 
 # ── Terraform ─────────────────────────────────────────────────────────────────
 RUN curl -fsSL https://apt.releases.hashicorp.com/gpg \
