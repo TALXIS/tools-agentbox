@@ -61,42 +61,17 @@ RUN ARCH=$(dpkg --print-architecture) \
     && mkdir -p /etc/devcontainer-copilot-cli \
     && touch /etc/devcontainer-copilot-cli/auto-update
 
-# ── PAC CLI (Power Platform CLI) ─────────────────────────────────────────────
-# Install as root first, then configure for the container user
-RUN dotnet tool install --global Microsoft.PowerApps.CLI.Tool \
-    && mkdir -p /etc/devcontainer-pac-cli \
-    && touch /etc/devcontainer-pac-cli/auto-update
-
-# ── TXC CLI (TALXIS DevKit CLI) ──────────────────────────────────────────────
-RUN dotnet tool install --global TALXIS.CLI \
-    && mkdir -p /etc/devcontainer-txc-cli \
-    && touch /etc/devcontainer-txc-cli/auto-update
-
-# ── Ensure dotnet global tools are on PATH for all users ─────────────────────
-RUN echo 'export PATH="$PATH:$HOME/.dotnet/tools"' > /etc/profile.d/dotnet-tools.sh \
-    && chmod 644 /etc/profile.d/dotnet-tools.sh \
-    # Also add to root's shell profiles
-    && echo 'export PATH="$PATH:/root/.dotnet/tools"' >> /root/.bashrc \
-    && echo 'export PATH="$PATH:/root/.dotnet/tools"' >> /root/.profile
-
-# ── Create vscode user (standard devcontainer user) ──────────────────────────
-RUN groupadd --gid 1000 vscode 2>/dev/null || groupmod -n vscode "$(getent group 1000 | cut -d: -f1)" 2>/dev/null || true \
-    && (id vscode &>/dev/null || useradd --uid 1000 --gid 1000 -m -s /bin/bash vscode) \
-    && echo 'vscode ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
-    # Install tools for vscode user too
-    && su vscode -c 'dotnet tool install --global Microsoft.PowerApps.CLI.Tool 2>/dev/null || dotnet tool update --global Microsoft.PowerApps.CLI.Tool 2>/dev/null || true' \
-    && su vscode -c 'dotnet tool install --global TALXIS.CLI 2>/dev/null || dotnet tool update --global TALXIS.CLI 2>/dev/null || true' \
-    && echo 'export PATH="$PATH:/home/vscode/.dotnet/tools"' >> /home/vscode/.bashrc \
-    && echo 'export PATH="$PATH:/home/vscode/.dotnet/tools"' >> /home/vscode/.profile \
-    && chown -R vscode:vscode /home/vscode/.dotnet
+# ── PAC CLI + TXC CLI ────────────────────────────────────────────────────────
+# Install to /usr/local/bin so all users can run them without PATH changes
+RUN dotnet tool install --tool-path /usr/local/bin Microsoft.PowerApps.CLI.Tool \
+    && mkdir -p /etc/devcontainer-pac-cli && touch /etc/devcontainer-pac-cli/auto-update \
+    && dotnet tool install --tool-path /usr/local/bin TALXIS.CLI \
+    && mkdir -p /etc/devcontainer-txc-cli && touch /etc/devcontainer-txc-cli/auto-update
 
 # ── TXC MCP Server config (GitHub Copilot CLI) ───────────────────────────────
-# dnx runs TALXIS.CLI.MCP on demand — no pre-install needed, just the config
-RUN mkdir -p /home/vscode/.copilot \
+# Place in /etc/skel so it is copied to any new user's home by devcontainer runtime
+RUN mkdir -p /etc/skel/.copilot \
     && echo '{"mcpServers":{"TXC":{"type":"stdio","command":"dnx","args":["TALXIS.CLI.MCP","--yes"]}}}' \
-        > /home/vscode/.copilot/mcp-config.json \
-    && chown -R vscode:vscode /home/vscode/.copilot
+        > /etc/skel/.copilot/mcp-config.json
 
 
-USER vscode
-ENV PATH="${PATH}:/home/vscode/.dotnet/tools"
