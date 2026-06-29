@@ -2,14 +2,16 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0
 
 LABEL org.opencontainers.image.description="Power Platform dev container image — .NET 10, Node.js 22, Azure CLI, PowerShell, Terraform, GitHub CLI, GitHub Copilot CLI, PAC CLI, TXC CLI, Azure Functions Core Tools"
 LABEL org.opencontainers.image.source="https://github.com/TALXIS/tools-agentbox"
-LABEL org.opencontainers.image.version="1.0.1"
+LABEL org.opencontainers.image.version="1.0.2"
 
 ENV DEBIAN_FRONTEND=noninteractive
+
 
 # ── Base system dependencies ──────────────────────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl wget git zip unzip jq ca-certificates gnupg lsb-release \
     ripgrep fd-find bat delta fzf tree xdg-utils less file \
+    libsecret-1-0 gnome-keyring \
     apt-transport-https software-properties-common \
     sudo procps \
     && rm -rf /var/lib/apt/lists/*
@@ -78,6 +80,7 @@ RUN ARCH=$(dpkg --print-architecture) \
 RUN dotnet tool install --tool-path /usr/local/bin Microsoft.PowerApps.CLI.Tool \
     && mkdir -p /etc/devcontainer-pac-cli && touch /etc/devcontainer-pac-cli/auto-update \
     && dotnet tool install --tool-path /usr/local/bin TALXIS.CLI \
+    && dotnet new install TALXIS.DevKit.Templates.Dataverse \
     && mkdir -p /etc/devcontainer-txc-cli && touch /etc/devcontainer-txc-cli/auto-update
 
 # ── TXC MCP Server config (GitHub Copilot CLI) ───────────────────────────────
