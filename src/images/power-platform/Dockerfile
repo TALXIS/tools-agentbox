@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0
 
 LABEL org.opencontainers.image.description="Power Platform dev container image — .NET 10, Node.js 22, Azure CLI, PowerShell, Terraform, GitHub CLI, GitHub Copilot CLI, PAC CLI, TXC CLI, Azure Functions Core Tools"
 LABEL org.opencontainers.image.source="https://github.com/TALXIS/tools-agentbox"
-LABEL org.opencontainers.image.version="1.0.2"
+LABEL org.opencontainers.image.version="1.0.3"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -79,7 +79,7 @@ RUN ARCH=$(dpkg --print-architecture) \
 # Install to /usr/local/bin so all users can run them without PATH changes
 RUN dotnet tool install --tool-path /usr/local/bin Microsoft.PowerApps.CLI.Tool \
     && mkdir -p /etc/devcontainer-pac-cli && touch /etc/devcontainer-pac-cli/auto-update \
-    && dotnet tool install --tool-path /usr/local/bin TALXIS.CLI \
+    && dotnet tool install --tool-path /usr/local/bin TALXIS.CLI --version 1.20.0 \
     && dotnet new install TALXIS.DevKit.Templates.Dataverse \
     && mkdir -p /etc/devcontainer-txc-cli && touch /etc/devcontainer-txc-cli/auto-update
 
