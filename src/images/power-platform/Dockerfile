@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0
 
 LABEL org.opencontainers.image.description="Power Platform dev container image — .NET 10, Node.js 22, Azure CLI, PowerShell, Terraform, GitHub CLI, GitHub Copilot CLI, PAC CLI, TXC CLI, Azure Functions Core Tools"
 LABEL org.opencontainers.image.source="https://github.com/TALXIS/tools-agentbox"
-LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.version="1.0.1"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
