@@ -68,11 +68,17 @@
         }
     },
 
-    // Auto-run on container start: keep pac + txc + devkit templates up to date
+    // Auto-run on container start: keep pac + txc + devkit templates up to date.
+    // pac/txc are baked into /usr/local/bin at build time, but updating that copy in place
+    // always fails with "Invalid cross-device link" (dotnet/sdk#3838 - dotnet's tool infra
+    // hard-links across the image's read-only layer, which Docker forbids). Updating as
+    // --global tools instead works reliably on every restart, because after the first run
+    // those files live entirely in the container's own writable layer. remoteEnv.PATH below
+    // prepends ~/.dotnet/tools so the fresh global copy shadows the stale baked-in one.
     "postStartCommand": {
-        "update-pac": "[ -f /etc/devcontainer-pac-cli/auto-update ] && dotnet tool update --tool-path /usr/local/bin Microsoft.PowerApps.CLI.Tool 2>/dev/null || true",
-        "update-txc": "dotnet tool update --tool-path /usr/local/bin TALXIS.CLI 2>/dev/null || true",
-        "update-devkit-templates": "dotnet new install TALXIS.DevKit.Templates.Dataverse 2>/dev/null || true"
+        "update-pac": "dotnet tool update --global Microsoft.PowerApps.CLI.Tool 2>/dev/null || true",
+        "update-txc": "dotnet tool update --global TALXIS.CLI 2>/dev/null || true",
+        "update-devkit-templates": "dotnet new install TALXIS.DevKit.Templates.Dataverse 2>/dev/null || dotnet new install TALXIS.DevKit.Templates.Dataverse 2>/dev/null || true"
     },
 
     "postCreateCommand": "echo '✅ Power Platform dev container ready.'",
@@ -115,7 +121,8 @@
     },
 
     "remoteEnv": {
-        // Ensure dotnet global tools are on PATH
-        "PATH": "${containerEnv:PATH}:${containerEnv:HOME}/.dotnet/tools"
+        // Global dotnet tools must win over the image's baked-in /usr/local/bin copies so
+        // that the postStartCommand updates above are actually visible on PATH.
+        "PATH": "${containerEnv:HOME}/.dotnet/tools:${containerEnv:PATH}"
     }
 }

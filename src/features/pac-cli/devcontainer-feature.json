@@ -15,7 +15,7 @@
             "description": "Version of the Power Platform CLI to install. Use 'latest' for auto-updates on each start."
         }
     },
-    "postStartCommand": "[ -f /etc/devcontainer-pac-cli/auto-update ] && dotnet tool update --global Microsoft.PowerPlatform.Cli 2>/dev/null || true",
+    "postStartCommand": "[ -f /etc/devcontainer-pac-cli/auto-update ] && dotnet tool update --global Microsoft.PowerApps.CLI.Tool 2>/dev/null || true",
     "customizations": {
         "vscode": {
             "extensions": [
