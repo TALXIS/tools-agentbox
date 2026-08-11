@@ -9,6 +9,8 @@ on:
   schedule:
     # Rebuild weekly on Monday at 03:00 UTC to pick up latest tool versions
     - cron: "0 3 * * 1"
+  release:
+    types: [published]
 
 permissions:
   packages: write
@@ -23,6 +25,28 @@ env:
   DOCKERFILE: src/images/power-platform/Dockerfile
 
 jobs:
+  # Cutting a GitHub Release (tag vX.Y.Z) is the only way to get a real, pinnable version
+  # tag on the image - same convention as tools-devkit-build/tools-devkit-templates. Every
+  # other trigger (push/schedule/workflow_dispatch) only ever refreshes `latest` + sha/date.
+  resolve-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            tag="${{ github.event.release.tag_name }}"
+            version="${tag#v}"
+            if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Invalid release tag '$tag'. Expected vX.Y.Z." >&2
+              exit 1
+            fi
+            echo "version=$version" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     strategy:
       fail-fast: false
@@ -78,7 +102,7 @@ jobs:
           retention-days: 1
 
   merge:
-    needs: build
+    needs: [build, resolve-version]
     runs-on: ubuntu-latest
     steps:
       - uses: docker/setup-buildx-action@v3
@@ -101,9 +125,9 @@ jobs:
           images: ${{ env.IMAGE }}
           tags: |
             type=raw,value=latest
+            type=raw,value=${{ needs.resolve-version.outputs.version }},enable=${{ needs.resolve-version.outputs.version != '' }}
             type=sha,prefix=,format=short
             type=schedule,pattern={{date 'YYYY-MM-DD'}}
-            type=semver,pattern={{version}}
 
       - run: |
           cd /tmp/digests
