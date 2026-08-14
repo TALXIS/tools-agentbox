@@ -13,9 +13,10 @@ Devcontainer features, templates, and pre-built Docker images for Power Platform
 
 ## Claude Code cloud environments
 
-See [`docs/claude-code-cloud-environment.md`](docs/claude-code-cloud-environment.md) for setting up
-an organization-shared Claude Code cloud environment that runs this same devcontainer for Claude
-Code cloud sessions.
+[`docs/claude-code-cloud-setup.sh`](docs/claude-code-cloud-setup.sh) is a setup script for an
+org-shared [Claude Code cloud environment](https://code.claude.com/docs/en/cloud-environments): paste it
+into the environment's setup script field, set network access to Custom and allow `cli.github.com` and
+`aka.ms` in addition to the defaults. No changes needed in individual repos.
 
 ## Quick start
 
