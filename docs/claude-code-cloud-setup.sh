@@ -9,10 +9,10 @@
 # environments, so Features run directly on the host instead of layered into a container image.
 #
 # Paste into "Setup script" at claude.ai/admin-settings/cloud-environments. Network access:
-# Custom, allow ghcr.io (Feature artifacts + registry auth) and registry.npmjs.org (devcontainer
-# CLI) in addition to the defaults. Some Features also reach out on their own — aka.ms,
-# cli.github.com, packages.microsoft.com — allow those too if a Feature's own install fails; the
-# failing command's target host is printed as it runs.
+# Custom, with the defaults included, plus `cli.github.com` — the github-cli Feature always
+# needs it, it's not on the default Trusted list (ghcr.io and registry.npmjs.org already are, so
+# nothing to add for those). If a Feature's install still fails, allow whatever host it printed
+# and retry — `aka.ms`, `keybase.io`, and `packages.microsoft.com` have come up before.
 set -uo pipefail
 
 FEATURES_MANIFEST_URL="https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/templates/power-platform/.devcontainer/devcontainer.features.json"

@@ -15,10 +15,10 @@ Devcontainer features, templates, and pre-built Docker images for Power Platform
 
 [`docs/claude-code-cloud-setup.sh`](docs/claude-code-cloud-setup.sh) is a setup script for an
 org-shared [Claude Code cloud environment](https://code.claude.com/docs/en/cloud-environments): paste it
-into the environment's setup script field, set network access to Custom and allow `ghcr.io` and
-`registry.npmjs.org` in addition to the defaults (some Features also reach out on their own — allow
-`aka.ms`, `cli.github.com`, or `packages.microsoft.com` too if a Feature's install fails on one of
-those). No changes needed in individual repos. It installs the exact Feature list in
+into the environment's setup script field, set network access to Custom with the defaults included,
+plus `cli.github.com` (the github-cli Feature always needs it; `ghcr.io` and `registry.npmjs.org`
+are already on the default Trusted list). Allow whatever other host a failing step prints if one
+comes up — `aka.ms` and `packages.microsoft.com` have. No changes needed in individual repos. It installs the exact Feature list in
 [`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json) —
 the same one the template below builds from — directly onto the VM instead of into a container, since
 Claude Code cloud environments have no Docker daemon to build one in.
