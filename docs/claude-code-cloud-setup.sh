@@ -78,22 +78,37 @@ install_feature() {
         || echo "WARNING: install of ${path} failed, continuing" >&2
 
     # A real `devcontainer build` bakes each Feature's declared containerEnv (e.g. dotnet's
-    # DOTNET_ROOT/PATH) into the image as ENV directives; installing straight onto the VM skips
-    # that step, so apply it ourselves — both now (later Features in this loop may depend on it)
-    # and persistently for future shells.
+    # DOTNET_ROOT) into the image as ENV directives, so every process started in that container
+    # inherits it unconditionally. Installing straight onto the VM has no equivalent: Claude's own
+    # command execution doesn't go through a login or interactive shell, so neither
+    # /etc/profile.d nor ~/.bashrc ever gets sourced, and containerEnv vars set here would
+    # otherwise vanish the moment this script exits. /etc/profile.d is still written below for
+    # anyone who does open an interactive login shell, but nothing load-bearing can depend on it.
     while IFS=$'\t' read -r env_key env_value; do
         [ -z "${env_key}" ] && continue
         eval "export ${env_key}=\"${env_value}\""
         echo "export ${env_key}=\"${env_value}\"" >> /etc/profile.d/agentbox-features.sh
     done < <(jq -r '.containerEnv // {} | to_entries[] | "\(.key)\t\(.value)"' "${feat_dir}/devcontainer-feature.json" 2>/dev/null)
 
-    # Later Features in this loop (pac-cli, txc-cli) shell out via `su "$_REMOTE_USER" -c dotnet
-    # ...`, and su resets PATH to its own default secure list — the containerEnv PATH prepend
-    # above doesn't survive that. /usr/local/bin is on every such default list, so symlink
-    # anything this Feature put its DOTNET_ROOT/equivalent bin dir on PATH into there too.
+    # So: wrap `dotnet` itself in a script that sets DOTNET_ROOT before exec'ing the real binary,
+    # baking the env var into every future invocation regardless of which shell (if any) started
+    # it. link_dotnet_wrapper (defined below, used again after the loop for pac/txc) does the same
+    # for anything that's actually a "dotnet tool install --global" shim.
     if [ -n "${DOTNET_ROOT:-}" ] && [ -x "${DOTNET_ROOT}/dotnet" ]; then
-        ln -sf "${DOTNET_ROOT}/dotnet" /usr/local/bin/dotnet
+        link_dotnet_wrapper dotnet "${DOTNET_ROOT}/dotnet"
     fi
+}
+
+# Writes /usr/local/bin/<name> as a wrapper that exports DOTNET_ROOT (captured now, from
+# whichever Feature set it) before exec'ing the real binary — see the comment above.
+link_dotnet_wrapper() {
+    local name="$1" real_path="$2"
+    cat > "/usr/local/bin/${name}" <<WRAPPER
+#!/bin/bash
+export DOTNET_ROOT="${DOTNET_ROOT:-}"
+exec "${real_path}" "\$@"
+WRAPPER
+    chmod +x "/usr/local/bin/${name}"
 }
 
 n=0
@@ -102,9 +117,10 @@ while IFS= read -r entry; do
     install_feature "${entry}" "${n}"
 done < <(jq -c '.installOrder[]' <<<"${RESOLVED}")
 
-# dotnet global tools (pac, txc) land in ~/.dotnet/tools, not on PATH for the rest of this script.
-ln -sf "${HOME}/.dotnet/tools/pac" /usr/local/bin/pac 2>/dev/null || true
-ln -sf "${HOME}/.dotnet/tools/txc" /usr/local/bin/txc 2>/dev/null || true
+# dotnet global tools (pac, txc) land in ~/.dotnet/tools, not on PATH for the rest of this script,
+# and — like `dotnet` itself above — need DOTNET_ROOT set at run time, not just install time.
+[ -x "${HOME}/.dotnet/tools/pac" ] && link_dotnet_wrapper pac "${HOME}/.dotnet/tools/pac"
+[ -x "${HOME}/.dotnet/tools/txc" ] && link_dotnet_wrapper txc "${HOME}/.dotnet/tools/txc"
 
 dotnet new install TALXIS.DevKit.Templates.Dataverse || true
 
