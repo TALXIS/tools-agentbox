@@ -1,57 +1,31 @@
 #!/bin/bash
-# Claude Code cloud environment setup script. Paste into the "Setup script" field at
-# claude.ai/admin-settings/cloud-environments (Network access: Custom, allow cli.github.com
-# and aka.ms in addition to the defaults). Mirrors src/images/power-platform/Dockerfile —
-# keep the two in sync when tools change there.
+# Claude Code cloud environment setup script. Runs the same devcontainer Features
+# (https://containers.dev) as this repo's power-platform template — ours and upstream — directly
+# on the VM instead of inside a container, so nothing is hand-duplicated from a Dockerfile.
+# Paste into "Setup script" at claude.ai/admin-settings/cloud-environments. Network access:
+# Custom, allow cli.github.com and aka.ms in addition to the defaults (a step below prints which
+# host it needed if it fails — check the session's DNS audit trail and add it here).
 set -uo pipefail
 
-curl -fsSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 10.0 --install-dir /usr/share/dotnet
-ln -sf /usr/share/dotnet/dotnet /usr/local/bin/dotnet
+feature() { curl -fsSL "https://raw.githubusercontent.com/$1/install.sh" | bash; }
 
-(
-  curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-    | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
-  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-    > /etc/apt/sources.list.d/github-cli.list \
-  && apt-get update && apt-get install -y gh
-) || true &
+VERSION=10.0 feature devcontainers/features/main/src/dotnet
+ln -sf /usr/share/dotnet/dotnet /usr/local/bin/dotnet 2>/dev/null || true
 
-( curl -fsSL https://aka.ms/InstallAzureCLIDeb | bash && az extension add --name azure-devops --yes ) || true &
-
-(
-  ARCH=$(dpkg --print-architecture)
-  PWSH_VERSION=$(curl -fsSL https://api.github.com/repos/PowerShell/PowerShell/releases/latest \
-    | grep '"tag_name"' | sed 's/.*"v\([^"]*\)".*/\1/')
-  if [ "$ARCH" = "amd64" ]; then
-    curl -fsSL "https://github.com/PowerShell/PowerShell/releases/download/v${PWSH_VERSION}/powershell_${PWSH_VERSION}-1.deb_amd64.deb" -o /tmp/powershell.deb \
-      && dpkg -i /tmp/powershell.deb; apt-get install -f -y
-  else
-    mkdir -p /opt/microsoft/powershell/7
-    curl -fsSL "https://github.com/PowerShell/PowerShell/releases/download/v${PWSH_VERSION}/powershell-${PWSH_VERSION}-linux-arm64.tar.gz" \
-      | tar -xz -C /opt/microsoft/powershell/7
-    ln -sf /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh
-  fi
-) || true &
-
-(
-  curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg \
-  && echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
-    > /etc/apt/sources.list.d/hashicorp.list \
-  && apt-get update && apt-get install -y terraform
-) || true &
-
-( npm install -g azure-functions-core-tools@4 --unsafe-perm true ) || true &
-
-(
-  ARCH=$(dpkg --print-architecture); [ "$ARCH" = "amd64" ] && ARCH="x64"
-  curl -fsSL "https://github.com/github/copilot-cli/releases/latest/download/copilot-linux-${ARCH}.tar.gz" \
-    | tar -xz -C /usr/local/bin && chmod +x /usr/local/bin/copilot
-) || true &
-
+VERSION=latest EXTENSIONS=azure-devops feature devcontainers/features/main/src/azure-cli &
+VERSION=latest                         feature devcontainers/features/main/src/powershell &
+VERSION=latest                         feature devcontainers/features/main/src/terraform &
+VERSION=latest                         feature devcontainers/features/main/src/github-cli &
+VERSION=latest                         feature devcontainers/features/main/src/copilot-cli &
+VERSION=latest                         feature jlaundry/devcontainer-features/main/src/azure-functions-core-tools &
 wait
 
-dotnet tool install --tool-path /usr/local/bin Microsoft.PowerApps.CLI.Tool || true
-dotnet tool install --tool-path /usr/local/bin TALXIS.CLI || true
+VERSION=latest feature TALXIS/tools-agentbox/master/src/features/pac-cli
+ln -sf "$HOME/.dotnet/tools/pac" /usr/local/bin/pac 2>/dev/null || true
+
+VERSION=latest feature TALXIS/tools-agentbox/master/src/features/txc-cli
+ln -sf "$HOME/.dotnet/tools/txc" /usr/local/bin/txc 2>/dev/null || true
+
 dotnet new install TALXIS.DevKit.Templates.Dataverse || true
 
 exit 0
