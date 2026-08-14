@@ -13,6 +13,6 @@ jobs:
 
       - name: Install the agentbox toolchain
         run: |
-          sudo bash docs/claude-code-cloud-setup.sh
+          sudo bash src/claude-code/setup.sh
           sudo chmod o+x /root
           sudo chmod -R o+rX /root/.dotnet /usr/local/dotnet 2>/dev/null || true

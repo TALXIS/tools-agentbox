@@ -54,13 +54,13 @@ runs the same setup script as the Claude Code cloud environment below. No separa
 
 ### 3. Claude Code cloud environment
 
-[`docs/claude-code-cloud-setup.sh`](docs/claude-code-cloud-setup.sh) sets up an org-shared
+[`src/claude-code/setup.sh`](src/claude-code/setup.sh) sets up an org-shared
 [Claude Code cloud environment](https://code.claude.com/docs/en/cloud-environments). Paste this into the
 environment's setup script field instead of the file itself — it always fetches and runs whatever is
 currently on `master`, so the console field never needs updating when the script changes:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/docs/claude-code-cloud-setup.sh \
+curl -fsSL https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/claude-code/setup.sh \
   -o /tmp/agentbox-setup.sh && bash /tmp/agentbox-setup.sh || echo "agentbox setup failed to download or run" >&2
 ```
 
@@ -76,7 +76,7 @@ It installs the exact Feature list in [`devcontainer.features.json`](src/templat
 the same one Codespaces builds from — directly onto the VM instead of into a container, since Claude Code
 cloud environments have no Docker daemon. No changes needed in individual repos.
 
-The setup script only reruns every ~7 days, so [`docs/claude-code-session-start-hook.json`](docs/claude-code-session-start-hook.json)
+The setup script only reruns every ~7 days, so [`src/claude-code/session-start-hook.json`](src/claude-code/session-start-hook.json)
 adds a `txc`/templates update check on every session: merge its `hooks` into
 [Admin Settings > Claude Code > Managed settings](https://claude.ai/admin-settings/claude-code). It's a
 no-op outside sessions that already have `txc` installed, so it's safe org-wide.
