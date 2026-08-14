@@ -11,6 +11,12 @@ Devcontainer features, templates, and pre-built Docker images for Power Platform
 | Power Platform template | `ghcr.io/talxis/tools-agentbox/power-platform:latest` |
 | Pre-built image | `ghcr.io/talxis/tools-agentbox/image:latest` |
 
+## Claude Code cloud environments
+
+See [`docs/claude-code-cloud-environment.md`](docs/claude-code-cloud-environment.md) for setting up
+an organization-shared Claude Code cloud environment that runs this same devcontainer for Claude
+Code cloud sessions.
+
 ## Quick start
 
 ### Using the template (Codespaces / VS Code)

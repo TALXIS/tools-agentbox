@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ \"$CLAUDE_CODE_REMOTE\" = \"true\" ] && [ -d \"$CLAUDE_PROJECT_DIR/.devcontainer\" ]; then devcontainer up --workspace-folder \"$CLAUDE_PROJECT_DIR\" || true; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -47,3 +47,20 @@ For faster Codespace startup, use the pre-built image which has all tools baked 
 ## Auto-update behavior
 
 `pac` and `txc` auto-update to the latest version on every container start. This ensures workshop participants always have the latest tooling without manual intervention.
+
+## Claude Code cloud sessions
+
+This template ships a `.claude/settings.json` with a `SessionStart` hook that runs `devcontainer up`
+in Claude Code cloud sessions (claude.ai/code, `claude --cloud`, routines), so the same devcontainer
+your repo already defines gets started automatically instead of leaving Claude on the bare cloud VM.
+It's a no-op locally and in Codespaces, where the devcontainer is already the host environment.
+
+To make `pac`, `txc`, `az`, `pwsh`, `terraform`, `func`, and `gh` available to Claude in a cloud
+session, add a note like this to the repo's `CLAUDE.md`:
+
+> Power Platform tooling (`pac`, `txc`, `az`, `pwsh`, `terraform`, `func`, `gh`, `dotnet`) runs
+> inside the devcontainer, not on the host. Prefix those commands with:
+> `devcontainer exec --workspace-folder "$CLAUDE_PROJECT_DIR" -- <command>`
+
+See [`docs/claude-code-cloud-environment.md`](https://github.com/TALXIS/tools-agentbox/blob/master/docs/claude-code-cloud-environment.md)
+in this repo for how to set up the shared cloud environment this hook relies on.
