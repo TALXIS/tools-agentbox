@@ -34,17 +34,9 @@ Create a `.devcontainer/devcontainer.json` in your project:
 }
 ```
 
-Or build from scratch on a dotnet+node base image using individual features — copy the `"features"`
-object out of [`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json)
-(the single source of truth for this list):
-
-```json
-{
-  "name": "Power Platform",
-  "image": "mcr.microsoft.com/dotnet/sdk:10.0",
-  "features": {}
-}
-```
+Or build your own `devcontainer.json` from individual features listed in
+[`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json) —
+the single source of truth for this toolchain's tool/version list.
 
 ### 2. GitHub Copilot cloud sandbox
 
