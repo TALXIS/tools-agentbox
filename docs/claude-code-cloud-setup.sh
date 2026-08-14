@@ -15,6 +15,12 @@
 # and retry — `aka.ms`, `keybase.io`, and `packages.microsoft.com` have come up before.
 set -uo pipefail
 
+# However this script gets invoked, $HOME isn't guaranteed to be set — if it's empty, every path
+# built from it below (including where `dotnet tool install --global` actually lands) silently
+# resolves relative to `/` instead of this user's real home. Pin it up front instead of trusting
+# the inherited environment.
+export HOME="${HOME:-$(eval echo "~$(id -un)")}"
+
 FEATURES_MANIFEST_URL="https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/templates/power-platform/.devcontainer/devcontainer.features.json"
 
 WORKDIR="$(mktemp -d)"
@@ -101,5 +107,20 @@ ln -sf "${HOME}/.dotnet/tools/pac" /usr/local/bin/pac 2>/dev/null || true
 ln -sf "${HOME}/.dotnet/tools/txc" /usr/local/bin/txc 2>/dev/null || true
 
 dotnet new install TALXIS.DevKit.Templates.Dataverse || true
+
+# install_feature() swallows failures so one broken Feature doesn't stop the rest — which also
+# means a green "Ran setup script" tells you nothing about whether any given tool actually made
+# it. Report on every tool explicitly so a missing one is visible in this script's own output.
+echo "=== Tool check ==="
+missing=0
+for tool in dotnet az pwsh terraform gh copilot func pac txc; do
+    if command -v "${tool}" >/dev/null 2>&1; then
+        echo "OK   ${tool} -> $(command -v "${tool}")"
+    else
+        echo "MISSING ${tool}"
+        missing=1
+    fi
+done
+[ "${missing}" -eq 1 ] && echo "One or more tools are missing — see the install output above for the matching WARNING line."
 
 exit 0
