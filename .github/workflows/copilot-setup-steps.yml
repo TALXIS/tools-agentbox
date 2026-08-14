@@ -1,0 +1,28 @@
+name: "Copilot Setup Steps"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Functions Core Tools
+        run: npm install -g azure-functions-core-tools@4 --unsafe-perm true
+
+      - name: GitHub Copilot CLI
+        run: |
+          curl -fsSL "https://github.com/github/copilot-cli/releases/latest/download/copilot-linux-x64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin
+
+      - name: PAC CLI + TXC CLI
+        run: |
+          dotnet tool install --global Microsoft.PowerApps.CLI.Tool
+          dotnet tool install --global TALXIS.CLI
+          dotnet new install TALXIS.DevKit.Templates.Dataverse
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
