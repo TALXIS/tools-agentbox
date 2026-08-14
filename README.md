@@ -49,10 +49,8 @@ object out of [`devcontainer.features.json`](src/templates/power-platform/.devco
 ### 2. GitHub Copilot cloud sandbox
 
 Copilot's cloud agent environment doesn't use `devcontainer.json` — customize it with
-[`.github/workflows/copilot-setup-steps.yml`](.github/workflows/copilot-setup-steps.yml) instead. Its
-runner already has .NET 10, Node 22, Azure CLI, PowerShell, Docker, git, and `gh` built in, so that
-workflow only installs the five tools it's missing: Terraform, `pac`, `txc`, Azure Functions Core Tools,
-and GitHub Copilot CLI.
+[`.github/workflows/copilot-setup-steps.yml`](.github/workflows/copilot-setup-steps.yml) instead, which
+runs the same setup script as the Claude Code cloud environment below. No separate tool list to maintain.
 
 ### 3. Claude Code cloud environment
 
