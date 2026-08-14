@@ -1,28 +1,31 @@
 #!/bin/bash
-# Claude Code cloud environment setup script. Installs the devcontainer Features
-# (https://containers.dev) listed in this repo's
+# Installs the devcontainer Features (https://containers.dev) listed in this repo's
 # src/templates/power-platform/.devcontainer/devcontainer.features.json — the single source of
 # truth for this toolchain, also used by the power-platform template. Nothing here hand-lists
 # tools: this script fetches that manifest, asks the real `devcontainer` CLI to resolve versions
 # and install order (no Docker needed for that step), then installs each Feature's actual
-# published OCI artifact straight onto this VM — there's no Docker daemon in Claude Code cloud
-# environments, so Features run directly on the host instead of layered into a container image.
+# published OCI artifact straight onto the host instead of into a container — for environments
+# with no Docker daemon (Claude Code cloud) or no devcontainer.json support (GitHub Copilot cloud
+# sandbox).
 #
-# This file itself is not pasted anywhere — the environment's "Setup script" field at
-# claude.ai/admin-settings/cloud-environments holds a short bootstrap command that curls this
-# file from GitHub and runs it (see README), so the console field never needs updating when this
-# file changes; it always runs whatever is on `master` at setup time. Two other fields on that
-# same environment are required, not optional:
-# - Environment variables: DOTNET_ROOT=/usr/local/dotnet/current — this script's own wrapper
-#   scripts export it for `dotnet`/`pac`/`txc` when called by their wrapped name on the expected
-#   PATH entry, but anything that reaches the raw binary a different way (e.g. a PATH order copied
-#   from a real devcontainer, where DOTNET_ROOT is already a container-wide ENV) needs the real
-#   env var too.
-# - Network access: Custom, with the defaults included, plus `cli.github.com` — the github-cli
-#   Feature always needs it, it's not on the default Trusted list (ghcr.io and registry.npmjs.org
-#   already are, so nothing to add for those). If a Feature's install still fails, allow whatever
-#   host it printed and retry — `aka.ms`, `keybase.io`, and `packages.microsoft.com` have come up
-#   before.
+# Used two ways:
+# - Claude Code cloud environment: this file is not pasted anywhere — the environment's "Setup
+#   script" field at claude.ai/admin-settings/cloud-environments holds a short bootstrap command
+#   that curls this file from GitHub and runs it (see README), so the console field never needs
+#   updating when this file changes. Two other fields on that same environment are required, not
+#   optional:
+#   - Environment variables: DOTNET_ROOT=/usr/local/dotnet/current — this script's own wrapper
+#     scripts export it for `dotnet`/`pac`/`txc` when called by their wrapped name on the expected
+#     PATH entry, but anything that reaches the raw binary a different way (e.g. a PATH order
+#     copied from a real devcontainer, where DOTNET_ROOT is already a container-wide ENV) needs
+#     the real env var too.
+#   - Network access: Custom, with the defaults included, plus `cli.github.com` — the github-cli
+#     Feature always needs it, it's not on the default Trusted list (ghcr.io and
+#     registry.npmjs.org already are, so nothing to add for those). If a Feature's install still
+#     fails, allow whatever host it printed and retry — `aka.ms`, `keybase.io`, and
+#     `packages.microsoft.com` have come up before.
+# - GitHub Copilot cloud sandbox: run directly by .github/workflows/copilot-setup-steps.yml, which
+#   already checks out this repo, so no bootstrap/curl step is needed there.
 set -uo pipefail
 
 # However this script gets invoked, $HOME isn't guaranteed to be set — if it's empty, every path
@@ -89,9 +92,9 @@ install_feature() {
 
     # A real `devcontainer build` bakes each Feature's declared containerEnv (e.g. dotnet's
     # DOTNET_ROOT) into the image as ENV directives, so every process started in that container
-    # inherits it unconditionally. Installing straight onto the VM has no equivalent: Claude's own
-    # command execution doesn't go through a login or interactive shell, so neither
-    # /etc/profile.d nor ~/.bashrc ever gets sourced, and containerEnv vars set here would
+    # inherits it unconditionally. Installing straight onto a bare host has no equivalent: neither
+    # Claude Code nor a GitHub Actions step runs commands through a login or interactive shell, so
+    # neither /etc/profile.d nor ~/.bashrc ever gets sourced, and containerEnv vars set here would
     # otherwise vanish the moment this script exits. /etc/profile.d is still written below for
     # anyone who does open an interactive login shell, but nothing load-bearing can depend on it.
     while IFS=$'\t' read -r env_key env_value; do
