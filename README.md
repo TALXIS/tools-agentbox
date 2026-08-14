@@ -22,11 +22,6 @@ Create a `.devcontainer/devcontainer.json` in your project:
       "openFiles": ["README.md"]
     }
   },
-  "secrets": {
-    "DATAVERSE_ENV_URL": {
-      "description": "Your Dataverse environment URL"
-    }
-  },
   "hostRequirements": {
     "cpus": 2,
     "memory": "8gb"
@@ -67,10 +62,7 @@ To keep `txc` and the Dataverse templates current between setup script runs, mer
 
 ```bash
 docker pull ghcr.io/talxis/tools-agentbox/image:latest
-docker run -it \
-  -e DATAVERSE_ENV_URL="https://contoso.crm4.dynamics.com" \
-  ghcr.io/talxis/tools-agentbox/image:latest \
-  bash
+docker run -it ghcr.io/talxis/tools-agentbox/image:latest bash
 ```
 
 ## Published artifacts
