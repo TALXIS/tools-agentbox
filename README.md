@@ -54,9 +54,17 @@ runs the same setup script as the Claude Code cloud environment below. No separa
 
 ### 3. Claude Code cloud environment
 
-[`docs/claude-code-cloud-setup.sh`](docs/claude-code-cloud-setup.sh) is a setup script for an org-shared
-[Claude Code cloud environment](https://code.claude.com/docs/en/cloud-environments). Paste it into the
-environment's setup script field, and also set two things on the environment itself:
+[`docs/claude-code-cloud-setup.sh`](docs/claude-code-cloud-setup.sh) sets up an org-shared
+[Claude Code cloud environment](https://code.claude.com/docs/en/cloud-environments). Paste this into the
+environment's setup script field instead of the file itself — it always fetches and runs whatever is
+currently on `master`, so the console field never needs updating when the script changes:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/docs/claude-code-cloud-setup.sh \
+  -o /tmp/agentbox-setup.sh && bash /tmp/agentbox-setup.sh || echo "agentbox setup failed to download or run" >&2
+```
+
+Also set two more things on the environment itself:
 
 - **Environment variables**: `DOTNET_ROOT=/usr/local/dotnet/current` — required, not optional; without
   it, `dotnet`/`pac`/`txc` fail for any caller that doesn't go through the setup script's own wrapper

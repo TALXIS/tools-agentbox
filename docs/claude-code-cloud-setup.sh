@@ -8,8 +8,11 @@
 # published OCI artifact straight onto this VM — there's no Docker daemon in Claude Code cloud
 # environments, so Features run directly on the host instead of layered into a container image.
 #
-# Paste into "Setup script" at claude.ai/admin-settings/cloud-environments. Two other fields on
-# that same environment are required, not optional:
+# This file itself is not pasted anywhere — the environment's "Setup script" field at
+# claude.ai/admin-settings/cloud-environments holds a short bootstrap command that curls this
+# file from GitHub and runs it (see README), so the console field never needs updating when this
+# file changes; it always runs whatever is on `master` at setup time. Two other fields on that
+# same environment are required, not optional:
 # - Environment variables: DOTNET_ROOT=/usr/local/dotnet/current — this script's own wrapper
 #   scripts export it for `dotnet`/`pac`/`txc` when called by their wrapped name on the expected
 #   PATH entry, but anything that reaches the raw binary a different way (e.g. a PATH order copied
