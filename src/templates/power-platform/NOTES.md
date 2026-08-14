@@ -4,18 +4,8 @@ This template provides a complete, ready-to-use development environment for Powe
 
 ## What's included
 
-| Tool | Purpose |
-|------|---------|
-| .NET 10 SDK | Build Power Platform/Dataverse artifacts with dotnet SDK |
-| Node.js 22 | Frontend development, PCF controls |
-| Azure CLI | Manage Azure resources, authenticate to Dataverse |
-| PowerShell (pwsh) | Automation scripts, Power Platform pipelines |
-| Terraform | Infrastructure as code |
-| GitHub CLI (gh) | Repo management, GitHub Actions |
-| GitHub Copilot CLI | AI pair programming in the terminal |
-| Power Platform CLI (pac) | pac auth, pac solution, pac pcf, pac plugin |
-| TALXIS DevKit CLI (txc) | Local-first Dataverse scaffolding and deployment |
-| Azure Functions Core Tools | Develop and test Azure Functions locally |
+See [`devcontainer.features.json`](.devcontainer/devcontainer.features.json) for the current
+tool/version list.
 
 ## Getting started in Codespaces
 

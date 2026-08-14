@@ -76,15 +76,5 @@ docker run -it ghcr.io/talxis/tools-agentbox/image:latest bash
 
 ## Included tools
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| .NET SDK | 10.0 | Build Power Platform / Dataverse artifacts |
-| Node.js | 22 LTS | Frontend, PCF controls |
-| Azure CLI | latest | Manage Azure resources, authenticate |
-| PowerShell | latest | Automation, Power Platform pipelines |
-| Terraform | latest | Infrastructure as code |
-| GitHub CLI | latest | Repo management, GitHub Actions |
-| GitHub Copilot CLI | latest (auto-updates) | AI coding assistant in terminal |
-| Power Platform CLI (pac) | latest (auto-updates) | pac auth, solution, pcf, plugin |
-| TALXIS DevKit CLI (txc) | latest (auto-updates) | Local-first Dataverse development |
-| Azure Functions Core Tools | v4 | Local Azure Functions development |
+See [`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json)
+for the current tool/version list.
