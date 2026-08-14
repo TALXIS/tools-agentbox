@@ -8,8 +8,7 @@
 
     // Alternatively, build from scratch on a dotnet+node capable base image using community +
     // custom features — copy the "features" object from devcontainer.features.json (in this same
-    // folder) in as-is; that file is the single source of truth for this toolchain's feature list,
-    // also consumed by src/scripts/install-features.sh, so edit it there rather than here.
+    // folder) in as-is; edit the feature list there, not here.
     // "image": "mcr.microsoft.com/dotnet/sdk:10.0",
     // "features": {},
 

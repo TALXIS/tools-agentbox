@@ -35,43 +35,33 @@ Create a `.devcontainer/devcontainer.json` in your project:
 ```
 
 Or build your own `devcontainer.json` from individual features listed in
-[`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json) —
-the single source of truth for this toolchain's tool/version list.
+[`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json).
 
 ### 2. GitHub Copilot cloud sandbox
 
 Copilot's cloud agent environment doesn't use `devcontainer.json` — customize it with
-[`.github/workflows/copilot-setup-steps.yml`](.github/workflows/copilot-setup-steps.yml) instead, which
-runs the same setup script as the Claude Code cloud environment below. No separate tool list to maintain.
+[`.github/workflows/copilot-setup-steps.yml`](.github/workflows/copilot-setup-steps.yml) instead.
 
 ### 3. Claude Code cloud environment
 
-[`src/scripts/install-features.sh`](src/scripts/install-features.sh) sets up an org-shared
-[Claude Code cloud environment](https://code.claude.com/docs/en/cloud-environments). Paste this into the
-environment's setup script field instead of the file itself — it always fetches and runs whatever is
-currently on `master`, so the console field never needs updating when the script changes:
+Create an org-shared [Claude Code cloud environment](https://code.claude.com/docs/en/cloud-environments)
+with:
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/install-features.sh \
-  -o /tmp/agentbox-setup.sh && bash /tmp/agentbox-setup.sh || echo "agentbox setup failed to download or run" >&2
-```
+- **Setup script**:
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/install-features.sh \
+    -o /tmp/agentbox-setup.sh && bash /tmp/agentbox-setup.sh || echo "agentbox setup failed to download or run" >&2
+  ```
+- **Environment variables**: `DOTNET_ROOT=/usr/local/dotnet/current`
+- **Network access**: Custom, with the defaults included, plus `cli.github.com`
 
-Also set two more things on the environment itself:
+This installs the Feature list from
+[`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json)
+directly on the VM. No changes needed in individual repos.
 
-- **Environment variables**: `DOTNET_ROOT=/usr/local/dotnet/current` — required, not optional; without
-  it, `dotnet`/`pac`/`txc` fail for any caller that doesn't go through the setup script's own wrapper
-  scripts (e.g. a PATH order copied from a real devcontainer, where `DOTNET_ROOT` is already a
-  container-wide `ENV`).
-- **Network access**: Custom, with the defaults included, plus `cli.github.com`.
-
-It installs the exact Feature list in [`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json) —
-the same one Codespaces builds from — directly onto the VM instead of into a container, since Claude Code
-cloud environments have no Docker daemon. No changes needed in individual repos.
-
-The setup script only reruns every ~7 days, so [`src/claude-code/session-start-hook.json`](src/claude-code/session-start-hook.json)
-adds a `txc`/templates update check on every session: merge its `hooks` into
-[Admin Settings > Claude Code > Managed settings](https://claude.ai/admin-settings/claude-code). It's a
-no-op outside sessions that already have `txc` installed, so it's safe org-wide.
+To keep `txc` and the Dataverse templates current between setup script runs, merge the `hooks` from
+[`src/claude-code/session-start-hook.json`](src/claude-code/session-start-hook.json) into
+[Admin Settings > Claude Code > Managed settings](https://claude.ai/admin-settings/claude-code).
 
 ### 4. Docker
 
