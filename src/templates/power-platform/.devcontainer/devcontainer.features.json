@@ -1,0 +1,15 @@
+{
+    "//": "Single source of truth for the Power Platform toolchain, expressed as devcontainer Features (https://containers.dev/implementors/features). Consumed two ways: (1) as the 'build from scratch' alternative documented in devcontainer.json and the README — copy the 'features' object below into your own devcontainer.json alongside a dotnet+node capable base image; (2) by docs/claude-code-cloud-setup.sh, which resolves and installs this exact list directly on a Claude Code cloud environment VM (no Docker there, so no base image — that script bootstraps 'dotnet' itself before reading this file). Add, remove, or version-bump a tool here — nothing else should hand-list features again.",
+    "features": {
+        "ghcr.io/devcontainers/features/git:1": {},
+        "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+        "ghcr.io/devcontainers/features/azure-cli:1": { "version": "latest", "extensions": "azure-devops" },
+        "ghcr.io/devcontainers/features/powershell:1": { "version": "latest" },
+        "ghcr.io/devcontainers/features/terraform:1": { "version": "latest" },
+        "ghcr.io/devcontainers/features/github-cli:1": { "version": "latest" },
+        "ghcr.io/devcontainers/features/copilot-cli:1": { "version": "latest" },
+        "ghcr.io/jlaundry/devcontainer-features/azure-functions-core-tools:1": { "version": "latest" },
+        "ghcr.io/talxis/tools-agentbox/pac-cli:1": { "version": "latest" },
+        "ghcr.io/talxis/tools-agentbox/txc-cli:1": { "version": "latest" }
+    }
+}

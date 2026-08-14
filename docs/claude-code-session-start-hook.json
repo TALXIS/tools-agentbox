@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v txc >/dev/null 2>&1 && { dotnet tool update --global TALXIS.CLI >/dev/null 2>&1; dotnet new install TALXIS.DevKit.Templates.Dataverse >/dev/null 2>&1; }; true"
+          }
+        ]
+      }
+    ]
+  }
+}
