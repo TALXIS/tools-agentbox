@@ -18,6 +18,11 @@ org-shared [Claude Code cloud environment](https://code.claude.com/docs/en/cloud
 into the environment's setup script field, set network access to Custom and allow `cli.github.com` and
 `aka.ms` in addition to the defaults. No changes needed in individual repos.
 
+The setup script only reruns every ~7 days, so [`docs/claude-code-session-start-hook.json`](docs/claude-code-session-start-hook.json)
+adds a `txc`/templates update check on every session: merge its `hooks` into
+[Admin Settings > Claude Code > Managed settings](https://claude.ai/admin-settings/claude-code). It's a
+no-op outside sessions that already have `txc` installed, so it's safe org-wide.
+
 ## Quick start
 
 ### Using the template (Codespaces / VS Code)
