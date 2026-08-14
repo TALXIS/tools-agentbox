@@ -6,20 +6,12 @@
     // Use the pre-built image for fast startup (~30s), or comment out and use features for flexibility
     "image": "ghcr.io/talxis/tools-agentbox/image:latest",
 
-    // Alternatively, build from scratch using community + custom features:
+    // Alternatively, build from scratch on a dotnet+node capable base image using community +
+    // custom features — copy the "features" object from devcontainer.features.json (in this same
+    // folder) in as-is; that file is the single source of truth for this toolchain's feature list,
+    // also consumed by docs/claude-code-cloud-setup.sh, so edit it there rather than here.
     // "image": "mcr.microsoft.com/dotnet/sdk:10.0",
-    // "features": {
-    //     "ghcr.io/devcontainers/features/git:1": {},
-    //     "ghcr.io/devcontainers/features/node:1": { "version": "22" },
-    //     "ghcr.io/devcontainers/features/azure-cli:1": { "version": "latest", "extensions": "azure-devops" },
-    //     "ghcr.io/devcontainers/features/powershell:1": { "version": "latest" },
-    //     "ghcr.io/devcontainers/features/terraform:1": { "version": "latest" },
-    //     "ghcr.io/devcontainers/features/github-cli:1": { "version": "latest" },
-    //     "ghcr.io/devcontainers/features/copilot-cli:1": { "version": "latest" },
-    //     "ghcr.io/jlaundry/devcontainer-features/azure-functions-core-tools:1": {},
-    //     "ghcr.io/talxis/tools-agentbox/pac-cli:1": { "version": "latest" },
-    //     "ghcr.io/talxis/tools-agentbox/txc-cli:1": { "version": "latest" }
-    // },
+    // "features": {},
 
     "customizations": {
         "vscode": {

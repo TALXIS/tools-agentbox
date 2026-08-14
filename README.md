@@ -15,8 +15,13 @@ Devcontainer features, templates, and pre-built Docker images for Power Platform
 
 [`docs/claude-code-cloud-setup.sh`](docs/claude-code-cloud-setup.sh) is a setup script for an
 org-shared [Claude Code cloud environment](https://code.claude.com/docs/en/cloud-environments): paste it
-into the environment's setup script field, set network access to Custom and allow `cli.github.com` and
-`aka.ms` in addition to the defaults. No changes needed in individual repos.
+into the environment's setup script field, set network access to Custom and allow `ghcr.io` and
+`registry.npmjs.org` in addition to the defaults (some Features also reach out on their own — allow
+`aka.ms`, `cli.github.com`, or `packages.microsoft.com` too if a Feature's install fails on one of
+those). No changes needed in individual repos. It installs the exact Feature list in
+[`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json) —
+the same one the template below builds from — directly onto the VM instead of into a container, since
+Claude Code cloud environments have no Docker daemon to build one in.
 
 The setup script only reruns every ~7 days, so [`docs/claude-code-session-start-hook.json`](docs/claude-code-session-start-hook.json)
 adds a `txc`/templates update check on every session: merge its `hooks` into
@@ -50,23 +55,16 @@ Create a `.devcontainer/devcontainer.json` in your project:
 }
 ```
 
-Or use individual features:
+Or build from scratch on a dotnet+node capable base image using individual features — copy the
+`"features"` object out of
+[`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json)
+(the single source of truth for this list) into your own `devcontainer.json`:
 
 ```json
 {
   "name": "Power Platform",
   "image": "mcr.microsoft.com/dotnet/sdk:10.0",
-  "features": {
-    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
-    "ghcr.io/devcontainers/features/azure-cli:1": { "extensions": "azure-devops" },
-    "ghcr.io/devcontainers/features/powershell:1": {},
-    "ghcr.io/devcontainers/features/terraform:1": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers/features/copilot-cli:1": {},
-    "ghcr.io/jlaundry/devcontainer-features/azure-functions-core-tools:1": {},
-    "ghcr.io/talxis/tools-agentbox/pac-cli:1": {},
-    "ghcr.io/talxis/tools-agentbox/txc-cli:1": {}
-  }
+  "features": {}
 }
 ```
 
