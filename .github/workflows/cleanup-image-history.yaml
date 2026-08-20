@@ -7,7 +7,7 @@ on:
         required: true
 
 # Manual, occasional-use tool — not something that runs on a schedule. The routine cleanup that
-# runs on every build lives in build-image.yaml itself (untagged versions only); this one also
+# runs on every publish lives in publish-image.yaml itself (untagged versions only); this one also
 # removes old sha/date tags accumulated before that started, since this is a dev tool with no need
 # for reproducible pinned history.
 jobs:
