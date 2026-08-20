@@ -27,7 +27,9 @@ env:
 jobs:
   # Cutting a GitHub Release (tag vX.Y.Z) is the only way to get a real, pinnable version
   # tag on the image - same convention as tools-devkit-build/tools-devkit-templates. Every
-  # other trigger (push/schedule/workflow_dispatch) only ever refreshes `latest` + sha/date.
+  # other trigger (push/schedule/workflow_dispatch) only ever refreshes `latest`. This is a dev
+  # tool, not something needing reproducible pinned builds, so no sha/date tags accumulate history
+  # nobody asked for — see the cleanup step in the merge job below.
   resolve-version:
     runs-on: ubuntu-latest
     outputs:
@@ -83,6 +85,10 @@ jobs:
           context: .
           file: ${{ env.DOCKERFILE }}
           platforms: ${{ matrix.platform }}
+          # Forces the toolchain layer (install-features.sh) to actually re-run every build instead
+          # of silently reusing a stale cached layer — most Feature versions resolve to "latest",
+          # and the cache below is keyed on instruction text, not on what a re-run would fetch.
+          build-args: CACHEBUST=${{ github.run_id }}-${{ github.run_attempt }}
           cache-from: type=gha,scope=${{ steps.slug.outputs.value }}
           cache-to: type=gha,scope=${{ steps.slug.outputs.value }},mode=max
           labels: ${{ steps.meta.outputs.labels }}
@@ -126,11 +132,19 @@ jobs:
           tags: |
             type=raw,value=latest
             type=raw,value=${{ needs.resolve-version.outputs.version }},enable=${{ needs.resolve-version.outputs.version != '' }}
-            type=sha,prefix=,format=short
-            type=schedule,pattern={{date 'YYYY-MM-DD'}}
 
       - run: |
           cd /tmp/digests
           docker buildx imagetools create \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.IMAGE }}@sha256:%s ' *)
+
+      # No sha/date tags means the digest `latest` used to point to becomes untagged the moment it
+      # moves — prune those on every build so old, unreferenced versions never pile up.
+      - uses: actions/delete-package-versions@v5
+        with:
+          package-name: tools-agentbox/image
+          package-type: container
+          delete-only-untagged-versions: true
+          min-versions-to-keep: 1
+          token: ${{ secrets.GITHUB_TOKEN }}

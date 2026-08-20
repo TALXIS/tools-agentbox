@@ -13,9 +13,16 @@
 #
 # GitHub Copilot cloud sandbox: run via .github/workflows/copilot-setup-steps.yml.
 #
-# AGENTBOX_HARNESS ("claude" or "copilot"), set by the two callers above, skips the plugin setup
-# for the harness that isn't present on that surface, so neither pays for the other's network call
-# or risks seeing its warnings. Left unset (manual/local runs), both are attempted if installed.
+# Also used by src/images/power-platform/Dockerfile to build the pre-built image, with
+# AGENTBOX_HARNESS=none — the image build shouldn't register the plugin for either harness itself:
+# Codespaces' own postCreateCommand does that once, at container creation, as the container's real
+# user, by fetching and running src/scripts/install-talxis-plugin.sh directly — the same script
+# this file delegates to below.
+#
+# AGENTBOX_HARNESS ("claude", "copilot", or "none"), set by the callers above, skips the plugin
+# setup for whichever harness isn't relevant to that caller, so nobody pays for another harness's
+# network call or risks seeing its warnings. Left unset (manual/local runs), both are attempted if
+# installed.
 set -uo pipefail
 
 # $HOME may be unset in the invoking environment; every path below depends on it.
@@ -29,6 +36,14 @@ trap 'rm -rf "$WORKDIR"' EXIT
 export _CONTAINER_USER="$(id -un)"
 export _REMOTE_USER="${_CONTAINER_USER}"
 export _REMOTE_USER_HOME="${HOME}"
+
+# npm/Node aren't present on a bare host (e.g. the Dockerfile's plain ubuntu:24.04 base) — bootstrap
+# just enough to run the devcontainers CLI below. The Feature list's own pinned "node" version (if
+# present) installs afterward in the resolved order and replaces this bootstrap copy.
+if ! command -v npm >/dev/null 2>&1; then
+    echo "--- Bootstrapping Node.js (npm not found) ---"
+    apt-get update && apt-get install -y --no-install-recommends nodejs npm
+fi
 
 npm install -g @devcontainers/cli --silent
 
@@ -114,39 +129,13 @@ done < <(jq -c '.installOrder[]' <<<"${RESOLVED}")
 dotnet new install TALXIS.DevKit.Templates.Dataverse || true
 
 # Register the TALXIS/skills plugin (Skills + the txc MCP server) with whichever harness this
-# surface actually uses. AGENTBOX_HARNESS narrows this to just the relevant harness on the two
-# cloud/CI surfaces that set it; unset (manual/local runs) tries both, skipping whichever binary
-# isn't installed.
-merge_json_file() {
-    local file="$1" filter="$2"
-    mkdir -p "$(dirname "${file}")"
-    local current="{}"
-    [ -s "${file}" ] && current="$(cat "${file}")"
-    jq "${filter}" <<<"${current}" > "${file}.tmp" && mv "${file}.tmp" "${file}"
-}
-
-if [ "${AGENTBOX_HARNESS:-}" != "copilot" ] && command -v claude >/dev/null 2>&1; then
-    echo "--- Registering the talxis plugin marketplace with Claude Code ---"
-    export CLAUDE_CODE_PLUGIN_CACHE_DIR="/usr/local/claude-plugin-seed"
-    timeout 30 claude plugin marketplace add TALXIS/skills \
-        || echo "WARNING: could not add the talxis plugin marketplace, continuing" >&2
-    timeout 30 claude plugin install implementation@talxis --yes \
-        || echo "WARNING: could not install the implementation@talxis plugin, continuing" >&2
-fi
-
-if [ "${AGENTBOX_HARNESS:-}" != "claude" ]; then
-    echo "--- Registering the talxis plugin marketplace with GitHub Copilot ---"
-    curl -fsSL --max-time 20 "https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/install-talxis-plugin.sh" \
-        -o "${WORKDIR}/install-talxis-plugin.sh" \
-        && bash "${WORKDIR}/install-talxis-plugin.sh"
-
-    # Declarative form too, so `copilot plugin update` finds it without re-adding the marketplace,
-    # and so a fresh user created later from /etc/skel starts with it already declared.
-    marketplace_filter='.extraKnownMarketplaces.talxis = {"source": {"source": "github", "repo": "TALXIS/skills"}} |
-        .enabledPlugins["implementation@talxis"] = true'
-    merge_json_file "${HOME}/.copilot/settings.json" "${marketplace_filter}"
-    merge_json_file "/etc/skel/.copilot/settings.json" "${marketplace_filter}"
-fi
+# surface actually uses — same script Codespaces' devcontainer.json postCreateCommand fetches and
+# runs directly, so there's one place this logic lives regardless of caller. AGENTBOX_HARNESS
+# (already exported by this script's caller) narrows it to the relevant harness; unset (manual/
+# local runs) tries both, skipping whichever binary isn't installed.
+curl -fsSL --max-time 20 "https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/install-talxis-plugin.sh" \
+    -o "${WORKDIR}/install-talxis-plugin.sh" \
+    && bash "${WORKDIR}/install-talxis-plugin.sh"
 
 # install_feature() logs failures but does not stop on them; report final status per tool.
 echo "=== Tool check ==="
