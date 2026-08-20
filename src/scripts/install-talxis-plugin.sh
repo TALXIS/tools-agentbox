@@ -25,8 +25,8 @@ if [ "${AGENTBOX_HARNESS:-}" != "copilot" ] && [ "${AGENTBOX_HARNESS:-}" != "non
     export CLAUDE_CODE_PLUGIN_CACHE_DIR="/usr/local/claude-plugin-seed"
     timeout 30 claude plugin marketplace add TALXIS/skills \
         || echo "WARNING: could not add the talxis plugin marketplace, continuing" >&2
-    timeout 30 claude plugin install implementation@talxis --yes \
-        || echo "WARNING: could not install the implementation@talxis plugin, continuing" >&2
+    timeout 30 claude plugin install implement@talxis --yes \
+        || echo "WARNING: could not install the implement@talxis plugin, continuing" >&2
 fi
 
 if [ "${AGENTBOX_HARNESS:-}" != "claude" ] && [ "${AGENTBOX_HARNESS:-}" != "none" ] \
@@ -34,13 +34,13 @@ if [ "${AGENTBOX_HARNESS:-}" != "claude" ] && [ "${AGENTBOX_HARNESS:-}" != "none
     echo "--- Registering the talxis plugin marketplace with GitHub Copilot ---"
     timeout 30 copilot plugin marketplace add TALXIS/skills >/dev/null 2>&1 \
         || echo "WARNING: could not add the talxis plugin marketplace, continuing" >&2
-    timeout 30 copilot plugin install implementation@talxis >/dev/null 2>&1 \
-        || echo "WARNING: could not install the implementation@talxis plugin, continuing" >&2
+    timeout 30 copilot plugin install implement@talxis >/dev/null 2>&1 \
+        || echo "WARNING: could not install the implement@talxis plugin, continuing" >&2
 
     # Declarative form too, so `copilot plugin update` finds it without re-adding the marketplace,
     # and so a fresh user created later from /etc/skel starts with it already declared.
     marketplace_filter='.extraKnownMarketplaces.talxis = {"source": {"source": "github", "repo": "TALXIS/skills"}} |
-        .enabledPlugins["implementation@talxis"] = true'
+        .enabledPlugins["implement@talxis"] = true'
     merge_json_file "${HOME:-/root}/.copilot/settings.json" "${marketplace_filter}"
     merge_json_file "/etc/skel/.copilot/settings.json" "${marketplace_filter}"
 fi
