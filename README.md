@@ -25,9 +25,13 @@ Create a `.devcontainer/devcontainer.json` in your project:
   "hostRequirements": {
     "cpus": 2,
     "memory": "8gb"
-  }
+  },
+  "postCreateCommand": "curl -fsSL --max-time 20 https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/install-talxis-plugin.sh | timeout 90 bash || true"
 }
 ```
+
+The `postCreateCommand` registers the [TALXIS/skills](https://github.com/TALXIS/skills) plugin
+(Skills + the `txc` MCP server) with GitHub Copilot — omit it if you don't want that.
 
 Or build your own `devcontainer.json` from individual features listed in
 [`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json).
