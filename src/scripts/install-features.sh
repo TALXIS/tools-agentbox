@@ -13,9 +13,15 @@
 #
 # GitHub Copilot cloud sandbox: run via .github/workflows/copilot-setup-steps.yml.
 #
-# AGENTBOX_HARNESS ("claude" or "copilot"), set by the two callers above, skips the plugin setup
-# for the harness that isn't present on that surface, so neither pays for the other's network call
-# or risks seeing its warnings. Left unset (manual/local runs), both are attempted if installed.
+# Also used by src/images/power-platform/Dockerfile to build the pre-built image, with
+# AGENTBOX_HARNESS=none — the image build shouldn't register the plugin for either harness itself:
+# Codespaces' own postCreateCommand does that once, at container creation, as the container's real
+# user (see src/scripts/install-talxis-plugin.sh).
+#
+# AGENTBOX_HARNESS ("claude", "copilot", or "none"), set by the callers above, skips the plugin
+# setup for whichever harness isn't relevant to that caller, so nobody pays for another harness's
+# network call or risks seeing its warnings. Left unset (manual/local runs), both are attempted if
+# installed.
 set -uo pipefail
 
 # $HOME may be unset in the invoking environment; every path below depends on it.
@@ -29,6 +35,14 @@ trap 'rm -rf "$WORKDIR"' EXIT
 export _CONTAINER_USER="$(id -un)"
 export _REMOTE_USER="${_CONTAINER_USER}"
 export _REMOTE_USER_HOME="${HOME}"
+
+# npm/Node aren't present on a bare host (e.g. the Dockerfile's plain ubuntu:24.04 base) — bootstrap
+# just enough to run the devcontainers CLI below. The Feature list's own pinned "node" version (if
+# present) installs afterward in the resolved order and replaces this bootstrap copy.
+if ! command -v npm >/dev/null 2>&1; then
+    echo "--- Bootstrapping Node.js (npm not found) ---"
+    apt-get update && apt-get install -y --no-install-recommends nodejs npm
+fi
 
 npm install -g @devcontainers/cli --silent
 
@@ -125,7 +139,7 @@ merge_json_file() {
     jq "${filter}" <<<"${current}" > "${file}.tmp" && mv "${file}.tmp" "${file}"
 }
 
-if [ "${AGENTBOX_HARNESS:-}" != "copilot" ] && command -v claude >/dev/null 2>&1; then
+if [ "${AGENTBOX_HARNESS:-}" != "copilot" ] && [ "${AGENTBOX_HARNESS:-}" != "none" ] && command -v claude >/dev/null 2>&1; then
     echo "--- Registering the talxis plugin marketplace with Claude Code ---"
     export CLAUDE_CODE_PLUGIN_CACHE_DIR="/usr/local/claude-plugin-seed"
     timeout 30 claude plugin marketplace add TALXIS/skills \
@@ -134,7 +148,7 @@ if [ "${AGENTBOX_HARNESS:-}" != "copilot" ] && command -v claude >/dev/null 2>&1
         || echo "WARNING: could not install the implementation@talxis plugin, continuing" >&2
 fi
 
-if [ "${AGENTBOX_HARNESS:-}" != "claude" ]; then
+if [ "${AGENTBOX_HARNESS:-}" != "claude" ] && [ "${AGENTBOX_HARNESS:-}" != "none" ]; then
     echo "--- Registering the talxis plugin marketplace with GitHub Copilot ---"
     curl -fsSL --max-time 20 "https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/install-talxis-plugin.sh" \
         -o "${WORKDIR}/install-talxis-plugin.sh" \

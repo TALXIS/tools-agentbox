@@ -83,6 +83,10 @@ jobs:
           context: .
           file: ${{ env.DOCKERFILE }}
           platforms: ${{ matrix.platform }}
+          # Forces the toolchain layer (install-features.sh) to actually re-run every build instead
+          # of silently reusing a stale cached layer — most Feature versions resolve to "latest",
+          # and the cache below is keyed on instruction text, not on what a re-run would fetch.
+          build-args: CACHEBUST=${{ github.run_id }}-${{ github.run_attempt }}
           cache-from: type=gha,scope=${{ steps.slug.outputs.value }}
           cache-to: type=gha,scope=${{ steps.slug.outputs.value }},mode=max
           labels: ${{ steps.meta.outputs.labels }}
