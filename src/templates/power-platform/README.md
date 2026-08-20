@@ -1,7 +1,7 @@
 
 # Power Platform (power-platform)
 
-Full Power Platform / Dataverse development environment. Includes .NET 10 SDK, Node.js 22, Azure CLI, PowerShell, Terraform, GitHub CLI, GitHub Copilot CLI, Power Platform CLI (pac), TALXIS DevKit CLI (txc), and Azure Functions Core Tools.
+Full Power Platform / Dataverse development environment.
 
 
 
@@ -11,35 +11,13 @@ This template provides a complete, ready-to-use development environment for Powe
 
 ## What's included
 
-| Tool | Purpose |
-|------|---------|
-| .NET 10 SDK | Build Power Platform/Dataverse artifacts with dotnet SDK |
-| Node.js 22 | Frontend development, PCF controls |
-| Azure CLI | Manage Azure resources, authenticate to Dataverse |
-| PowerShell (pwsh) | Automation scripts, Power Platform pipelines |
-| Terraform | Infrastructure as code |
-| GitHub CLI (gh) | Repo management, GitHub Actions |
-| GitHub Copilot CLI | AI pair programming in the terminal |
-| Power Platform CLI (pac) | pac auth, pac solution, pac pcf, pac plugin |
-| TALXIS DevKit CLI (txc) | Local-first Dataverse scaffolding and deployment |
-| Azure Functions Core Tools | Develop and test Azure Functions locally |
+See [`devcontainer.features.json`](.devcontainer/devcontainer.features.json) for the current
+tool/version list.
 
 ## Getting started in Codespaces
 
 1. Click **Use this template** or open the repo in Codespaces
-2. When prompted for secrets, provide your Dataverse environment details (optional)
-3. Run `pac auth create` or `txc config profile create --url https://your-env.crm4.dynamics.com/` to connect to an environment
-
-## Recommended secrets
-
-Set these in your Codespace (or personal Codespaces settings) for a connected experience:
-
-| Secret | Description |
-|--------|-------------|
-| `DATAVERSE_ENV_URL` | Your Dataverse environment URL, e.g. `https://contoso.crm4.dynamics.com` |
-| `AZURE_TENANT_ID` | Azure Active Directory tenant ID |
-| `GH_TOKEN` | GitHub personal access token (for private repos, packages) |
-| `AZURE_DEVOPS_EXT_PAT` | Azure DevOps PAT (for ADO integration) |
+2. Run `pac auth create` or `txc config profile create --url https://your-env.crm4.dynamics.com/` to connect to an environment
 
 ## Pre-built image
 
