@@ -1,8 +1,12 @@
 FROM ubuntu:24.04
 
+# Set by publish-image.yaml from the GitHub Release tag that triggered the build - never hardcode
+# a version string here, it will just go stale the way the old one did.
+ARG IMAGE_VERSION=0.0.0-dev
+
 LABEL org.opencontainers.image.description="Power Platform / Dataverse development environment"
 LABEL org.opencontainers.image.source="https://github.com/TALXIS/tools-agentbox"
-LABEL org.opencontainers.image.version="1.1.0"
+LABEL org.opencontainers.image.version="${IMAGE_VERSION}"
 
 ENV DEBIAN_FRONTEND=noninteractive
 

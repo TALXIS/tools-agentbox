@@ -1,4 +1,4 @@
-name: "Release Dev Container Features & Generate Documentation"
+name: publish-features
 on:
   workflow_dispatch:
   push:
@@ -6,22 +6,25 @@ on:
       - master
     paths:
       - "src/features/**"
+  release:
+    types: [published]
 
 jobs:
-  deploy:
-    if: ${{ github.ref == 'refs/heads/master' }}
+  # Keeps generated README.md docs in sync with each Feature's manifest - not a publish (nothing
+  # reaches GHCR here), so this stays push-triggered rather than waiting on a release.
+  docs:
+    if: ${{ github.event_name != 'release' && github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
     permissions:
-      packages: write
       contents: write
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: "Publish Features"
+      - name: "Generate Documentation"
         uses: devcontainers/action@v1
         with:
-          publish-features: "true"
+          publish-features: "false"
           base-path-to-features: "./src/features"
           generate-docs: "true"
         env:
@@ -47,3 +50,25 @@ jobs:
             git push origin "$branch"
             gh pr create --title "$message" --body "$message"
           fi
+
+  # Publishing only ever happens because a human cut a GitHub Release - matches
+  # tools-cli/tools-devkit-templates/tools-devkit-build's convention. Each Feature's own
+  # devcontainer-feature.json version is authoritative for what actually gets published;
+  # devcontainers/action already skips anything whose version hasn't changed.
+  publish:
+    if: ${{ github.event_name == 'release' }}
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "Publish Features"
+        uses: devcontainers/action@v1
+        with:
+          publish-features: "true"
+          base-path-to-features: "./src/features"
+          generate-docs: "false"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
