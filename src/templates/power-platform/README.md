@@ -33,6 +33,10 @@ For faster Codespace startup, use the pre-built image which has all tools baked 
 
 `pac` and `txc` auto-update to the latest version on every container start. This ensures workshop participants always have the latest tooling without manual intervention.
 
+## GitHub Copilot Skills
+
+On container creation, this template registers the [TALXIS/skills](https://github.com/TALXIS/skills) plugin with GitHub Copilot — Skills and the `txc` MCP server become available in both Copilot Chat and the `copilot` CLI.
+
 
 ---
 
