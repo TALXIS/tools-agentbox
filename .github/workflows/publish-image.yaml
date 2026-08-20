@@ -133,12 +133,12 @@ jobs:
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.IMAGE }}@sha256:%s ' *)
 
-      # No sha/date tags means the digest `latest` used to point to becomes untagged the moment it
-      # moves — prune those on every publish so old, unreferenced versions never pile up.
-      - uses: actions/delete-package-versions@v5
-        with:
-          package-name: tools-agentbox/image
-          package-type: container
-          delete-only-untagged-versions: true
-          min-versions-to-keep: 1
-          token: ${{ secrets.GITHUB_TOKEN }}
+      # Deliberately no automatic cleanup here. actions/delete-package-versions has no concept of
+      # a multi-arch manifest list's child manifests (each platform image + its attestation
+      # manifest are separate untagged "versions" to it) - it deletes by a simple
+      # keep-N-most-recent-untagged count, which can delete the very children this build just
+      # created and `latest`/the release tag now point to. Confirmed the hard way: it broke the
+      # v1.2.0 image within minutes of publishing it. Releases are rare and deliberate now (no more
+      # weekly-cron-driven sprawl), so a few untagged versions accumulating between them is a
+      # non-issue - not worth risking the published image over. If cleanup is ever wanted again,
+      # use a manifest-list-aware tool (e.g. dataaxiom/ghcr-cleanup-action), not this one.
