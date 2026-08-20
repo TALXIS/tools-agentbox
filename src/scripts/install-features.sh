@@ -126,6 +126,19 @@ done < <(jq -c '.installOrder[]' <<<"${RESOLVED}")
 [ -x "${HOME}/.dotnet/tools/pac" ] && link_dotnet_wrapper pac "${HOME}/.dotnet/tools/pac"
 [ -x "${HOME}/.dotnet/tools/txc" ] && link_dotnet_wrapper txc "${HOME}/.dotnet/tools/txc"
 
+# The node Feature installs via nvm, which only reaches PATH through /etc/profile.d or shell rc
+# files sourced by a login shell — neither Claude Code's Bash tool, a GitHub Actions step, nor
+# `docker run ... bash -c` is one, so plain `node`/`npm` would silently resolve to whatever older
+# version (if any) happens to already be on the default PATH. Symlink the active nvm version's
+# binaries into /usr/local/bin, which already takes precedence over /usr/bin in the default PATH —
+# same fix as the dotnet wrapper above, just simpler since node needs no extra env var at run time.
+nvm_current="${NVM_DIR:-/usr/local/share/nvm}/current/bin"
+if [ -x "${nvm_current}/node" ]; then
+    for bin in node npm npx corepack; do
+        [ -e "${nvm_current}/${bin}" ] && ln -sf "${nvm_current}/${bin}" "/usr/local/bin/${bin}"
+    done
+fi
+
 dotnet new install TALXIS.DevKit.Templates.Dataverse || true
 
 # Register the TALXIS/skills plugin (Skills + the txc MCP server) with whichever harness this
