@@ -2,15 +2,20 @@
 # Installs the devcontainer Features (https://containers.dev) listed in
 # src/templates/power-platform/.devcontainer/devcontainer.features.json directly onto the host,
 # for environments with no Docker daemon (Claude Code cloud) or no devcontainer.json support
-# (GitHub Copilot cloud sandbox).
+# (GitHub Copilot cloud sandbox). Also registers the TALXIS/skills plugin (Skills + the `txc` MCP
+# server) with whichever agent harness is calling this script.
 #
 # Claude Code cloud environment: paste the bootstrap command from the README's "Claude Code cloud
 # environment" section into the environment's "Setup script" field at
 # claude.ai/admin-settings/cloud-environments. That environment also requires:
-#   - Environment variables: DOTNET_ROOT=/usr/local/dotnet/current
+#   - Environment variables: DOTNET_ROOT=/usr/local/dotnet/current, CLAUDE_CODE_PLUGIN_SEED_DIR=/usr/local/claude-plugin-seed
 #   - Network access: Custom, defaults included, plus `cli.github.com`
 #
 # GitHub Copilot cloud sandbox: run via .github/workflows/copilot-setup-steps.yml.
+#
+# AGENTBOX_HARNESS ("claude" or "copilot"), set by the two callers above, skips the plugin setup
+# for the harness that isn't present on that surface, so neither pays for the other's network call
+# or risks seeing its warnings. Left unset (manual/local runs), both are attempted if installed.
 set -uo pipefail
 
 # $HOME may be unset in the invoking environment; every path below depends on it.
@@ -107,6 +112,41 @@ done < <(jq -c '.installOrder[]' <<<"${RESOLVED}")
 [ -x "${HOME}/.dotnet/tools/txc" ] && link_dotnet_wrapper txc "${HOME}/.dotnet/tools/txc"
 
 dotnet new install TALXIS.DevKit.Templates.Dataverse || true
+
+# Register the TALXIS/skills plugin (Skills + the txc MCP server) with whichever harness this
+# surface actually uses. AGENTBOX_HARNESS narrows this to just the relevant harness on the two
+# cloud/CI surfaces that set it; unset (manual/local runs) tries both, skipping whichever binary
+# isn't installed.
+merge_json_file() {
+    local file="$1" filter="$2"
+    mkdir -p "$(dirname "${file}")"
+    local current="{}"
+    [ -s "${file}" ] && current="$(cat "${file}")"
+    jq "${filter}" <<<"${current}" > "${file}.tmp" && mv "${file}.tmp" "${file}"
+}
+
+if [ "${AGENTBOX_HARNESS:-}" != "copilot" ] && command -v claude >/dev/null 2>&1; then
+    echo "--- Registering the talxis plugin marketplace with Claude Code ---"
+    export CLAUDE_CODE_PLUGIN_CACHE_DIR="/usr/local/claude-plugin-seed"
+    timeout 30 claude plugin marketplace add TALXIS/skills \
+        || echo "WARNING: could not add the talxis plugin marketplace, continuing" >&2
+    timeout 30 claude plugin install implementation@talxis --yes \
+        || echo "WARNING: could not install the implementation@talxis plugin, continuing" >&2
+fi
+
+if [ "${AGENTBOX_HARNESS:-}" != "claude" ]; then
+    echo "--- Registering the talxis plugin marketplace with GitHub Copilot ---"
+    curl -fsSL --max-time 20 "https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/install-talxis-plugin.sh" \
+        -o "${WORKDIR}/install-talxis-plugin.sh" \
+        && bash "${WORKDIR}/install-talxis-plugin.sh"
+
+    # Declarative form too, so `copilot plugin update` finds it without re-adding the marketplace,
+    # and so a fresh user created later from /etc/skel starts with it already declared.
+    marketplace_filter='.extraKnownMarketplaces.talxis = {"source": {"source": "github", "repo": "TALXIS/skills"}} |
+        .enabledPlugins["implementation@talxis"] = true'
+    merge_json_file "${HOME}/.copilot/settings.json" "${marketplace_filter}"
+    merge_json_file "/etc/skel/.copilot/settings.json" "${marketplace_filter}"
+fi
 
 # install_feature() logs failures but does not stop on them; report final status per tool.
 echo "=== Tool check ==="

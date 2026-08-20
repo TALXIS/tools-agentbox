@@ -12,7 +12,9 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Install the agentbox toolchain
+        env:
+          AGENTBOX_HARNESS: copilot
         run: |
-          sudo bash src/scripts/install-features.sh
+          sudo -E bash src/scripts/install-features.sh
           sudo chmod o+x /root
           sudo chmod -R o+rX /root/.dotnet /usr/local/dotnet 2>/dev/null || true

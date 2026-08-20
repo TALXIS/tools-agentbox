@@ -72,7 +72,12 @@
         "update-devkit-templates": "dotnet new install TALXIS.DevKit.Templates.Dataverse 2>/dev/null || dotnet new install TALXIS.DevKit.Templates.Dataverse 2>/dev/null || true"
     },
 
-    "postCreateCommand": "echo '✅ Power Platform dev container ready.'",
+    // install-talxis-plugin runs once, at container creation — not on every start, since nothing
+    // it installs is baked into the image (unlike the postStartCommand updates below).
+    "postCreateCommand": {
+        "ready": "echo '✅ Power Platform dev container ready.'",
+        "install-talxis-plugin": "curl -fsSL --max-time 20 https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/install-talxis-plugin.sh | timeout 90 bash || true"
+    },
 
     // Minimum machine spec — 2 CPUs / 8 GB for free Codespaces tier (60 hrs/month)
     "hostRequirements": {

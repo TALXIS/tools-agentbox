@@ -45,14 +45,16 @@ with:
 - **Setup script**:
   ```bash
   curl -fsSL https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/install-features.sh \
-    -o /tmp/agentbox-setup.sh && bash /tmp/agentbox-setup.sh || echo "agentbox setup failed to download or run" >&2
+    -o /tmp/agentbox-setup.sh && AGENTBOX_HARNESS=claude bash /tmp/agentbox-setup.sh || echo "agentbox setup failed to download or run" >&2
   ```
-- **Environment variables**: `DOTNET_ROOT=/usr/local/dotnet/current`
+- **Environment variables**: `DOTNET_ROOT=/usr/local/dotnet/current`,
+  `CLAUDE_CODE_PLUGIN_SEED_DIR=/usr/local/claude-plugin-seed`
 - **Network access**: Custom, with the defaults included, plus `cli.github.com`
 
 This installs the Feature list from
 [`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json)
-directly on the VM. No changes needed in individual repos.
+directly on the VM, and registers the [TALXIS/skills](https://github.com/TALXIS/skills) plugin
+(Skills + the `txc` MCP server) with Claude Code. No changes needed in individual repos.
 
 To keep `txc` and the Dataverse templates current between setup script runs, merge the `hooks` from
 [`src/claude-code/session-start-hook.json`](src/claude-code/session-start-hook.json) into
