@@ -26,7 +26,7 @@ isolated environments below instead — see GitHub's own take on why:
     "cpus": 2,
     "memory": "8gb"
   },
-  "postCreateCommand": "curl -fsSL --max-time 20 https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/configure-agent-harness.sh | timeout 90 bash || true"
+  "postCreateCommand": "curl -fsSL --max-time 20 https://talxis.com/agentbox-harness | timeout 90 bash || true"
 }
 ```
 
@@ -52,12 +52,14 @@ with:
 
 - **Setup script**:
   ```bash
-  curl -fsSL https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/install-features.sh \
+  curl -fsSL https://talxis.com/agentbox-setup \
     -o /tmp/agentbox-setup.sh && AGENTBOX_HARNESS=claude bash /tmp/agentbox-setup.sh || echo "agentbox setup failed to download or run" >&2
   ```
 - **Environment variables**: `DOTNET_ROOT=/usr/local/dotnet/current`,
   `CLAUDE_CODE_PLUGIN_SEED_DIR=/usr/local/claude-plugin-seed`
-- **Network access**: Custom, with the defaults included, plus `cli.github.com`
+- **Network access**: Custom, with the defaults included, plus `cli.github.com` and `talxis.com`
+  (the setup script's short links redirect through it to raw.githubusercontent.com, which is
+  already on the default list)
 
 This installs the Feature list from
 [`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json)

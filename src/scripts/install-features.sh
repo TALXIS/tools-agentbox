@@ -9,7 +9,8 @@
 # environment" section into the environment's "Setup script" field at
 # claude.ai/admin-settings/cloud-environments. That environment also requires:
 #   - Environment variables: DOTNET_ROOT=/usr/local/dotnet/current, CLAUDE_CODE_PLUGIN_SEED_DIR=/usr/local/claude-plugin-seed
-#   - Network access: Custom, defaults included, plus `cli.github.com`
+#   - Network access: Custom, defaults included, plus `cli.github.com` and `talxis.com` (the
+#     short-link redirector below chains through it to raw.githubusercontent.com)
 #
 # GitHub Copilot cloud sandbox: run via .github/workflows/copilot-setup-steps.yml.
 #
@@ -28,7 +29,7 @@ set -uo pipefail
 # $HOME may be unset in the invoking environment; every path below depends on it.
 export HOME="${HOME:-$(eval echo "~$(id -un)")}"
 
-FEATURES_MANIFEST_URL="https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/templates/power-platform/.devcontainer/devcontainer.features.json"
+FEATURES_MANIFEST_URL="https://talxis.com/agentbox-features"
 
 WORKDIR="$(mktemp -d)"
 trap 'rm -rf "$WORKDIR"' EXIT
@@ -157,7 +158,7 @@ dotnet new install TALXIS.DevKit.Templates.Dataverse || true
 # directly, so there's one place this logic lives regardless of caller. AGENTBOX_HARNESS
 # (already exported by this script's caller) narrows it to the relevant harness; unset (manual/
 # local runs) tries both, skipping whichever binary isn't installed.
-curl -fsSL --max-time 20 "https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/configure-agent-harness.sh" \
+curl -fsSL --max-time 20 "https://talxis.com/agentbox-harness" \
     -o "${WORKDIR}/configure-agent-harness.sh" \
     && bash "${WORKDIR}/configure-agent-harness.sh"
 

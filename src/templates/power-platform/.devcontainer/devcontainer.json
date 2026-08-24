@@ -76,7 +76,7 @@
     // it does is baked into the image (unlike the postStartCommand updates below).
     "postCreateCommand": {
         "ready": "echo '✅ Power Platform dev container ready.'",
-        "configure-agent-harness": "curl -fsSL --max-time 20 https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/configure-agent-harness.sh | timeout 90 bash || true"
+        "configure-agent-harness": "curl -fsSL --max-time 20 https://talxis.com/agentbox-harness | timeout 90 bash || true"
     },
 
     // Minimum machine spec — 2 CPUs / 8 GB for free Codespaces tier (60 hrs/month)
