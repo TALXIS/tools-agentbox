@@ -140,9 +140,12 @@ done < <(jq -c '.installOrder[]' <<<"${RESOLVED}")
 # version (if any) happens to already be on the default PATH. Symlink the active nvm version's
 # binaries into /usr/local/bin, which already takes precedence over /usr/bin in the default PATH —
 # same fix as the dotnet wrapper above, just simpler since node needs no extra env var at run time.
+# claude-code installs into this same nvm-managed npm's global bin dir, so it needs the same
+# treatment — otherwise it's only reachable from within this script's own shell (where the node
+# Feature's containerEnv eval above already put nvm's bin dir on PATH), not from any later shell.
 nvm_current="${NVM_DIR:-/usr/local/share/nvm}/current/bin"
 if [ -x "${nvm_current}/node" ]; then
-    for bin in node npm npx corepack; do
+    for bin in node npm npx corepack claude; do
         [ -e "${nvm_current}/${bin}" ] && ln -sf "${nvm_current}/${bin}" "/usr/local/bin/${bin}"
     done
 fi
