@@ -1,14 +1,19 @@
 #!/bin/bash
-# Registers the TALXIS/skills plugin (Skills + the `txc` MCP server) with whichever agent harness
-# is present — Claude Code and/or GitHub Copilot CLI. No-ops for a harness whose binary isn't
-# installed, or one explicitly excluded via AGENTBOX_HARNESS ("claude", "copilot", or "none" to
-# skip both — see src/scripts/install-features.sh for who sets this and why).
+# Configures whichever agent harness is present — Claude Code and/or GitHub Copilot CLI — beyond
+# just installing their binaries. Currently: registers the TALXIS/skills plugin (Skills + the
+# `txc` MCP server). Named generically, not after that one thing, since this is the intended home
+# for any other per-harness setup agentbox ends up needing (e.g. other marketplaces, settings.json
+# tweaks) — one script per harness-configuration concern, not one script per plugin.
+#
+# No-ops for a harness whose binary isn't installed, or one explicitly excluded via
+# AGENTBOX_HARNESS ("claude", "copilot", or "none" to skip both — see src/scripts/install-features.sh
+# for who sets this and why).
 #
 # Called from src/scripts/install-features.sh (Claude Code cloud, Copilot cloud sandbox), and
-# fetched/run directly from the Power Platform template's devcontainer.json postCreateCommand
-# (Codespaces — only Copilot is ever relevant there, but this script is reused rather than
-# maintaining a Copilot-only copy). Per VS Code's own docs, VS Code's Copilot Chat automatically
-# discovers plugins installed this way, so one install covers both the `copilot` CLI and VS Code.
+# fetched/run directly from a repo's own devcontainer.json postCreateCommand (Codespaces — only
+# Copilot is ever relevant there, but this script is reused rather than maintaining a Copilot-only
+# copy). Per VS Code's own docs, VS Code's Copilot Chat automatically discovers plugins installed
+# this way, so one install covers both the `copilot` CLI and VS Code.
 set -uo pipefail
 
 merge_json_file() {

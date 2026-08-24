@@ -11,7 +11,7 @@ isolated environments below instead — see GitHub's own take on why:
 
 ### 1. GitHub Codespaces
 
-Create a `.devcontainer/devcontainer.json` in your project:
+**New project — create `.devcontainer/devcontainer.json`:**
 
 ```json
 {
@@ -26,12 +26,16 @@ Create a `.devcontainer/devcontainer.json` in your project:
     "cpus": 2,
     "memory": "8gb"
   },
-  "postCreateCommand": "curl -fsSL --max-time 20 https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/install-talxis-plugin.sh | timeout 90 bash || true"
+  "postCreateCommand": "curl -fsSL --max-time 20 https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/configure-agent-harness.sh | timeout 90 bash || true"
 }
 ```
 
-The `postCreateCommand` registers the [TALXIS/skills](https://github.com/TALXIS/skills) plugin
-(Skills + the `txc` MCP server) with GitHub Copilot — omit it if you don't want that.
+**Already have a `devcontainer.json`?** Point `image` at
+`ghcr.io/talxis/tools-agentbox/image:latest` and add that same `postCreateCommand` line — it's
+easy to end up with a working toolchain but no Skills/MCP registration if this step gets skipped,
+since nothing it does is baked into the image itself. It registers the
+[TALXIS/skills](https://github.com/TALXIS/skills) plugin (Skills + the `txc` MCP server) with
+whichever of Claude Code / GitHub Copilot is present — omit it if you don't want that.
 
 Or build your own `devcontainer.json` from individual features listed in
 [`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json).

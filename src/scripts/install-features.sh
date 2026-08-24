@@ -16,7 +16,7 @@
 # Also used by src/images/power-platform/Dockerfile to build the pre-built image, with
 # AGENTBOX_HARNESS=none — the image build shouldn't register the plugin for either harness itself:
 # Codespaces' own postCreateCommand does that once, at container creation, as the container's real
-# user, by fetching and running src/scripts/install-talxis-plugin.sh directly — the same script
+# user, by fetching and running src/scripts/configure-agent-harness.sh directly — the same script
 # this file delegates to below.
 #
 # AGENTBOX_HARNESS ("claude", "copilot", or "none"), set by the callers above, skips the plugin
@@ -152,14 +152,14 @@ fi
 
 dotnet new install TALXIS.DevKit.Templates.Dataverse || true
 
-# Register the TALXIS/skills plugin (Skills + the txc MCP server) with whichever harness this
-# surface actually uses — same script Codespaces' devcontainer.json postCreateCommand fetches and
-# runs directly, so there's one place this logic lives regardless of caller. AGENTBOX_HARNESS
+# Configure whichever harness this surface actually uses (currently: register the TALXIS/skills
+# plugin) — same script a repo's own devcontainer.json postCreateCommand fetches and runs
+# directly, so there's one place this logic lives regardless of caller. AGENTBOX_HARNESS
 # (already exported by this script's caller) narrows it to the relevant harness; unset (manual/
 # local runs) tries both, skipping whichever binary isn't installed.
-curl -fsSL --max-time 20 "https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/install-talxis-plugin.sh" \
-    -o "${WORKDIR}/install-talxis-plugin.sh" \
-    && bash "${WORKDIR}/install-talxis-plugin.sh"
+curl -fsSL --max-time 20 "https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/scripts/configure-agent-harness.sh" \
+    -o "${WORKDIR}/configure-agent-harness.sh" \
+    && bash "${WORKDIR}/configure-agent-harness.sh"
 
 # install_feature() logs failures but does not stop on them; report final status per tool.
 echo "=== Tool check ==="
