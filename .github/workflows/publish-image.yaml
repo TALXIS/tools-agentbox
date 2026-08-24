@@ -66,6 +66,12 @@ jobs:
         id: meta
         with:
           images: ${{ env.IMAGE }}
+          # Without this, metadata-action derives org.opencontainers.image.version from the raw
+          # git ref (the release tag, "v1.2.1") and that wins over the Dockerfile's own
+          # ARG IMAGE_VERSION LABEL — leaving the image labeled "v1.2.1" instead of "1.2.1" like
+          # resolve-version's actual output. Override it explicitly to match.
+          labels: |
+            org.opencontainers.image.version=${{ needs.resolve-version.outputs.version }}
 
       - id: slug
         run: echo "value=${PLATFORM//\//-}" >> "$GITHUB_OUTPUT"
