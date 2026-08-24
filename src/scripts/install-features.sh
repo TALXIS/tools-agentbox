@@ -68,6 +68,14 @@ install_feature() {
 
     echo "--- Installing ${path} (${digest}) ---"
 
+    # Claude Code cloud environments ship the claude CLI pre-installed, but the Feature's own
+    # install.sh has no such check — it unconditionally `npm install -g`s it. Skip it there so
+    # every setup-script run doesn't redo a pointless reinstall.
+    if [[ "${path}" == */claude-code ]] && command -v claude >/dev/null 2>&1; then
+        echo "claude already present ($(command -v claude)), skipping ${path} install"
+        return
+    fi
+
     token="$(curl -fsSL "https://${registry}/token?service=${registry}&scope=repository:${path}:pull" | jq -r .token)"
     manifest="$(curl -fsSL -H "Authorization: Bearer ${token}" \
         -H "Accept: application/vnd.oci.image.manifest.v1+json" \
@@ -153,7 +161,7 @@ curl -fsSL --max-time 20 "https://raw.githubusercontent.com/TALXIS/tools-agentbo
 # install_feature() logs failures but does not stop on them; report final status per tool.
 echo "=== Tool check ==="
 missing=0
-for tool in dotnet az pwsh terraform gh copilot func pac txc; do
+for tool in dotnet az pwsh terraform gh copilot claude func pac txc; do
     if command -v "${tool}" >/dev/null 2>&1; then
         echo "OK   ${tool} -> $(command -v "${tool}")"
     else
