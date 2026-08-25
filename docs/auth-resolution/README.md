@@ -28,16 +28,10 @@ A session/pairing layer on the company **Security Token Service** ([TALXIS/servi
 - **Two client surfaces**, each with its own upstream Entra app registration: `controls` (existing production use) and `workloads` (agent sessions). Separate apps keep consent-scope unions, Conditional Access targeting, and audit (`appid`) cleanly separated.
 - **Two credential tiers:** *delegated* (primary — user context; STS holds the upstream refresh token server-side, never the sandbox) and *WIF app-only* (session-scoped OIDC assertions consumed via Entra federated credentials; no refresh tokens exist at all; required for `az`/`pac` and unattended runs).
 
-## Milestones
+## Current work
 
-Backlog lives in [services-securitytoken issues](https://github.com/TALXIS/services-securitytoken/issues), organized by milestone:
+The committed backlog is **M1 — Sandbox sessions & Azure DevOps** in the [services-securitytoken issue tracker](https://github.com/TALXIS/services-securitytoken/milestone/1): engineers use Claude Cloud Environments against ADO (git + MCP) via paired, scoped, revocable sessions. Settled design decisions are recorded in the closed [conformance baseline record](https://github.com/TALXIS/services-securitytoken/issues/2).
 
-| Milestone | Outcome |
-|---|---|
-| M1 — Sandbox sessions & Azure DevOps | Engineers use Claude Cloud Environments against ADO (git + MCP) via paired sessions |
-| M2 — Delegated resources via CLI | Dataverse/Graph/BAP through the same sessions; `txc` auth rework |
-| M3 — Workload identity federation tier | App-only assertions; `az`/`pac`; CI and autonomous-agent bootstrap |
-| M4 — Multi-tenant productization & self-hosting | Container host, extra transports, DCR, white-label, open-sourcing gate |
-| M5 — Non-Microsoft identity providers | Atlassian first, behind the provider abstraction |
+Deliberately **not** road-mapped in detail: the architecture leaves room for delegated Microsoft resources through `txc` (Dataverse/Graph/BAP), a workload-identity-federation app-only tier (`az`/`pac`, CI, autonomous agents), customer-facing productization (self-hosting, additional pairing transports, dynamic client registration), and non-Microsoft providers (Atlassian) — each gets designed and tracked when it becomes real work.
 
 See `pairing.md` for the bootstrap protocol and transports, `sts-api.md` for the wire contract, and `workstreams.md` for the per-repo work mapping.

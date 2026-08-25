@@ -20,11 +20,11 @@ One bootstrap core, multiple transports. The core never changes; transports only
 
 | # | Transport | Where | Human steps per session |
 |---|---|---|---|
-| 1 | **Manual code** (M1) | Universal fallback; Claude Cloud Environments | Open portal, sign in (SSO), pick grant, paste code |
-| 2 | **Remote MCP facade / connector** (M4) | Claude Cloud with claude.ai connector | None after one-time connector authorization; the `pair_session(jkt)` tool returns **only** a jkt-bound one-time code — never tokens (tool results land in transcripts). Per-tenant policy: standing-grant defaults vs. portal step-up; OTP-only enforceable |
-| 3 | **VS Code extension** (M4) | Codespaces / devcontainers with VS Code | None (editor's Microsoft auth session pairs automatically) |
-| 4 | **Host hook** (M1-adjacent) | Local docker devcontainer, CLI-only | None (devcontainer `initializeCommand` pairs on the host, which has a browser) |
-| 5 | **Platform OIDC exchange** (M3) | GitHub Actions, Copilot coding agent, CI | None; the runner's platform OIDC token is the RFC 8693 `subject_token`; app-only tier |
+| 1 | **Manual code** (current) | Universal fallback; Claude Cloud Environments | Open portal, sign in (SSO), pick grant, paste code |
+| 2 | **Remote MCP facade / connector** (future) | Claude Cloud with claude.ai connector | None after one-time connector authorization; the `pair_session(jkt)` tool returns **only** a jkt-bound one-time code — never tokens (tool results land in transcripts). Per-tenant policy: standing-grant defaults vs. portal step-up; OTP-only enforceable |
+| 3 | **VS Code extension** (future) | Codespaces / devcontainers with VS Code | None (editor's Microsoft auth session pairs automatically) |
+| 4 | **Host hook** (current) | Local docker devcontainer, CLI-only | None (devcontainer `initializeCommand` pairs on the host, which has a browser) |
+| 5 | **Platform OIDC exchange** (future) | GitHub Actions, Copilot coding agent, CI | None; the runner's platform OIDC token is the RFC 8693 `subject_token`; app-only tier |
 
 ## Refresh and failure semantics
 
