@@ -1,5 +1,5 @@
 // Power Platform dev container template
-// Docs: https://github.com/TALXIS/tools-agentbox/tree/master/src/templates/power-platform
+// Docs: https://github.com/TALXIS/tools-agentbox/tree/master/src/container/templates/power-platform
 {
     "name": "Power Platform",
 

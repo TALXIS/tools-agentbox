@@ -40,4 +40,4 @@ On container creation, this template registers the [TALXIS/skills](https://githu
 
 ---
 
-_Note: This file was auto-generated from the [devcontainer-template.json](https://github.com/TALXIS/tools-agentbox/blob/main/src/templates/power-platform/devcontainer-template.json).  Add additional notes to a `NOTES.md`._
+_Note: This file was auto-generated from the [devcontainer-template.json](https://github.com/TALXIS/tools-agentbox/blob/main/src/container/templates/power-platform/devcontainer-template.json).  Add additional notes to a `NOTES.md`._

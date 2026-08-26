@@ -20,16 +20,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Toolchain: dotnet, node, az, pwsh, terraform, gh, copilot-cli, func, pac, txc ───────────────
-# Single place this is defined: src/scripts/install-features.sh, reading
-# src/templates/power-platform/.devcontainer/devcontainer.features.json — the same script the
-# Claude Code cloud environment and the Copilot cloud sandbox already run. AGENTBOX_HARNESS=none
+# Single place this is defined: src/container/scripts/install-features.sh, reading
+# src/container/templates/power-platform/.devcontainer/devcontainer.features.json — the same script
+# the Claude Code cloud environment and the Copilot cloud sandbox already run. AGENTBOX_HARNESS=none
 # skips the TALXIS/skills plugin registration here; Codespaces' own postCreateCommand handles that
 # once, at container creation, as the container's real user — baking it in at build time (as root)
 # wouldn't reliably reach that user. CACHEBUST forces this layer to actually re-run on every build
 # instead of silently reusing a stale cached layer: most Feature versions resolve to "latest", and
 # Docker's cache is keyed on instruction text, not on what a re-run would actually fetch.
 ARG CACHEBUST=0
-COPY src/scripts/install-features.sh /tmp/install-features.sh
+COPY src/container/scripts/install-features.sh /tmp/install-features.sh
 RUN AGENTBOX_HARNESS=none CACHEBUST=${CACHEBUST} bash /tmp/install-features.sh \
     && rm /tmp/install-features.sh
 

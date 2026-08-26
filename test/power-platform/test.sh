@@ -5,7 +5,7 @@ set -e
 echo "=== Smoke test: power-platform template / pre-built image ==="
 
 docker build \
-    --file src/images/power-platform/Dockerfile \
+    --file src/container/image/power-platform/Dockerfile \
     --tag "devcontainer-template-test-power-platform" \
     .
 
