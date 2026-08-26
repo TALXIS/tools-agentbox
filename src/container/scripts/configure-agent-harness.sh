@@ -6,10 +6,10 @@
 # tweaks) — one script per harness-configuration concern, not one script per plugin.
 #
 # No-ops for a harness whose binary isn't installed, or one explicitly excluded via
-# AGENTBOX_HARNESS ("claude", "copilot", or "none" to skip both — see src/scripts/install-features.sh
+# AGENTBOX_HARNESS ("claude", "copilot", or "none" to skip both — see src/container/scripts/install-features.sh
 # for who sets this and why).
 #
-# Called from src/scripts/install-features.sh (Claude Code cloud, Copilot cloud sandbox), and
+# Called from src/container/scripts/install-features.sh (Claude Code cloud, Copilot cloud sandbox), and
 # fetched/run directly from a repo's own devcontainer.json postCreateCommand (Codespaces — only
 # Copilot is ever relevant there, but this script is reused rather than maintaining a Copilot-only
 # copy). Per VS Code's own docs, VS Code's Copilot Chat automatically discovers plugins installed

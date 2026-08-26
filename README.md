@@ -38,7 +38,7 @@ since nothing it does is baked into the image itself. It registers the
 whichever of Claude Code / GitHub Copilot is present — omit it if you don't want that.
 
 Or build your own `devcontainer.json` from individual features listed in
-[`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json).
+[`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json).
 
 ### 2. GitHub Copilot cloud sandbox
 
@@ -62,12 +62,12 @@ with:
   already on the default list)
 
 This installs the Feature list from
-[`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json)
+[`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json)
 directly on the VM, and registers the [TALXIS/skills](https://github.com/TALXIS/skills) plugin
 (Skills + the `txc` MCP server) with Claude Code. No changes needed in individual repos.
 
 To keep `txc` and the Dataverse templates current between setup script runs, merge the `hooks` from
-[`src/claude-code/session-start-hook.json`](src/claude-code/session-start-hook.json) into
+[`src/container/claude-code/session-start-hook.json`](src/container/claude-code/session-start-hook.json) into
 [Admin Settings > Claude Code > Managed settings](https://claude.ai/admin-settings/claude-code).
 
 ### 4. Docker
@@ -88,5 +88,5 @@ docker run -it ghcr.io/talxis/tools-agentbox/image:latest bash
 
 ## Included tools
 
-See [`devcontainer.features.json`](src/templates/power-platform/.devcontainer/devcontainer.features.json)
+See [`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json)
 for the current tool/version list.

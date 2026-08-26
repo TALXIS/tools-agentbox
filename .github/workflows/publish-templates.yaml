@@ -5,7 +5,7 @@ on:
     branches:
       - master
     paths:
-      - "src/templates/**"
+      - "src/container/templates/**"
   release:
     types: [published]
 
@@ -25,7 +25,7 @@ jobs:
         uses: devcontainers/action@v1
         with:
           publish-templates: "false"
-          base-path-to-templates: "./src/templates"
+          base-path-to-templates: "./src/container/templates"
           generate-docs: "true"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -43,7 +43,7 @@ jobs:
           git checkout -b "$branch"
           message="Automated documentation update (templates)"
 
-          git add src/templates/**/README.md 2>/dev/null || true
+          git add src/container/templates/**/README.md 2>/dev/null || true
           git commit -m "Automated documentation update [skip ci]" || export NO_UPDATES=true
 
           if [ "$NO_UPDATES" != "true" ]; then
@@ -68,7 +68,7 @@ jobs:
         uses: devcontainers/action@v1
         with:
           publish-templates: "true"
-          base-path-to-templates: "./src/templates"
+          base-path-to-templates: "./src/container/templates"
           generate-docs: "false"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

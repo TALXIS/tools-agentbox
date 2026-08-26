@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "name": "TALXIS DevKit CLI (txc)",
     "description": "Installs the TALXIS DevKit CLI (txc), a code-first toolkit for Power Platform and Dataverse development. When version is 'latest', auto-updates on every container start.",
-    "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/features/txc-cli",
+    "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/container/features/txc-cli",
     "licenseURL": "https://github.com/TALXIS/tools-agentbox/blob/master/LICENSE",
     "options": {
         "version": {

@@ -3,7 +3,7 @@
 set -e
 
 FEATURE_ID="pac-cli"
-FEATURE_PATH="src/features/${FEATURE_ID}"
+FEATURE_PATH="src/container/features/${FEATURE_ID}"
 
 echo "=== Smoke test: ${FEATURE_ID} ==="
 
@@ -16,7 +16,7 @@ docker build \
 FROM mcr.microsoft.com/dotnet/sdk:10.0
 ARG VERSION=latest
 ENV PATH="${PATH}:/root/.dotnet/tools"
-COPY src/features/pac-cli/install.sh /tmp/install.sh
+COPY src/container/features/pac-cli/install.sh /tmp/install.sh
 RUN chmod +x /tmp/install.sh && \
     _REMOTE_USER=root _REMOTE_USER_HOME=/root VERSION=${VERSION} /tmp/install.sh
 EOF

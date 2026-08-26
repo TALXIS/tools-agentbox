@@ -27,4 +27,4 @@ Installs the Microsoft Power Platform CLI (pac). When version is 'latest', auto-
 
 ---
 
-_Note: This file was auto-generated from the [devcontainer-feature.json](https://github.com/TALXIS/tools-agentbox/blob/main/src/features/pac-cli/devcontainer-feature.json).  Add additional notes to a `NOTES.md`._
+_Note: This file was auto-generated from the [devcontainer-feature.json](https://github.com/TALXIS/tools-agentbox/blob/main/src/container/features/pac-cli/devcontainer-feature.json).  Add additional notes to a `NOTES.md`._

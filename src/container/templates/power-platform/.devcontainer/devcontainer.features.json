@@ -1,5 +1,5 @@
 {
-    "//": "Feature list for the Power Platform toolchain (https://containers.dev/implementors/features). Used by the 'build from scratch' alternative in devcontainer.json/README, and by src/scripts/install-features.sh.",
+    "//": "Feature list for the Power Platform toolchain (https://containers.dev/implementors/features). Used by the 'build from scratch' alternative in devcontainer.json/README, and by src/container/scripts/install-features.sh.",
     "features": {
         "ghcr.io/devcontainers/features/git:1": {},
         "ghcr.io/devcontainers/features/node:1": { "version": "22" },

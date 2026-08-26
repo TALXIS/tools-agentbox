@@ -21,4 +21,4 @@ Installs the TALXIS DevKit CLI (txc), a code-first toolkit for Power Platform an
 
 ---
 
-_Note: This file was auto-generated from the [devcontainer-feature.json](https://github.com/TALXIS/tools-agentbox/blob/main/src/features/txc-cli/devcontainer-feature.json).  Add additional notes to a `NOTES.md`._
+_Note: This file was auto-generated from the [devcontainer-feature.json](https://github.com/TALXIS/tools-agentbox/blob/main/src/container/features/txc-cli/devcontainer-feature.json).  Add additional notes to a `NOTES.md`._

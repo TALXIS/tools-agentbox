@@ -14,7 +14,7 @@ concurrency:
 
 env:
   IMAGE: ghcr.io/talxis/tools-agentbox/image
-  DOCKERFILE: src/images/power-platform/Dockerfile
+  DOCKERFILE: src/container/image/power-platform/Dockerfile
 
 jobs:
   # Publishing only ever happens because a human cut a GitHub Release - matches

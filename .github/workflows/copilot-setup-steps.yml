@@ -15,6 +15,6 @@ jobs:
         env:
           AGENTBOX_HARNESS: copilot
         run: |
-          sudo -E bash src/scripts/install-features.sh
+          sudo -E bash src/container/scripts/install-features.sh
           sudo chmod o+x /root
           sudo chmod -R o+rX /root/.dotnet /usr/local/dotnet 2>/dev/null || true

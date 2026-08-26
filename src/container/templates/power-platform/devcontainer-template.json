@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "name": "Power Platform",
     "description": "Full Power Platform / Dataverse development environment.",
-    "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/templates/power-platform",
+    "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/container/templates/power-platform",
     "licenseURL": "https://github.com/TALXIS/tools-agentbox/blob/master/LICENSE",
     "platforms": [
         "Power Platform",
