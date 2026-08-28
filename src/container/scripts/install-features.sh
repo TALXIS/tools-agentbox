@@ -159,9 +159,16 @@ dotnet new install TALXIS.DevKit.Templates.Dataverse || true
 # caller, and one place the config it reads lives. AGENTBOX_HARNESS
 # (already exported by this script's caller) narrows it to the relevant harness; unset (manual/
 # local runs) tries both, skipping whichever binary isn't installed.
+#
+# Its exit status is kept and re-raised at the end of this script: a box whose toolchain installed
+# but whose agent config didn't reach the harness is broken in a way that's easy to miss, so the
+# setup script has to fail rather than report success. The tool check below still runs first, so the
+# diagnostics are in the log either way.
+harness_status=0
 curl -fsSL --max-time 20 "https://talxis.com/agentbox-harness" \
     -o "${WORKDIR}/configure-agent-harness.sh" \
-    && bash "${WORKDIR}/configure-agent-harness.sh"
+    && bash "${WORKDIR}/configure-agent-harness.sh" \
+    || harness_status=$?
 
 # install_feature() logs failures but does not stop on them; report final status per tool.
 echo "=== Tool check ==="
@@ -175,5 +182,10 @@ for tool in dotnet az pwsh terraform gh copilot claude func pac txc; do
     fi
 done
 [ "${missing}" -eq 1 ] && echo "One or more tools are missing — see the install output above for the matching WARNING line."
+
+if [ "${harness_status}" -ne 0 ]; then
+    echo "ERROR: agent harness configuration failed (exit ${harness_status}) — see the output above." >&2
+    exit "${harness_status}"
+fi
 
 exit 0

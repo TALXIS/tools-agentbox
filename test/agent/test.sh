@@ -10,6 +10,12 @@ docker run --rm -v "$(pwd):/repo:ro" ubuntu:24.04 bash -c '
     set -e
     apt-get update -qq >/dev/null && apt-get install -y -qq jq >/dev/null
     export HOME=/root REPO=/repo
+
+    # A second, unprivileged user, so the run covers the Copilot cloud sandbox shape: provisioning as
+    # root under sudo while the agent runs as someone else.
+    useradd -m agentboxtest
+    export AGENTBOX_TEST_SUDO_USER=agentboxtest
+
     bash /repo/test/agent/assert.sh
 '
 

@@ -102,9 +102,48 @@ assert_contains "${HOME}/.copilot/copilot-instructions.md" "# My own notes"
 [ -f /etc/claude-code/CLAUDE.md ] \
     && fail "/etc/claude-code/CLAUDE.md should be gone once the block it only held is removed"
 
-echo "--- AGENTBOX_HARNESS=none touches nothing ---"
+echo "--- the shared hook is readable by users other than the one that provisioned ---"
+SHARE_DIR="$(dirname "$(jq -r '.hooks.SessionStart[0].hooks[0].command' "${HOME}/.claude/settings.json" | cut -d' ' -f1)")"
+[ "$(stat -c '%a' "${SHARE_DIR}")" = "755" ] || fail "${SHARE_DIR} is not mode 755"
+[ "$(stat -c '%a' "${SHARE_DIR}/session-start.sh")" = "755" ] || fail "session-start.sh is not mode 755"
+[ "$(stat -c '%a' "${SHARE_DIR}/initial-message.md")" = "644" ] || fail "initial-message.md is not mode 644"
+
+# The Copilot cloud sandbox provisions as root under sudo and runs the agent as SUDO_USER, so the
+# user-level files have to reach that home too. Env-gated: test.sh creates the user, and a direct run
+# against a live box skips it rather than writing into someone's home.
+if [ -n "${AGENTBOX_TEST_SUDO_USER:-}" ]; then
+    echo "--- user-level config is mirrored to the user behind sudo ---"
+    SUDO_HOME="$(getent passwd "${AGENTBOX_TEST_SUDO_USER}" | cut -d: -f6)"
+    [ -n "${SUDO_HOME}" ] || fail "no home directory for ${AGENTBOX_TEST_SUDO_USER}"
+    rm -rf "${SUDO_HOME}/.copilot" "${SUDO_HOME}/.claude"
+    SUDO_USER="${AGENTBOX_TEST_SUDO_USER}" bash "${CONFIGURE}"
+    assert_contains "${SUDO_HOME}/.copilot/copilot-instructions.md" "${FIRST_LINE}"
+    [ "$(jq -r '.enabledPlugins["implement@talxis"]' "${SUDO_HOME}/.copilot/settings.json")" = "true" ] \
+        || fail "implement@talxis not enabled in the sudo user's ~/.copilot/settings.json"
+    [ -f "${SUDO_HOME}/.copilot/hooks/agentbox.json" ] \
+        || fail "no sessionStart hook in the sudo user's ~/.copilot/hooks/"
+    [ "$(jq -r '.hooks.SessionStart | length' "${SUDO_HOME}/.claude/settings.json")" = "1" ] \
+        || fail "no SessionStart hook in the sudo user's ~/.claude/settings.json"
+    [ "$(stat -c '%U' "${SUDO_HOME}/.copilot/copilot-instructions.md")" = "${AGENTBOX_TEST_SUDO_USER}" ] \
+        || fail "the sudo user's copilot-instructions.md is not owned by them"
+fi
+
+echo "--- an unreadable config fails the run instead of half-configuring ---"
 rm -rf "${HOME}/.claude" "${HOME}/.copilot" /etc/claude-code
-AGENTBOX_HARNESS=none bash "${CONFIGURE}"
+# A copy outside the repo, so the script can't find src/agent/ as a sibling of itself, with
+# AGENTBOX_CONFIG_DIR unset and a URL on loopback port 1 that fails immediately (no network needed).
+STANDALONE="${WORK}/configure-standalone.sh"
+cp "${CONFIGURE}" "${STANDALONE}"
+env -u AGENTBOX_CONFIG_DIR AGENTBOX_CONFIG_URL="http://127.0.0.1:1/agent.json" bash "${STANDALONE}" \
+    && fail "the script exited 0 with no readable config"
+[ -e "${HOME}/.claude/settings.json" ] && fail "a failed run still wrote Claude settings"
+[ -e "${HOME}/.copilot/copilot-instructions.md" ] && fail "a failed run still wrote Copilot instructions"
+[ -e /etc/claude-code/CLAUDE.md ] && fail "a failed run still wrote the managed CLAUDE.md"
+
+echo "--- AGENTBOX_HARNESS=none touches nothing, and needs no config ---"
+rm -rf "${HOME}/.claude" "${HOME}/.copilot" /etc/claude-code
+env -u AGENTBOX_CONFIG_DIR AGENTBOX_HARNESS=none AGENTBOX_CONFIG_URL="http://127.0.0.1:1/agent.json" \
+    bash "${STANDALONE}" || fail "AGENTBOX_HARNESS=none should succeed without reading the config"
 [ -e "${HOME}/.claude/settings.json" ] && fail "AGENTBOX_HARNESS=none wrote Claude settings"
 [ -e /etc/claude-code/CLAUDE.md ] && fail "AGENTBOX_HARNESS=none wrote the managed CLAUDE.md"
 [ -e "${HOME}/.copilot/copilot-instructions.md" ] && fail "AGENTBOX_HARNESS=none wrote Copilot instructions"

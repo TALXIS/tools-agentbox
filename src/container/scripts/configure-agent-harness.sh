@@ -3,17 +3,18 @@
 # single source of truth in src/agent/, so all three knobs are configured in one place for every
 # surface (Claude Code cloud, Copilot cloud sandbox, Codespaces, Docker) and every harness:
 #
-#   agent.json         which plugin marketplaces/plugins to register (the Skills list)
-#   system-prompt.md   instructions loaded into every session, on every harness
-#   initial-message.md context injected once per session, at session start
+#   agent.json         the manifest: which plugin marketplaces/plugins to register (the Skills list),
+#                      plus the systemPrompt and initialMessage files it points at
+#   systemPrompt       instructions loaded into every session, on every harness
+#   initialMessage     context injected once per session, at session start
 #
-# What each knob maps to per harness (see src/agent/README.md for the full matrix and why):
+# See src/agent/README.md for which path each knob lands in per harness, and why.
 #
-#   knob            Claude Code                                  GitHub Copilot CLI
-#   plugins         claude plugin marketplace add / install      copilot plugin ... + ~/.copilot/settings.json
-#   system prompt   /etc/claude-code/CLAUDE.md (managed policy)  ~/.copilot/copilot-instructions.md
-#                   ~/.claude/CLAUDE.md when not root
-#   initial message SessionStart hook in ~/.claude/settings.json ~/.copilot/hooks/agentbox.json (sessionStart)
+# Nothing written here is project-scoped: every target is a machine or user path the harness reads
+# whatever repository is cloned into the sandbox. Where a harness offers a machine-level path the
+# config goes there (Claude's managed-policy CLAUDE.md); otherwise it goes to every home directory
+# that could belong to the user who ends up running the harness — the invoking user, /etc/skel for
+# users created later, and the user behind sudo, which is the one the Copilot cloud sandbox runs as.
 #
 # Both harnesses treat these as context, not enforcement: they steer the model, they do not constrain
 # it. Anything that must hold regardless of what the model decides belongs in a permission rule or a
@@ -38,20 +39,35 @@ WORKDIR="$(mktemp -d)"
 trap 'rm -rf "${WORKDIR}"' EXIT
 
 # Where the agent config comes from, in order: an explicit AGENTBOX_CONFIG_DIR, a src/agent/ sibling
-# when this script runs from a checkout, then the network. The short link is preferred over the raw
-# URL for the same reason install-features.sh uses one (no branch/path hardcoded in a published
-# command), but the raw URL is tried too so this works before the redirect exists.
+# when this script runs from a checkout, then the network. A short link rather than a raw URL for the
+# same reason install-features.sh uses one — no branch, path or filename hardcoded anywhere. The
+# config exists in exactly one place, so there is no built-in copy to fall back on: a run that cannot
+# read it fails instead of half-configuring a box.
 AGENT_CONFIG_URL="${AGENTBOX_CONFIG_URL:-https://talxis.com/agentbox-agent}"
-AGENT_CONFIG_URL_RAW="https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/agent/agent.json"
 
-# Used when src/agent/agent.json can't be reached at all, so an offline run still registers the
-# plugin exactly as this script did before it was config-driven, instead of silently doing nothing.
-DEFAULT_MANIFEST='{"marketplaces":{"talxis":"TALXIS/skills"},"plugins":["implement@talxis"]}'
-
-BLOCK_BEGIN="<!-- BEGIN AGENTBOX: managed by TALXIS/tools-agentbox (src/agent/system-prompt.md) -->"
+BLOCK_BEGIN="<!-- BEGIN AGENTBOX: managed by TALXIS/tools-agentbox -->"
 BLOCK_END="<!-- END AGENTBOX -->"
 
 is_root() { [ "$(id -u)" -eq 0 ]; }
+
+# The home of the user behind sudo, when that isn't the invoking user's own. The Copilot cloud
+# sandbox provisions with `sudo -E bash install-features.sh`, where HOME resolves to /root, and then
+# runs the agent as the unprivileged user — so a config written only to ${HOME} is never read there.
+# /etc/skel doesn't cover it either: that user already exists by the time this runs.
+sudo_user_home() {
+    local home
+    is_root || return 1
+    [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ] || return 1
+    home="$(getent passwd "${SUDO_USER}" 2>/dev/null | cut -d: -f6)"
+    [ -n "${home}" ] && [ -d "${home}" ] && [ "${home}" != "${HOME:-/root}" ] || return 1
+    printf '%s' "${home}"
+}
+
+# Hand back anything written into that user's home, so they can edit their own config afterwards.
+restore_sudo_user_ownership() {
+    [ -n "${SUDO_USER:-}" ] && [ -e "$1" ] || return 0
+    chown -R "${SUDO_USER}" "$1" 2>/dev/null || true
+}
 
 merge_json_file() {
     local file="$1" filter="$2"
@@ -93,6 +109,26 @@ apply_marked_block() {
     grep -q '[^[:space:]]' "${file}" 2>/dev/null || rm -f "${file}"
 }
 
+# --- Which harnesses this run configures -------------------------------------------------------
+
+configures_claude() {
+    [ "${AGENTBOX_HARNESS:-}" != "copilot" ] && [ "${AGENTBOX_HARNESS:-}" != "none" ] \
+        && command -v claude >/dev/null 2>&1
+}
+
+configures_copilot() {
+    [ "${AGENTBOX_HARNESS:-}" != "claude" ] && [ "${AGENTBOX_HARNESS:-}" != "none" ] \
+        && command -v copilot >/dev/null 2>&1
+}
+
+# Decided before the config is read, so a run with nothing to configure — the image build passes
+# AGENTBOX_HARNESS=none, and a box may simply not have either CLI — never needs the config at all,
+# and so can't fail on it.
+if ! configures_claude && ! configures_copilot; then
+    echo "No agent harness to configure (AGENTBOX_HARNESS=${AGENTBOX_HARNESS:-unset}); nothing to do."
+    exit 0
+fi
+
 # --- Resolve the config ------------------------------------------------------------------------
 
 download_config() {
@@ -106,44 +142,56 @@ download_config() {
     while IFS= read -r file; do
         [ -z "${file}" ] && continue
         mkdir -p "$(dirname "${dir}/${file}")"
-        curl -fsSL --max-time 20 -o "${dir}/${file}" "${base}/${file}" \
-            || echo "WARNING: could not download ${base}/${file}, continuing without it" >&2
+        # A file the manifest declares but that can't be downloaded is a broken config, not a reason
+        # to apply the rest: fail the whole resolution so the caller reports it.
+        curl -fsSL --max-time 20 -o "${dir}/${file}" "${base}/${file}" || {
+            echo "ERROR: agent.json declares ${file}, but ${base}/${file} could not be downloaded." >&2
+            return 1
+        }
     done < <(jq -r '[.systemPrompt, .initialMessage] | map(select(type == "string"))[]' "${dir}/agent.json")
 }
 
 CONFIG_DIR=""
-if [ -n "${AGENTBOX_CONFIG_DIR:-}" ] && [ -f "${AGENTBOX_CONFIG_DIR}/agent.json" ]; then
+if [ -n "${AGENTBOX_CONFIG_DIR:-}" ]; then
+    # Explicitly pointed somewhere: never quietly fall back to the network from there.
+    if [ ! -f "${AGENTBOX_CONFIG_DIR}/agent.json" ]; then
+        echo "ERROR: AGENTBOX_CONFIG_DIR=${AGENTBOX_CONFIG_DIR} has no agent.json." >&2
+        exit 1
+    fi
     CONFIG_DIR="${AGENTBOX_CONFIG_DIR}"
 elif [ -f "${SCRIPT_DIR}/../../agent/agent.json" ]; then
     CONFIG_DIR="$(cd "${SCRIPT_DIR}/../../agent" && pwd)"
-else
-    for url in "${AGENT_CONFIG_URL}" "${AGENT_CONFIG_URL_RAW}"; do
-        if download_config "${url}" "${WORKDIR}/agent"; then
-            CONFIG_DIR="${WORKDIR}/agent"
-            break
-        fi
-        echo "WARNING: could not fetch the agent config from ${url}" >&2
-    done
+elif download_config "${AGENT_CONFIG_URL}" "${WORKDIR}/agent"; then
+    CONFIG_DIR="${WORKDIR}/agent"
 fi
 
-if [ -n "${CONFIG_DIR}" ]; then
-    echo "--- Agent config: ${CONFIG_DIR} ---"
-    MANIFEST="${CONFIG_DIR}/agent.json"
-else
-    echo "WARNING: no agent config available, falling back to the built-in plugin defaults" >&2
-    MANIFEST="${WORKDIR}/agent-default.json"
-    printf '%s\n' "${DEFAULT_MANIFEST}" > "${MANIFEST}"
+if [ -z "${CONFIG_DIR}" ]; then
+    echo "ERROR: could not read the agent config from ${AGENT_CONFIG_URL} — no harness was configured." >&2
+    echo "       Set AGENTBOX_CONFIG_DIR to a local src/agent directory, or AGENTBOX_CONFIG_URL to a" >&2
+    echo "       reachable agent.json, and re-run." >&2
+    exit 1
 fi
 
+echo "--- Agent config: ${CONFIG_DIR} ---"
+MANIFEST="${CONFIG_DIR}/agent.json"
+
+# A declared-but-absent payload is a broken config and stops the run. A declared payload that exists
+# and is empty is how a knob is turned off deliberately (the marked block is then removed), so that
+# stays allowed and resolves to nothing.
 resolve_payload() {
     local key="$1" name
     name="$(jq -r --arg k "${key}" '.[$k] // "" | select(type == "string")' "${MANIFEST}" 2>/dev/null)"
     [ -z "${name}" ] && return 0
+    if [ ! -f "${CONFIG_DIR}/${name}" ]; then
+        echo "ERROR: agent.json declares ${key} as ${name}, which is missing from ${CONFIG_DIR}." >&2
+        return 1
+    fi
     [ -s "${CONFIG_DIR}/${name}" ] && printf '%s' "${CONFIG_DIR}/${name}"
+    return 0
 }
 
-SYSTEM_PROMPT_FILE="$(resolve_payload systemPrompt)"
-INITIAL_MESSAGE_FILE="$(resolve_payload initialMessage)"
+SYSTEM_PROMPT_FILE="$(resolve_payload systemPrompt)" || exit 1
+INITIAL_MESSAGE_FILE="$(resolve_payload initialMessage)" || exit 1
 
 # One shared hook script, installed next to the message it prints, emitting whichever JSON shape the
 # calling harness expects. Claude Code reads hookSpecificOutput.additionalContext from a SessionStart
@@ -160,7 +208,7 @@ install_initial_message() {
     cat > "${SESSION_START_SCRIPT}" <<'HOOK'
 #!/bin/bash
 # Installed by configure-agent-harness.sh — prints the AgentBox session briefing as session-start
-# context. Edit the message in src/agent/initial-message.md, never this generated copy.
+# context. Edit the agent config in TALXIS/tools-agentbox, never this generated copy.
 message="$(dirname "$(readlink -f "$0")")/initial-message.md"
 [ -s "${message}" ] || exit 0
 case "${1:-}" in
@@ -168,7 +216,10 @@ case "${1:-}" in
     *)      jq -Rs '{additionalContext: .}' < "${message}" ;;
 esac
 HOOK
-    chmod +x "${SESSION_START_SCRIPT}" || return 1
+    # The hook is registered for whichever user runs the harness, which needn't be the user that
+    # provisioned the box — so don't leave these at the provisioning umask.
+    chmod 0755 "${SHARE_DIR}" "${SESSION_START_SCRIPT}" || return 1
+    chmod 0644 "${SHARE_DIR}/initial-message.md" || return 1
 }
 
 INITIAL_MESSAGE_READY=1
@@ -176,8 +227,7 @@ install_initial_message && INITIAL_MESSAGE_READY=0
 
 # --- Claude Code -------------------------------------------------------------------------------
 
-if [ "${AGENTBOX_HARNESS:-}" != "copilot" ] && [ "${AGENTBOX_HARNESS:-}" != "none" ] \
-        && command -v claude >/dev/null 2>&1; then
+if configures_claude; then
     echo "--- Configuring Claude Code ---"
     export CLAUDE_CODE_PLUGIN_CACHE_DIR="/usr/local/claude-plugin-seed"
 
@@ -203,22 +253,29 @@ if [ "${AGENTBOX_HARNESS:-}" != "copilot" ] && [ "${AGENTBOX_HARNESS:-}" != "non
     fi
 
     # Initial message: a SessionStart hook, matched on startup|resume so it also lands after a
-    # session is resumed. Merged into user settings rather than replacing them, and any earlier
-    # agentbox entry is dropped so re-runs don't stack up duplicates.
+    # session is resumed. Merged into settings rather than replacing them, and any earlier agentbox
+    # entry is dropped so re-runs don't stack up duplicates.
     if [ "${INITIAL_MESSAGE_READY}" -eq 0 ]; then
-        merge_json_file "${HOME:-/root}/.claude/settings.json" '
+        claude_hook_filter='
             .hooks.SessionStart = (
                 ((.hooks.SessionStart // [])
                     | map(select(((.hooks // []) | map(.command // "") | any(contains("agentbox"))) | not)))
                 + [{matcher: "startup|resume", hooks: [{type: "command", command: $cmd}]}]
-            )' --arg cmd "${SESSION_START_SCRIPT} claude"
+            )'
+        merge_json_file "${HOME:-/root}/.claude/settings.json" "${claude_hook_filter}" \
+            --arg cmd "${SESSION_START_SCRIPT} claude"
+
+        if claude_sudo_home="$(sudo_user_home)"; then
+            merge_json_file "${claude_sudo_home}/.claude/settings.json" "${claude_hook_filter}" \
+                --arg cmd "${SESSION_START_SCRIPT} claude"
+            restore_sudo_user_ownership "${claude_sudo_home}/.claude"
+        fi
     fi
 fi
 
 # --- GitHub Copilot CLI ------------------------------------------------------------------------
 
-if [ "${AGENTBOX_HARNESS:-}" != "claude" ] && [ "${AGENTBOX_HARNESS:-}" != "none" ] \
-        && command -v copilot >/dev/null 2>&1; then
+if configures_copilot; then
     echo "--- Configuring GitHub Copilot CLI ---"
 
     while IFS= read -r repo; do
@@ -239,8 +296,14 @@ if [ "${AGENTBOX_HARNESS:-}" != "claude" ] && [ "${AGENTBOX_HARNESS:-}" != "none
             | with_entries({key: .key, value: {source: {source: "github", repo: .value}}})))
         | .enabledPlugins = ((.enabledPlugins // {}) + (($manifest.plugins // []) | map({key: ., value: true}) | from_entries))'
 
+    # Copilot has no machine-level path for any of this, so write every home that could belong to the
+    # user who ends up running it: the invoking user, /etc/skel for users created later, and the user
+    # behind sudo (the Copilot cloud sandbox provisions as root and runs the agent as that user).
     copilot_dirs=("${HOME:-/root}/.copilot")
     is_root && copilot_dirs+=("/etc/skel/.copilot")
+    if copilot_sudo_home="$(sudo_user_home)"; then
+        copilot_dirs+=("${copilot_sudo_home}/.copilot")
+    fi
 
     for dir in "${copilot_dirs[@]}"; do
         merge_json_file "${dir}/settings.json" "${marketplace_filter}" \
@@ -258,6 +321,8 @@ if [ "${AGENTBOX_HARNESS:-}" != "claude" ] && [ "${AGENTBOX_HARNESS:-}" != "none
                     > "${dir}/hooks/agentbox.json"
         fi
     done
+
+    [ -n "${copilot_sudo_home:-}" ] && restore_sudo_user_ownership "${copilot_sudo_home}/.copilot"
 fi
 
 exit 0

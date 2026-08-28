@@ -9,17 +9,13 @@ isolated environments below instead — see GitHub's own take on why:
 
 ## Configuring the agents
 
-Everything about how the agents behave in an AgentBox is configured in one place — [`src/agent/`](src/agent) —
-and applies to every environment below and to both harnesses (Claude Code, GitHub Copilot CLI):
+Everything about how the agents behave in an AgentBox — the Skills they get, the instructions loaded
+into every session, and the briefing injected at session start — is configured in one place,
+[`src/agent/`](src/agent), and applies to both harnesses (Claude Code, GitHub Copilot CLI).
 
-| File | What it controls |
-|------|------------------|
-| [`src/agent/agent.json`](src/agent/agent.json) | The Skills list — which plugin marketplaces and plugins get registered |
-| [`src/agent/system-prompt.md`](src/agent/system-prompt.md) | Instructions loaded into every session |
-| [`src/agent/initial-message.md`](src/agent/initial-message.md) | Context injected once per session, at session start |
-
-Each environment below already runs the script that applies them, so an edit needs no per-environment
-change — see [`src/agent/README.md`](src/agent/README.md) for where each knob lands per harness.
+Every environment below already runs the script that applies it, so an edit needs no per-environment
+change, and nothing is written into a checkout: the config applies whichever repository is cloned into
+the box. See [`src/agent/README.md`](src/agent/README.md) for where each knob lands per harness.
 
 ## Choose your environment
 
@@ -59,6 +55,10 @@ Or build your own `devcontainer.json` from individual features listed in
 
 Copilot's cloud agent environment doesn't use `devcontainer.json` — customize it with
 [`.github/workflows/copilot-setup-steps.yml`](.github/workflows/copilot-setup-steps.yml) instead.
+
+That step runs as root via `sudo`, while the agent itself runs as the unprivileged runner user, so the
+agent config is written to both homes — see
+[`src/agent/README.md`](src/agent/README.md#which-home-directories-get-the-user-level-files).
 
 ### 3. Claude Code cloud environment
 
