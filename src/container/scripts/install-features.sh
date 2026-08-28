@@ -2,8 +2,8 @@
 # Installs the devcontainer Features (https://containers.dev) listed in
 # src/container/templates/power-platform/.devcontainer/devcontainer.features.json directly onto
 # the host, for environments with no Docker daemon (Claude Code cloud) or no devcontainer.json
-# support (GitHub Copilot cloud sandbox). Also registers the TALXIS/skills plugin (Skills + the
-# `txc` MCP server) with whichever agent harness is calling this script.
+# support (GitHub Copilot cloud sandbox). Also applies the agent config in src/agent/ (Skills list,
+# system prompt, initial message) to whichever agent harness is calling this script.
 #
 # Claude Code cloud environment: paste the bootstrap command from the README's "Claude Code cloud
 # environment" section into the environment's "Setup script" field at
@@ -15,12 +15,12 @@
 # GitHub Copilot cloud sandbox: run via .github/workflows/copilot-setup-steps.yml.
 #
 # Also used by src/container/image/power-platform/Dockerfile to build the pre-built image, with
-# AGENTBOX_HARNESS=none — the image build shouldn't register the plugin for either harness itself:
-# Codespaces' own postCreateCommand does that once, at container creation, as the container's real
-# user, by fetching and running src/container/scripts/configure-agent-harness.sh directly — the
-# same script this file delegates to below.
+# AGENTBOX_HARNESS=none — the image build shouldn't configure either harness itself: Codespaces' own
+# postCreateCommand does that once, at container creation, as the container's real user, by fetching
+# and running src/container/scripts/configure-agent-harness.sh directly — the same script this file
+# delegates to below.
 #
-# AGENTBOX_HARNESS ("claude", "copilot", or "none"), set by the callers above, skips the plugin
+# AGENTBOX_HARNESS ("claude", "copilot", or "none"), set by the callers above, skips the harness
 # setup for whichever harness isn't relevant to that caller, so nobody pays for another harness's
 # network call or risks seeing its warnings. Left unset (manual/local runs), both are attempted if
 # installed.
@@ -153,9 +153,10 @@ fi
 
 dotnet new install TALXIS.DevKit.Templates.Dataverse || true
 
-# Configure whichever harness this surface actually uses (currently: register the TALXIS/skills
-# plugin) — same script a repo's own devcontainer.json postCreateCommand fetches and runs
-# directly, so there's one place this logic lives regardless of caller. AGENTBOX_HARNESS
+# Configure whichever harness this surface actually uses, from the agent config in src/agent/
+# (Skills list, system prompt, initial message) — same script a repo's own devcontainer.json
+# postCreateCommand fetches and runs directly, so there's one place this logic lives regardless of
+# caller, and one place the config it reads lives. AGENTBOX_HARNESS
 # (already exported by this script's caller) narrows it to the relevant harness; unset (manual/
 # local runs) tries both, skipping whichever binary isn't installed.
 curl -fsSL --max-time 20 "https://talxis.com/agentbox-harness" \

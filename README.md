@@ -7,6 +7,20 @@ real security exposure, and heavy agent workloads wear on a machine over time. R
 isolated environments below instead — see GitHub's own take on why:
 [About cloud and local sandboxes](https://docs.github.com/en/copilot/concepts/about-cloud-and-local-sandboxes).
 
+## Configuring the agents
+
+Everything about how the agents behave in an AgentBox is configured in one place — [`src/agent/`](src/agent) —
+and applies to every environment below and to both harnesses (Claude Code, GitHub Copilot CLI):
+
+| File | What it controls |
+|------|------------------|
+| [`src/agent/agent.json`](src/agent/agent.json) | The Skills list — which plugin marketplaces and plugins get registered |
+| [`src/agent/system-prompt.md`](src/agent/system-prompt.md) | Instructions loaded into every session |
+| [`src/agent/initial-message.md`](src/agent/initial-message.md) | Context injected once per session, at session start |
+
+Each environment below already runs the script that applies them, so an edit needs no per-environment
+change — see [`src/agent/README.md`](src/agent/README.md) for where each knob lands per harness.
+
 ## Choose your environment
 
 ### 1. GitHub Codespaces
@@ -33,9 +47,10 @@ isolated environments below instead — see GitHub's own take on why:
 **Already have a `devcontainer.json`?** Point `image` at
 `ghcr.io/talxis/tools-agentbox/image:latest` and add that same `postCreateCommand` line — it's
 easy to end up with a working toolchain but no Skills/MCP registration if this step gets skipped,
-since nothing it does is baked into the image itself. It registers the
-[TALXIS/skills](https://github.com/TALXIS/skills) plugin (Skills + the `txc` MCP server) with
-whichever of Claude Code / GitHub Copilot is present — omit it if you don't want that.
+since nothing it does is baked into the image itself. It applies [`src/agent/`](src/agent) — the
+[TALXIS/skills](https://github.com/TALXIS/skills) plugin (Skills + the `txc` MCP server), the system
+prompt, and the initial message — to whichever of Claude Code / GitHub Copilot is present. Omit it if
+you don't want that.
 
 Or build your own `devcontainer.json` from individual features listed in
 [`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json).
@@ -63,8 +78,9 @@ with:
 
 This installs the Feature list from
 [`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json)
-directly on the VM, and registers the [TALXIS/skills](https://github.com/TALXIS/skills) plugin
-(Skills + the `txc` MCP server) with Claude Code. No changes needed in individual repos.
+directly on the VM, and applies [`src/agent/`](src/agent) — the
+[TALXIS/skills](https://github.com/TALXIS/skills) plugin (Skills + the `txc` MCP server), the system
+prompt, and the initial message — to Claude Code. No changes needed in individual repos.
 
 To keep `txc` and the Dataverse templates current between setup script runs, merge the `hooks` from
 [`src/container/claude-code/session-start-hook.json`](src/container/claude-code/session-start-hook.json) into
