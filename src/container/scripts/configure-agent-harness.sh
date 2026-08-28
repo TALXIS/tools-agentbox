@@ -1,14 +1,15 @@
 #!/bin/bash
-# Configures whichever agent harness is present — Claude Code and/or GitHub Copilot CLI — from the
-# single source of truth in src/agent/, so all three knobs are configured in one place for every
-# surface (Claude Code cloud, Copilot cloud sandbox, Codespaces, Docker) and every harness:
+# Configures whichever agent harness is present — Claude Code and/or GitHub Copilot CLI — for every
+# surface (Claude Code cloud, Copilot cloud sandbox, Codespaces, Docker), from two manifests that
+# split along the line between the box and the agent:
 #
-#   agent.json         the manifest: which plugin marketplaces/plugins to register (the Skills list),
-#                      plus the systemPrompt and initialMessage files it points at
-#   systemPrompt       instructions loaded into every session, on every harness
-#   initialMessage     context injected once per session, at session start
+#   src/agent/agent.json      this repo: which plugin marketplaces/plugins a box gets, and where the
+#                             behaviour config lives (the "instructions" URL below)
+#   TALXIS/skills agent/      that repo: how the harness should behave — the instructions loaded into
+#                             every session, and the briefing injected once at session start
 #
-# See src/agent/README.md for which path each knob lands in per harness, and why.
+# AgentBox owns the environment; the Skills repo owns process and know-how. See src/agent/README.md
+# for which path each piece lands in per harness, and why.
 #
 # Nothing written here is project-scoped: every target is a machine or user path the harness reads
 # whatever repository is cloned into the sandbox. Where a harness offers a machine-level path the
@@ -131,13 +132,20 @@ fi
 
 # --- Resolve the config ------------------------------------------------------------------------
 
-download_config() {
+# Fetches a JSON manifest and prints the URL curl actually landed on, so a caller can resolve files
+# that sit next to it (the short links redirect to raw.githubusercontent.com).
+download_manifest() {
+    local url="$1" out="$2" effective
+    effective="$(curl -fsSL --max-time 20 -w '%{url_effective}' -o "${out}" "${url}")" || return 1
+    jq -e 'type == "object"' "${out}" >/dev/null 2>&1 || return 1
+    printf '%s' "${effective}"
+}
+
+# The instructions manifest plus the payload files it declares, which name paths relative to it.
+download_instructions() {
     local url="$1" dir="$2" effective base file
     mkdir -p "${dir}"
-    effective="$(curl -fsSL --max-time 20 -w '%{url_effective}' -o "${dir}/agent.json" "${url}")" || return 1
-    jq -e 'type == "object"' "${dir}/agent.json" >/dev/null 2>&1 || return 1
-    # Payload file names in agent.json are relative to the manifest, so resolve them against the URL
-    # curl actually ended up on (the short link redirects to raw.githubusercontent.com).
+    effective="$(download_manifest "${url}" "${dir}/instructions.json")" || return 1
     base="${effective%/*}"
     while IFS= read -r file; do
         [ -z "${file}" ] && continue
@@ -145,12 +153,14 @@ download_config() {
         # A file the manifest declares but that can't be downloaded is a broken config, not a reason
         # to apply the rest: fail the whole resolution so the caller reports it.
         curl -fsSL --max-time 20 -o "${dir}/${file}" "${base}/${file}" || {
-            echo "ERROR: agent.json declares ${file}, but ${base}/${file} could not be downloaded." >&2
+            echo "ERROR: instructions.json declares ${file}, but ${base}/${file} could not be downloaded." >&2
             return 1
         }
-    done < <(jq -r '[.systemPrompt, .initialMessage] | map(select(type == "string"))[]' "${dir}/agent.json")
+    done < <(jq -r '[.systemPrompt, .initialMessage] | map(select(type == "string"))[]' "${dir}/instructions.json")
 }
 
+# Stage 1: this repo's own manifest — which marketplaces and plugins a box gets, and where the
+# behaviour config lives.
 CONFIG_DIR=""
 if [ -n "${AGENTBOX_CONFIG_DIR:-}" ]; then
     # Explicitly pointed somewhere: never quietly fall back to the network from there.
@@ -161,8 +171,8 @@ if [ -n "${AGENTBOX_CONFIG_DIR:-}" ]; then
     CONFIG_DIR="${AGENTBOX_CONFIG_DIR}"
 elif [ -f "${SCRIPT_DIR}/../../agent/agent.json" ]; then
     CONFIG_DIR="$(cd "${SCRIPT_DIR}/../../agent" && pwd)"
-elif download_config "${AGENT_CONFIG_URL}" "${WORKDIR}/agent"; then
-    CONFIG_DIR="${WORKDIR}/agent"
+elif download_manifest "${AGENT_CONFIG_URL}" "${WORKDIR}/agent.json" >/dev/null; then
+    CONFIG_DIR="${WORKDIR}"
 fi
 
 if [ -z "${CONFIG_DIR}" ]; then
@@ -172,21 +182,46 @@ if [ -z "${CONFIG_DIR}" ]; then
     exit 1
 fi
 
-echo "--- Agent config: ${CONFIG_DIR} ---"
 MANIFEST="${CONFIG_DIR}/agent.json"
+echo "--- Agent config: ${MANIFEST} ---"
+
+# Stage 2: the behaviour config — how the harness should act — which lives with the Skills it belongs
+# to, in TALXIS/skills, and is named by the manifest above rather than hardcoded here.
+INSTRUCTIONS_DIR=""
+if [ -n "${AGENTBOX_INSTRUCTIONS_DIR:-}" ]; then
+    if [ ! -f "${AGENTBOX_INSTRUCTIONS_DIR}/instructions.json" ]; then
+        echo "ERROR: AGENTBOX_INSTRUCTIONS_DIR=${AGENTBOX_INSTRUCTIONS_DIR} has no instructions.json." >&2
+        exit 1
+    fi
+    INSTRUCTIONS_DIR="${AGENTBOX_INSTRUCTIONS_DIR}"
+else
+    INSTRUCTIONS_URL="${AGENTBOX_INSTRUCTIONS_URL:-$(jq -r '.instructions // ""' "${MANIFEST}")}"
+    if [ -z "${INSTRUCTIONS_URL}" ]; then
+        echo "ERROR: ${MANIFEST} declares no \"instructions\" URL, and AGENTBOX_INSTRUCTIONS_URL is unset." >&2
+        exit 1
+    fi
+    if ! download_instructions "${INSTRUCTIONS_URL}" "${WORKDIR}/instructions"; then
+        echo "ERROR: could not read the behaviour config from ${INSTRUCTIONS_URL} — no harness was configured." >&2
+        exit 1
+    fi
+    INSTRUCTIONS_DIR="${WORKDIR}/instructions"
+fi
+
+echo "--- Behaviour config: ${INSTRUCTIONS_DIR}/instructions.json ---"
 
 # A declared-but-absent payload is a broken config and stops the run. A declared payload that exists
 # and is empty is how a knob is turned off deliberately (the marked block is then removed), so that
 # stays allowed and resolves to nothing.
 resolve_payload() {
     local key="$1" name
-    name="$(jq -r --arg k "${key}" '.[$k] // "" | select(type == "string")' "${MANIFEST}" 2>/dev/null)"
+    name="$(jq -r --arg k "${key}" '.[$k] // "" | select(type == "string")' \
+        "${INSTRUCTIONS_DIR}/instructions.json" 2>/dev/null)"
     [ -z "${name}" ] && return 0
-    if [ ! -f "${CONFIG_DIR}/${name}" ]; then
-        echo "ERROR: agent.json declares ${key} as ${name}, which is missing from ${CONFIG_DIR}." >&2
+    if [ ! -f "${INSTRUCTIONS_DIR}/${name}" ]; then
+        echo "ERROR: instructions.json declares ${key} as ${name}, which is missing from ${INSTRUCTIONS_DIR}." >&2
         return 1
     fi
-    [ -s "${CONFIG_DIR}/${name}" ] && printf '%s' "${CONFIG_DIR}/${name}"
+    [ -s "${INSTRUCTIONS_DIR}/${name}" ] && printf '%s' "${INSTRUCTIONS_DIR}/${name}"
     return 0
 }
 

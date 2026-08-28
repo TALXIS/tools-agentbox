@@ -1,5 +1,5 @@
 {
-    "//": "The one place agent behaviour is configured for every AgentBox surface (Claude Code cloud, Copilot cloud sandbox, Codespaces, Docker) and every harness (Claude Code, GitHub Copilot CLI). Applied by src/container/scripts/configure-agent-harness.sh — see src/agent/README.md.",
+    "//": "What an AgentBox provisions into a box: the plugin marketplaces and plugins every harness gets, and where the harness-behaviour config lives. Applied by src/container/scripts/configure-agent-harness.sh — see src/agent/README.md.",
 
     "marketplaces": {
         "talxis": "TALXIS/skills"
@@ -9,7 +9,5 @@
         "implement@talxis"
     ],
 
-    "systemPrompt": "system-prompt.md",
-
-    "initialMessage": "initial-message.md"
+    "instructions": "https://talxis.com/agentbox-instructions"
 }
