@@ -5,7 +5,7 @@ Two manifests configure the agents in an AgentBox, split along the line between 
 - **This repo owns the environment.** `agent.json` here declares which plugin marketplaces and
   plugins every box gets, and where the behaviour config lives. Installing and updating tooling is
   also this repo's business.
-- **[TALXIS/skills](https://github.com/TALXIS/skills) owns process and know-how.** Its `agent/`
+- **[TALXIS/skills](https://github.com/TALXIS/skills) owns process and know-how.** Its `harness/`
   directory holds how a harness should behave: the instructions loaded into every session, and the
   briefing injected once at session start — colocated with the Skills they belong to.
 
@@ -51,7 +51,7 @@ unprivileged user. Without the mirror nothing written under `${HOME}` would ever
 | Short link | Resolves to |
 |------------|-------------|
 | `https://talxis.com/agentbox-agent` | this repo's `src/agent/agent.json` on `master` |
-| `https://talxis.com/agentbox-instructions` | `TALXIS/skills` → `agent/instructions.json` on `master` |
+| `https://talxis.com/agentbox-instructions` | `TALXIS/skills` → `harness/instructions.json` on `master` |
 
 Payload files are fetched relative to the URL the instructions manifest actually resolved to, so no
 branch, path or filename is pinned here. Point a short link at a branch and that branch's config is

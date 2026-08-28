@@ -12,7 +12,7 @@ isolated environments below instead — see GitHub's own take on why:
 Configuration is split along the line between the box and the agent. This repo owns the environment —
 [`src/agent/`](src/agent) declares which Skills plugins every box gets, and installing and updating
 tooling is its business. [TALXIS/skills](https://github.com/TALXIS/skills) owns process and know-how:
-its `agent/` directory says how a harness should behave, colocated with the Skills it belongs to.
+its `harness/` directory says how a harness should behave, colocated with the Skills it belongs to.
 
 Every environment below already runs the script that applies both, so an edit on either side needs no
 per-environment change, and nothing is written into a checkout: the config applies whichever
