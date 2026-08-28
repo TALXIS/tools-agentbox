@@ -1,0 +1,13 @@
+{
+    "//": "Synthetic bootstrap manifest for test/agent/assert.sh. Deliberately not the real config: these assertions cover the mechanism, so they must not depend on TALXIS/skills or on the network.",
+
+    "marketplaces": {
+        "fixture": "AGENTBOX/fixture-skills"
+    },
+
+    "plugins": [
+        "fixture-plugin@fixture"
+    ],
+
+    "instructions": "file-not-used-the-tests-pass-AGENTBOX_INSTRUCTIONS_DIR"
+}

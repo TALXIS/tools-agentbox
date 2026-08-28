@@ -1,0 +1,7 @@
+{
+    "//": "Synthetic behaviour config for test/agent/assert.sh, standing in for TALXIS/skills agent/.",
+
+    "systemPrompt": "system-prompt.md",
+
+    "initialMessage": "initial-message.md"
+}

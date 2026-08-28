@@ -7,6 +7,18 @@ real security exposure, and heavy agent workloads wear on a machine over time. R
 isolated environments below instead — see GitHub's own take on why:
 [About cloud and local sandboxes](https://docs.github.com/en/copilot/concepts/about-cloud-and-local-sandboxes).
 
+## Configuring the agents
+
+Configuration is split along the line between the box and the agent. This repo owns the environment —
+[`src/agent/`](src/agent) declares which Skills plugins every box gets, and installing and updating
+tooling is its business. [TALXIS/skills](https://github.com/TALXIS/skills) owns process and know-how:
+its `harness/` directory says how a harness should behave, colocated with the Skills it belongs to.
+
+Every environment below already runs the script that applies both, so an edit on either side needs no
+per-environment change, and nothing is written into a checkout: the config applies whichever
+repository is cloned into the box. See [`src/agent/README.md`](src/agent/README.md) for where each
+piece lands per harness.
+
 ## Choose your environment
 
 ### 1. GitHub Codespaces
@@ -34,8 +46,9 @@ isolated environments below instead — see GitHub's own take on why:
 `ghcr.io/talxis/tools-agentbox/image:latest` and add that same `postCreateCommand` line — it's
 easy to end up with a working toolchain but no Skills/MCP registration if this step gets skipped,
 since nothing it does is baked into the image itself. It registers the
-[TALXIS/skills](https://github.com/TALXIS/skills) plugin (Skills + the `txc` MCP server) with
-whichever of Claude Code / GitHub Copilot is present — omit it if you don't want that.
+[TALXIS/skills](https://github.com/TALXIS/skills) plugin (Skills + the `txc` MCP server) and applies
+that repo's agent behaviour config to whichever of Claude Code / GitHub Copilot is present. Omit it if
+you don't want that.
 
 Or build your own `devcontainer.json` from individual features listed in
 [`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json).
@@ -44,6 +57,10 @@ Or build your own `devcontainer.json` from individual features listed in
 
 Copilot's cloud agent environment doesn't use `devcontainer.json` — customize it with
 [`.github/workflows/copilot-setup-steps.yml`](.github/workflows/copilot-setup-steps.yml) instead.
+
+That step runs as root via `sudo`, while the agent itself runs as the unprivileged runner user, so the
+agent config is written to both homes — see
+[`src/agent/README.md`](src/agent/README.md#which-home-directories-get-the-user-level-files).
 
 ### 3. Claude Code cloud environment
 
@@ -63,8 +80,9 @@ with:
 
 This installs the Feature list from
 [`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json)
-directly on the VM, and registers the [TALXIS/skills](https://github.com/TALXIS/skills) plugin
-(Skills + the `txc` MCP server) with Claude Code. No changes needed in individual repos.
+directly on the VM, registers the [TALXIS/skills](https://github.com/TALXIS/skills) plugin (Skills +
+the `txc` MCP server), and applies that repo's agent behaviour config to Claude Code. No changes
+needed in individual repos.
 
 To keep `txc` and the Dataverse templates current between setup script runs, merge the `hooks` from
 [`src/container/claude-code/session-start-hook.json`](src/container/claude-code/session-start-hook.json) into
