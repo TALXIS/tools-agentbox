@@ -16,6 +16,10 @@ jobs:
             pac-cli: ./**/pac-cli/**
             txc-cli: ./**/txc-cli/**
             power-platform: ./**/power-platform/**
+            agent:
+              - src/agent/**
+              - src/container/scripts/configure-agent-harness.sh
+              - test/agent/**
 
   test-features:
     needs: [detect-changes]
