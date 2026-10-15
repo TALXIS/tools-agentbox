@@ -19,6 +19,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The generator builds each README's usage example (".../<id>:1") from the manifest's major
+      # version, and the repo's manifests carry a 0.0.1 placeholder. Use the latest release's version
+      # instead, as publish.yaml does; only README.md files are committed below.
+      - name: Set the latest release version in every Feature and Template
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="$(gh release view --json tagName -q .tagName)"
+          version="${version#v}"
+          for f in src/container/features/*/devcontainer-feature.json src/container/templates/*/devcontainer-template.json; do
+            jq --arg v "$version" '.version = $v' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+          done
+
       # Two invocations: devcontainers/action refuses Features and Templates in one.
       - name: Generate Feature documentation
         uses: devcontainers/action@v1
