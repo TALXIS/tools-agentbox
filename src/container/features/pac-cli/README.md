@@ -7,7 +7,7 @@ Installs the Microsoft Power Platform CLI (pac). When version is 'latest', auto-
 
 ```json
 "features": {
-    "ghcr.io/TALXIS/tools-agentbox/pac-cli:1": {}
+    "ghcr.io/TALXIS/tools-agentbox/pac-cli:0": {}
 }
 ```
 

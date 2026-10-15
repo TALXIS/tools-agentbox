@@ -7,7 +7,7 @@ Installs the Microsoft Power Apps CLI (pa, npm @microsoft/power-apps-cli). Needs
 
 ```json
 "features": {
-    "ghcr.io/TALXIS/tools-agentbox/pa-cli:1": {}
+    "ghcr.io/TALXIS/tools-agentbox/pa-cli:0": {}
 }
 ```
 

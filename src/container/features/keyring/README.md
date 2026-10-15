@@ -7,10 +7,14 @@ Starts a D-Bus session bus and an unlocked gnome-keyring Secret Service, so CLIs
 
 ```json
 "features": {
-    "ghcr.io/TALXIS/tools-agentbox/keyring:1": {}
+    "ghcr.io/TALXIS/tools-agentbox/keyring:0": {}
 }
 ```
 
+## Options
+
+| Options Id | Description | Type | Default Value |
+|-----|-----|-----|-----|
 
 
 ## How it works

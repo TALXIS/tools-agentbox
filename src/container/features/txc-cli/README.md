@@ -7,7 +7,7 @@ Installs the TALXIS DevKit CLI (txc), a code-first toolkit for Power Platform an
 
 ```json
 "features": {
-    "ghcr.io/TALXIS/tools-agentbox/txc-cli:1": {}
+    "ghcr.io/TALXIS/tools-agentbox/txc-cli:0": {}
 }
 ```
 
