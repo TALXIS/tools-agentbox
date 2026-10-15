@@ -112,13 +112,20 @@ install_feature() {
         return
     fi
 
+    # The devcontainers CLI hands install.sh every option, falling back to the default declared in the
+    # Feature's devcontainer-feature.json for any the caller didn't set. install.sh scripts rely on
+    # that (the git Feature fails with "Invalid git version:" when VERSION arrives empty), so layer
+    # the declared defaults under the options from the resolved entry.
     local env_args=()
     while IFS=$'\t' read -r key value; do
         [ -z "${key}" ] && continue
         local var_name
         var_name="$(tr '[:lower:]' '[:upper:]' <<<"${key}" | sed -E 's/[^A-Z0-9_]/_/g; s/^[0-9_]+/_/')"
         env_args+=("${var_name}=${value}")
-    done < <(jq -r '.options // {} | to_entries[] | "\(.key)\t\(.value)"' <<<"${entry}")
+    done < <(jq -r --argjson given "$(jq -c '.options // {}' <<<"${entry}")" '
+        ((.options // {}) | with_entries(select(.value.default != null) | .value = .value.default)) + $given
+        | to_entries[] | "\(.key)\t\(.value)"' "${feat_dir}/devcontainer-feature.json" 2>/dev/null \
+        || jq -r '.options // {} | to_entries[] | "\(.key)\t\(.value)"' <<<"${entry}")
 
     ( cd "${feat_dir}" && env "${env_args[@]}" bash install.sh ) || {
         echo "WARNING: install of ${path} failed, continuing" >&2
