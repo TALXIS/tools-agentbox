@@ -26,19 +26,10 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
+      - uses: actions/checkout@v4
+
       - id: version
-        run: |
-          if [ "${{ github.event_name }}" != "release" ]; then
-            echo "workflow_dispatch requires a version. Create a GitHub Release instead." >&2
-            exit 1
-          fi
-          tag="${{ github.event.release.tag_name }}"
-          version="${tag#v}"
-          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
-            echo "Invalid release tag '$tag'. Expected vX.Y.Z or vX.Y.Z-prerelease." >&2
-            exit 1
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+        uses: ./.github/actions/release-version
 
   build:
     needs: [resolve-version]

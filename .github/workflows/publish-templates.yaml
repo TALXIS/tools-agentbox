@@ -52,9 +52,11 @@ jobs:
           fi
 
   # Publishing only ever happens because a human cut a GitHub Release - matches
-  # tools-cli/tools-devkit-templates/tools-devkit-build's convention. Each Template's own
-  # devcontainer-template.json version is authoritative for what actually gets published;
-  # devcontainers/action already skips anything whose version hasn't changed.
+  # tools-cli/tools-devkit-templates/tools-devkit-build's convention. Every Template is published under
+  # the release's version (the same number as the image), not the "version" in its manifest: that
+  # field is overwritten here, so the repo's copy doesn't need bumping. Unchanged Templates are
+  # republished with identical content. A major release moves every Template to a new major tag,
+  # so references to the old one (":1") must be updated in the same change.
   publish:
     if: ${{ github.event_name == 'release' }}
     runs-on: ubuntu-latest
@@ -64,11 +66,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: ./.github/actions/release-version
+        with:
+          set-in: "./src/container/templates/*/devcontainer-template.json"
+
       - name: "Publish Templates"
         uses: devcontainers/action@v1
         with:
           publish-templates: "true"
           base-path-to-templates: "./src/container/templates"
           generate-docs: "false"
+          # The release tag (vX.Y.Z) already records what was published.
+          disable-repo-tagging: "true"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
