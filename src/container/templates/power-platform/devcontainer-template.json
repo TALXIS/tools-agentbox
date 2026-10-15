@@ -1,6 +1,6 @@
 {
     "id": "power-platform",
-    "version": "1.0.0",
+    "version": "0.0.1",
     "name": "Power Platform",
     "description": "Full Power Platform / Dataverse development environment.",
     "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/container/templates/power-platform",

@@ -1,6 +1,6 @@
 {
     "id": "pac-cli",
-    "version": "1.0.0",
+    "version": "0.0.1",
     "name": "Power Platform CLI (pac)",
     "description": "Installs the Microsoft Power Platform CLI (pac). When version is 'latest', auto-updates on every container start via postStartCommand.",
     "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/container/features/pac-cli",
