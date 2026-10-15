@@ -16,7 +16,8 @@ RUN bash /tmp/feature/install.sh && apt-get update && apt-get install -y --no-in
 EOF2
 
 run() {
-    docker run --rm "devcontainer-feature-test-${FEATURE_ID}" bash -c "$1"
+    # -e: every assertion in a case counts, not just its last command.
+    docker run --rm "devcontainer-feature-test-${FEATURE_ID}" bash -ec "$1"
 }
 
 # Each case is a script passed to the container's bash as-is (quoted heredoc, no escaping).

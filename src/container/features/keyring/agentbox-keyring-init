@@ -59,7 +59,15 @@ fi
 
 export DBUS_SESSION_BUS_ADDRESS="${own_address}"
 
-mkdir -p "${bus_dir}" && chmod 700 "${bus_dir}" || { echo "agentbox-keyring-init: cannot create ${bus_dir}" >&2; exit 1; }
+# /tmp is shared: another local user could pre-create this directory with symlinks inside (lock,
+# bus) that we'd then follow. Create it atomically with mode 700, and only use it if it is a real
+# directory, ours, and still 700.
+mkdir -m 700 "${bus_dir}" 2>/dev/null
+if [ -L "${bus_dir}" ] || [ ! -d "${bus_dir}" ] || [ ! -O "${bus_dir}" ] \
+        || [ "$(stat -c %a "${bus_dir}")" != 700 ]; then
+    echo "agentbox-keyring-init: refusing to use ${bus_dir}: not a directory owned by $(id -un) with mode 700" >&2
+    exit 1
+fi
 
 # Callers can race on a cold start (an agent running pa and txc in parallel): without this, one
 # could unlink the other's fresh socket or kill its fresh keyring. Everything below runs under a
