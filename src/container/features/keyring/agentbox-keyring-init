@@ -59,10 +59,18 @@ fi
 
 export DBUS_SESSION_BUS_ADDRESS="${own_address}"
 
+mkdir -p "${bus_dir}" && chmod 700 "${bus_dir}" || { echo "agentbox-keyring-init: cannot create ${bus_dir}" >&2; exit 1; }
+
+# Callers can race on a cold start (an agent running pa and txc in parallel): without this, one
+# could unlink the other's fresh socket or kill its fresh keyring. Everything below runs under a
+# per-user lock and re-checks state; the daemons are started with the lock fd closed, or they would
+# hold it forever.
+exec 9>"${bus_dir}/lock"
+flock -w 30 9 || { echo "agentbox-keyring-init: timed out waiting for ${bus_dir}/lock" >&2; exit 1; }
+
 if ! bus_call ListNames >/dev/null; then
-    mkdir -p "${bus_dir}" && chmod 700 "${bus_dir}" || { echo "agentbox-keyring-init: cannot create ${bus_dir}" >&2; exit 1; }
     rm -f "${bus_dir}/bus"
-    dbus-daemon --session --address="${own_address}" --fork >/dev/null 2>&1
+    dbus-daemon --session --address="${own_address}" --fork >/dev/null 2>&1 9>&-
     wait_for bus_call ListNames >/dev/null \
         || { echo "agentbox-keyring-init: dbus-daemon did not start on ${own_address}" >&2; exit 1; }
 fi
@@ -92,7 +100,7 @@ fi
 
 # `echo ''`, not `printf ''`: the daemon needs the newline to read an (empty) password, and without
 # one it leaves the keyring locked.
-echo '' | gnome-keyring-daemon --unlock --components=secrets >/dev/null 2>&1
+echo '' | gnome-keyring-daemon --unlock --components=secrets >/dev/null 2>&1 9>&-
 wait_for secrets_running \
     || { echo "agentbox-keyring-init: gnome-keyring-daemon did not register org.freedesktop.secrets" >&2; exit 1; }
 

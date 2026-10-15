@@ -49,6 +49,9 @@ if [ "${CLI_VERSION}" = "latest" ]; then
     mkdir -p /etc/devcontainer-pa-cli
     touch /etc/devcontainer-pa-cli/auto-update
     echo "Auto-update enabled: pa will update on each container start."
+else
+    # A pin installed over an image that already has the marker would be undone on the next start.
+    rm -f /etc/devcontainer-pa-cli/auto-update
 fi
 
 echo "Power Apps CLI installed: $(node -p "require('${PREFIX}/lib/node_modules/${PACKAGE}/package.json').version" 2>/dev/null || echo 'installed')"
