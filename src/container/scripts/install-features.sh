@@ -145,6 +145,10 @@ while IFS= read -r entry; do
     install_feature "${entry}" "${n}"
 done < <(jq -c '.installOrder[]' <<<"${RESOLVED}")
 
+# dnx ships next to dotnet but isn't on PATH either; the TALXIS/skills plugin starts the txc MCP
+# server with it ("dnx TALXIS.CLI.MCP").
+[ -n "${DOTNET_ROOT:-}" ] && [ -x "${DOTNET_ROOT}/dnx" ] && link_dotnet_wrapper dnx "${DOTNET_ROOT}/dnx"
+
 # dotnet global tools (pac, txc) land in ~/.dotnet/tools and also need DOTNET_ROOT at run time.
 [ -x "${HOME}/.dotnet/tools/pac" ] && link_dotnet_wrapper pac "${HOME}/.dotnet/tools/pac" keyring
 [ -x "${HOME}/.dotnet/tools/txc" ] && link_dotnet_wrapper txc "${HOME}/.dotnet/tools/txc" keyring
@@ -181,7 +185,7 @@ curl -fsSL --max-time 20 "https://talxis.com/agentbox-harness" \
 # install_feature() logs failures but does not stop on them; report final status per tool.
 echo "=== Tool check ==="
 missing=0
-for tool in dotnet az pwsh terraform gh copilot claude func pac txc pa agentbox-keyring-init; do
+for tool in dotnet dnx az pwsh terraform gh copilot claude func pac txc pa agentbox-keyring-init; do
     if command -v "${tool}" >/dev/null 2>&1; then
         echo "OK   ${tool} -> $(command -v "${tool}")"
     else
