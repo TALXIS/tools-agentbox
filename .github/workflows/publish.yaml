@@ -1,47 +1,100 @@
-name: publish-image
+name: publish
 on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      version:
+        description: Version to publish (for example 1.3.0)
+        required: true
+        type: string
 
 permissions:
   packages: write
   contents: read
 
 concurrency:
-  group: publish-image-${{ github.ref }}
+  group: publish-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   IMAGE: ghcr.io/talxis/tools-agentbox/image
   DOCKERFILE: src/container/image/power-platform/Dockerfile
 
+# Same shape as tools-cli / tools-devkit-templates / platform-metadata: publishing happens because a
+# human cut a GitHub Release (or ran this by hand with a version), and everything this repo ships -
+# the image, every Feature, every Template - is published under that one version. The "version" in
+# each devcontainer-feature.json / devcontainer-template.json is a 0.0.1 placeholder that gets
+# overwritten here, like those repos' <PackageVersion>0.0.1</PackageVersion>.
 jobs:
-  # Publishing only ever happens because a human cut a GitHub Release - matches
-  # tools-cli/tools-devkit-templates/tools-devkit-build's convention exactly. workflow_dispatch
-  # stays listed only so a manual "Run workflow" click gets this clear error instead of the
-  # trigger not existing at all.
   resolve-version:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          TAG: ${{ github.event.release.tag_name }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          if [ "${{ github.event_name }}" != "release" ]; then
-            echo "workflow_dispatch requires a version. Create a GitHub Release instead." >&2
-            exit 1
+          if [ "$EVENT_NAME" = "release" ]; then
+            version="${TAG#v}"
+          else
+            version="$INPUT_VERSION"
           fi
-          tag="${{ github.event.release.tag_name }}"
-          version="${tag#v}"
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
-            echo "Invalid release tag '$tag'. Expected vX.Y.Z or vX.Y.Z-prerelease." >&2
+            echo "Invalid version '$version'. Expected a vX.Y.Z / vX.Y.Z-prerelease tag, or X.Y.Z as input." >&2
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-  build:
+  publish-features-templates:
     needs: [resolve-version]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set the release version in every Feature and Template
+        env:
+          VERSION: ${{ needs.resolve-version.outputs.version }}
+        run: |
+          # Unlike NuGet, the devcontainer CLI moves a Feature's ":1" and "latest" tags to a
+          # prerelease too, which would hand it to everyone on ":1".
+          if [[ "$VERSION" == *-* ]]; then
+            echo "Prerelease '$VERSION' can't be published as Features/Templates: it would move their ':${VERSION%%.*}' and 'latest' tags." >&2
+            exit 1
+          fi
+          for f in src/container/features/*/devcontainer-feature.json src/container/templates/*/devcontainer-template.json; do
+            jq --arg v "$VERSION" '.version = $v' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+            echo "$f -> $VERSION"
+          done
+
+      - name: Publish Features
+        uses: devcontainers/action@v1
+        with:
+          publish-features: "true"
+          base-path-to-features: "./src/container/features"
+          generate-docs: "false"
+          # The vX.Y.Z release tag already records what was published.
+          disable-repo-tagging: "true"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish Templates
+        uses: devcontainers/action@v1
+        with:
+          publish-templates: "true"
+          base-path-to-templates: "./src/container/templates"
+          generate-docs: "false"
+          disable-repo-tagging: "true"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    # Waits for the Features: install-features.sh resolves them from GHCR, so building first would
+    # race the publish (and fail on any Feature that is new in this release).
+    needs: [resolve-version, publish-features-templates]
     strategy:
       fail-fast: false
       matrix:
