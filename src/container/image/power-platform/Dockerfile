@@ -1,6 +1,6 @@
 FROM ubuntu:24.04
 
-# Set by publish-image.yaml from the GitHub Release tag that triggered the build - never hardcode
+# Set by publish.yaml from the GitHub Release tag that triggered the build - never hardcode
 # a version string here, it will just go stale the way the old one did.
 ARG IMAGE_VERSION=0.0.0-dev
 

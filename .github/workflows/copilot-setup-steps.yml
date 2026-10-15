@@ -18,3 +18,6 @@ jobs:
           sudo -E bash src/container/scripts/install-features.sh
           sudo chmod o+x /root
           sudo chmod -R o+rX /root/.dotnet /usr/local/dotnet 2>/dev/null || true
+          # install-features.sh runs as root; hand the runner user's cache back so
+          # Copilot's own tooling can write to it.
+          sudo chown -R "$(id -u):$(id -g)" "$HOME/.cache" "$HOME/.npm" 2>/dev/null || true
