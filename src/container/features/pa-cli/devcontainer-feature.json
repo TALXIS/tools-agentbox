@@ -1,0 +1,36 @@
+{
+    "id": "pa-cli",
+    "version": "1.0.0",
+    "name": "Power Apps CLI (pa)",
+    "description": "Installs the Microsoft Power Apps CLI (pa, npm @microsoft/power-apps-cli). Needs Node.js 22 or newer and a Secret Service keyring, which the secret-service Feature provides. When version is 'latest', auto-updates on every container start via postStartCommand.",
+    "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/container/features/pa-cli",
+    "licenseURL": "https://github.com/TALXIS/tools-agentbox/blob/master/LICENSE",
+    "options": {
+        "version": {
+            "type": "string",
+            "proposals": [
+                "latest"
+            ],
+            "default": "latest",
+            "description": "Version of @microsoft/power-apps-cli to install. Use 'latest' for auto-updates on each start."
+        }
+    },
+    "postStartCommand": "[ -f /etc/devcontainer-pa-cli/auto-update ] && npm install -g --prefix /usr/local/lib/power-apps-cli @microsoft/power-apps-cli@latest >/dev/null 2>&1 || true",
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "github.copilot.chat.codeGeneration.instructions": [
+                    {
+                        "text": "This dev container includes the Power Apps CLI (`pa`), which is pre-installed and available on the `PATH`. Run `pa --help` for the command reference and `pa auth status` to check the signed-in account."
+                    }
+                ]
+            }
+        }
+    },
+    "dependsOn": {
+        "ghcr.io/talxis/tools-agentbox/secret-service:1": {}
+    },
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/node"
+    ]
+}

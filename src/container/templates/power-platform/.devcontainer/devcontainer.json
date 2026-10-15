@@ -66,9 +66,13 @@
     // --global tools instead works reliably on every restart, because after the first run
     // those files live entirely in the container's own writable layer. remoteEnv.PATH below
     // prepends ~/.dotnet/tools so the fresh global copy shadows the stale baked-in one.
+    // start-keyring: the pre-built image doesn't carry the Features' own postStartCommands, and the
+    // D-Bus + gnome-keyring daemons the secret-service Feature sets up don't survive a restart.
     "postStartCommand": {
+        "start-keyring": "agentbox-keyring-init || true",
         "update-pac": "dotnet tool update --global Microsoft.PowerApps.CLI.Tool 2>/dev/null || true",
         "update-txc": "dotnet tool update --global TALXIS.CLI 2>/dev/null || true",
+        "update-pa": "[ -f /etc/devcontainer-pa-cli/auto-update ] && npm install -g --prefix /usr/local/lib/power-apps-cli @microsoft/power-apps-cli@latest >/dev/null 2>&1 || true",
         "update-devkit-templates": "dotnet new install TALXIS.DevKit.Templates.Dataverse 2>/dev/null || dotnet new install TALXIS.DevKit.Templates.Dataverse 2>/dev/null || true"
     },
 

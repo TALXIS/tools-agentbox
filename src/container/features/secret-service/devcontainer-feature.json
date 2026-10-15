@@ -1,0 +1,10 @@
+{
+    "id": "secret-service",
+    "version": "1.0.0",
+    "name": "Secret Service keyring (gnome-keyring)",
+    "description": "Starts a D-Bus session bus and an unlocked gnome-keyring Secret Service on every container start, so CLIs that store credentials through libsecret (txc, pac, pa) use the OS credential vault instead of a plaintext fallback. The keyring has an empty password.",
+    "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/container/features/secret-service",
+    "licenseURL": "https://github.com/TALXIS/tools-agentbox/blob/master/LICENSE",
+    "options": {},
+    "postStartCommand": "/usr/local/bin/agentbox-keyring-init || true"
+}

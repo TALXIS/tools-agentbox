@@ -83,10 +83,22 @@ docker run -it ghcr.io/talxis/tools-agentbox/image:latest bash
 |----------|---------------|
 | PAC CLI feature | `ghcr.io/talxis/tools-agentbox/pac-cli:latest` |
 | TXC CLI feature | `ghcr.io/talxis/tools-agentbox/txc-cli:latest` |
+| Power Apps CLI (`pa`) feature | `ghcr.io/talxis/tools-agentbox/pa-cli:latest` |
+| Secret Service keyring feature | `ghcr.io/talxis/tools-agentbox/secret-service:latest` |
 | Power Platform template | `ghcr.io/talxis/tools-agentbox/power-platform:latest` |
 | Pre-built image | `ghcr.io/talxis/tools-agentbox/image:latest` |
 
 ## Included tools
 
 See [`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json)
-for the current tool/version list.
+for the current tool/version list. `pa` (Power Apps CLI) follows `latest` and updates on every
+container start, like `pac` and `txc`; set the `pa-cli` Feature's `version` option to pin it.
+
+## Credential storage
+
+The image starts a D-Bus session bus and a gnome-keyring Secret Service on demand (the
+[`secret-service`](src/container/features/secret-service) Feature), so `txc`, `pac` and `pa` keep
+sign-in tokens in the OS credential vault instead of a plaintext file. `pa` can't run without it.
+The keyring is unlocked with an **empty password**: secrets are protected by file permissions
+(`0600`) only, the same as the plaintext fallback. That fits ephemeral, single-user dev and lab
+containers; see the Feature's [notes](src/container/features/secret-service/NOTES.md).

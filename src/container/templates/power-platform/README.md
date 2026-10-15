@@ -31,7 +31,11 @@ For faster Codespace startup, use the pre-built image which has all tools baked 
 
 ## Auto-update behavior
 
-`pac` and `txc` auto-update to the latest version on every container start. This ensures workshop participants always have the latest tooling without manual intervention.
+`pac`, `txc` and `pa` auto-update to the latest version on every container start. This ensures workshop participants always have the latest tooling without manual intervention.
+
+## Credential storage
+
+Every container start also starts a D-Bus session bus and an unlocked gnome-keyring Secret Service (`agentbox-keyring-init`), so `txc`, `pac` and `pa` store sign-in tokens in the OS credential vault. The keyring has an empty password, so it protects secrets with file permissions only — fine for ephemeral, single-user containers. See the [secret-service Feature notes](../../features/secret-service/NOTES.md).
 
 ## Agent harness setup
 

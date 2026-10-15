@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# Starts a D-Bus session bus and an unlocked gnome-keyring Secret Service for the calling user, so
+# tools that store credentials through libsecret (txc, pac, pa) can use it in a container with no
+# systemd and no desktop session. Idempotent and quiet when everything is already running, so it is
+# safe to call from postStartCommand, /etc/profile.d, and the CLI wrappers in /usr/local/bin.
+#
+# Run it, don't source it. Callers need DBUS_SESSION_BUS_ADDRESS set to the same value as below;
+# /etc/profile.d/agentbox-keyring.sh and the wrappers do that.
+#
+# The keyring has an empty password: it protects secrets with file permissions (0600) only, the same
+# as the plaintext fallback caches these tools use without it. See the secret-service Feature's NOTES.md.
+set -u
+
+command -v dbus-daemon >/dev/null 2>&1 && command -v gnome-keyring-daemon >/dev/null 2>&1 || exit 0
+
+# Kept short on purpose: dbus-daemon fails silently when a unix socket path is over 108 bytes.
+bus_dir="/tmp/agentbox-dbus-$(id -u)"
+export DBUS_SESSION_BUS_ADDRESS="unix:path=${bus_dir}/bus"
+
+warn() { echo "agentbox-keyring-init: $*" >&2; }
+
+bus_names() {
+    dbus-send --session --print-reply --reply-timeout=2000 --dest=org.freedesktop.DBus \
+        /org/freedesktop/DBus org.freedesktop.DBus.ListNames 2>/dev/null
+}
+
+# ListNames returns only names that are currently owned, not D-Bus-activatable ones, so a Secret
+# Service that the bus could start on demand (locked) doesn't count as running.
+secrets_running() { bus_names | grep -q '"org.freedesktop.secrets"'; }
+
+# Prints "true"/"false" for the default collection's Locked property, or nothing if there is none.
+default_locked() {
+    dbus-send --session --print-reply --reply-timeout=2000 --dest=org.freedesktop.secrets \
+        /org/freedesktop/secrets/aliases/default org.freedesktop.DBus.Properties.Get \
+        string:org.freedesktop.Secret.Collection string:Locked 2>/dev/null \
+        | awk '/boolean/ { print $NF }'
+}
+
+start_bus() {
+    mkdir -p "${bus_dir}" && chmod 700 "${bus_dir}" || { warn "cannot create ${bus_dir}"; return 1; }
+    rm -f "${bus_dir}/bus"
+    dbus-daemon --session --address="${DBUS_SESSION_BUS_ADDRESS}" --fork >/dev/null 2>&1
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        bus_names >/dev/null && return 0
+        sleep 0.2
+    done
+    warn "dbus-daemon did not start on ${DBUS_SESSION_BUS_ADDRESS}"
+    return 1
+}
+
+start_keyring() {
+    # `echo ''`, not `printf ''`: the daemon needs the newline to read an (empty) password, and
+    # without one it leaves the keyring locked.
+    echo '' | gnome-keyring-daemon --unlock --components=secrets >/dev/null 2>&1
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        secrets_running && return 0
+        sleep 0.2
+    done
+    warn "gnome-keyring-daemon did not register org.freedesktop.secrets"
+    return 1
+}
+
+bus_names >/dev/null || start_bus || exit 1
+
+if secrets_running && [ "$(default_locked)" != "true" ]; then
+    exit 0
+fi
+
+# Either nothing owns the name yet, or a daemon is running but locked (for example, it was
+# D-Bus-activated before anyone unlocked it). A later --unlock can't fix a locked one, so replace it.
+pkill -u "$(id -u)" -x gnome-keyring-d >/dev/null 2>&1 && sleep 0.3
+start_keyring || exit 1
+
+if [ "$(default_locked)" = "true" ]; then
+    warn "the keyring in ~/.local/share/keyrings is locked with a non-empty password and can't be"
+    warn "unlocked automatically. Delete ~/.local/share/keyrings to start over (stored sign-ins are lost)."
+    exit 1
+fi
+exit 0
