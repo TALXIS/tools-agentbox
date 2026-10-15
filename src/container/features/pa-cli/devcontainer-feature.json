@@ -1,6 +1,6 @@
 {
     "id": "pa-cli",
-    "version": "1.0.0",
+    "version": "0.0.1",
     "name": "Power Apps CLI (pa)",
     "description": "Installs the Microsoft Power Apps CLI (pa, npm @microsoft/power-apps-cli). Needs Node.js 22 or newer and a Secret Service keyring, which the keyring Feature provides. When version is 'latest', auto-updates on every container start via postStartCommand.",
     "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/container/features/pa-cli",
