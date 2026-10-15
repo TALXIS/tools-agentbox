@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Docker's cache is keyed on instruction text, not on what a re-run would actually fetch.
 ARG CACHEBUST=0
 COPY src/container/scripts/install-features.sh /tmp/install-features.sh
-RUN AGENTBOX_HARNESS=none CACHEBUST=${CACHEBUST} bash /tmp/install-features.sh \
+RUN AGENTBOX_STRICT=1 AGENTBOX_HARNESS=none CACHEBUST=${CACHEBUST} bash /tmp/install-features.sh \
     && rm /tmp/install-features.sh
 
 ENV DOTNET_ROOT=/usr/local/dotnet/current
