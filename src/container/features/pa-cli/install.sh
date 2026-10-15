@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Installs the Microsoft Power Apps CLI (pa) from npm into its own prefix, behind a wrapper in
-# /usr/local/bin that starts the Secret Service keyring first. pa hard-codes
+# /usr/local/bin that starts the Secret Service keyring (the keyring Feature) first. pa hard-codes
 # usePlaintextFileOnLinux: false, so without an unlocked keyring every command fails with
 # "GnomeKeyringError: Couldn't access platform storage: AccessDenied".
 #
@@ -40,7 +40,7 @@ chown -R "${REMOTE_USER}" "${PREFIX}" 2>/dev/null || true
 cat > /usr/local/bin/pa <<WRAPPER
 #!/bin/bash
 # Installed by the pa-cli devcontainer Feature (TALXIS/tools-agentbox).
-[ -r /etc/profile.d/agentbox-keyring.sh ] && . /etc/profile.d/agentbox-keyring.sh
+command -v agentbox-keyring-init >/dev/null 2>&1 && eval "\$(agentbox-keyring-init)"
 exec "${PREFIX}/bin/pa" "\$@"
 WRAPPER
 chmod 755 /usr/local/bin/pa

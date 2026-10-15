@@ -1,7 +1,7 @@
 
 # Power Apps CLI (pa) (pa-cli)
 
-Installs the Microsoft Power Apps CLI (pa, npm @microsoft/power-apps-cli). Needs Node.js 22 or newer and a Secret Service keyring, which the secret-service Feature provides. When version is 'latest', auto-updates on every container start via postStartCommand.
+Installs the Microsoft Power Apps CLI (pa, npm @microsoft/power-apps-cli). Needs Node.js 22 or newer and a Secret Service keyring, which the keyring Feature provides. When version is 'latest', auto-updates on every container start via postStartCommand.
 
 ## Example Usage
 
@@ -19,12 +19,9 @@ Installs the Microsoft Power Apps CLI (pa, npm @microsoft/power-apps-cli). Needs
 
 ## Credential storage
 
-`pa` stores tokens only in the OS credential vault: it hard-codes `usePlaintextFileOnLinux: false`,
-with no flag or environment variable to change it. Without a running, unlocked Secret Service every
-command fails with `GnomeKeyringError: Couldn't access platform storage: AccessDenied`. This Feature
-therefore depends on the [`secret-service`](../secret-service) Feature, and `/usr/local/bin/pa` is a
-wrapper that starts the keyring (`agentbox-keyring-init`) before running the real CLI. See that
-Feature's notes for the empty-password trade-off.
+`pa` can only store tokens in the OS credential vault (it hard-codes `usePlaintextFileOnLinux: false`),
+so this Feature depends on the [`keyring`](../keyring/NOTES.md) Feature, and `/usr/local/bin/pa` is a
+wrapper that starts the keyring before running the real CLI.
 
 ## Install location and versions
 

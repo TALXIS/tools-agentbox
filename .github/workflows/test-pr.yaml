@@ -15,7 +15,7 @@ jobs:
           filters: |
             pac-cli: ./**/pac-cli/**
             txc-cli: ./**/txc-cli/**
-            secret-service: ./**/secret-service/**
+            keyring: ./**/keyring/**
             pa-cli: ./**/pa-cli/**
             power-platform: ./**/power-platform/**
 

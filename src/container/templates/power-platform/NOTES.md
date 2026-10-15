@@ -28,7 +28,7 @@ For faster Codespace startup, use the pre-built image which has all tools baked 
 
 ## Credential storage
 
-Every container start also starts a D-Bus session bus and an unlocked gnome-keyring Secret Service (`agentbox-keyring-init`), so `txc`, `pac` and `pa` store sign-in tokens in the OS credential vault. The keyring has an empty password, so it protects secrets with file permissions only — fine for ephemeral, single-user containers. See the [secret-service Feature notes](../../features/secret-service/NOTES.md).
+`txc`, `pac` and `pa` keep sign-in tokens in a gnome-keyring unlocked with an empty password; see the [keyring Feature notes](../../features/keyring/NOTES.md).
 
 ## Agent harness setup
 

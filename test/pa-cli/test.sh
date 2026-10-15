@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test for the pa-cli devcontainer feature (with its secret-service dependency)
+# Smoke test for the pa-cli devcontainer feature (with its keyring dependency)
 set -e
 
 FEATURE_ID="pa-cli"
@@ -13,9 +13,9 @@ docker build \
     . << 'EOF2'
 FROM node:22-bookworm
 ARG VERSION=latest
-COPY src/container/features/secret-service/ /tmp/secret-service/
+COPY src/container/features/keyring/ /tmp/keyring/
 COPY src/container/features/pa-cli/ /tmp/pa-cli/
-RUN bash /tmp/secret-service/install.sh && \
+RUN bash /tmp/keyring/install.sh && \
     _REMOTE_USER=root VERSION=${VERSION} bash /tmp/pa-cli/install.sh
 EOF2
 
