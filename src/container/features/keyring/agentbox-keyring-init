@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+# Makes sure the calling user has a D-Bus session bus with an unlocked gnome-keyring Secret Service,
+# then prints the line that points a shell at it:
+#
+#     eval "$(agentbox-keyring-init)"
+#
+# That one line is how everything uses it: /etc/profile.d/agentbox-keyring.sh, the pa/pac/txc
+# wrappers in /usr/local/bin, and postStartCommand (output discarded there). See NOTES.md next to
+# this file for which provisioning path relies on which.
+#
+# This is the only place the bus address is defined. Idempotent: when everything is already running
+# it costs one D-Bus round trip. Prints nothing to stdout except the export line; diagnostics go to
+# stderr.
+#
+# The keyring has an empty password, so it protects secrets with file permissions (0600) only - the
+# same as the plaintext fallback caches txc and pac use without it.
+set -u
+
+command -v dbus-daemon >/dev/null 2>&1 && command -v gnome-keyring-daemon >/dev/null 2>&1 || exit 0
+
+# Kept short on purpose: dbus-daemon fails silently when a unix socket path is over 108 bytes.
+bus_dir="/tmp/agentbox-keyring-$(id -u)"
+own_address="unix:path=${bus_dir}/bus"
+
+print_env() { printf "export DBUS_SESSION_BUS_ADDRESS='%s'\n" "${DBUS_SESSION_BUS_ADDRESS}"; }
+
+bus_call() {
+    dbus-send --session --print-reply --reply-timeout=2000 --dest=org.freedesktop.DBus \
+        /org/freedesktop/DBus "org.freedesktop.DBus.$1" ${2:+"$2"} 2>/dev/null
+}
+
+# ListNames returns only names that are currently owned, not D-Bus-activatable ones, so a Secret
+# Service the bus could start on demand (locked) doesn't count as running.
+secrets_running() { bus_call ListNames | grep -q '"org.freedesktop.secrets"'; }
+
+# Prints "true"/"false" for the default collection's Locked property, or nothing if there is none.
+default_locked() {
+    dbus-send --session --print-reply --reply-timeout=2000 --dest=org.freedesktop.secrets \
+        /org/freedesktop/secrets/aliases/default org.freedesktop.DBus.Properties.Get \
+        string:org.freedesktop.Secret.Collection string:Locked 2>/dev/null \
+        | awk '/boolean/ { print $NF }'
+}
+
+wait_for() {
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        "$@" && return 0
+        sleep 0.2
+    done
+    return 1
+}
+
+# A session bus someone else set up (a desktop session, systemd --user) is never touched: no
+# daemons started on it, nothing killed, the address passed through unchanged.
+if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ "${DBUS_SESSION_BUS_ADDRESS}" != "${own_address}" ] \
+        && bus_call ListNames >/dev/null; then
+    print_env
+    exit 0
+fi
+
+export DBUS_SESSION_BUS_ADDRESS="${own_address}"
+
+# /tmp is shared: another local user could pre-create this directory with symlinks inside (lock,
+# bus) that we'd then follow. Create it atomically with mode 700, and only use it if it is a real
+# directory, ours, and still 700.
+mkdir -m 700 "${bus_dir}" 2>/dev/null
+if [ -L "${bus_dir}" ] || [ ! -d "${bus_dir}" ] || [ ! -O "${bus_dir}" ] \
+        || [ "$(stat -c %a "${bus_dir}")" != 700 ]; then
+    echo "agentbox-keyring-init: refusing to use ${bus_dir}: not a directory owned by $(id -un) with mode 700" >&2
+    exit 1
+fi
+
+# Callers can race on a cold start (an agent running pa and txc in parallel): without this, one
+# could unlink the other's fresh socket or kill its fresh keyring. Everything below runs under a
+# per-user lock and re-checks state; the daemons are started with the lock fd closed, or they would
+# hold it forever.
+exec 9>"${bus_dir}/lock"
+flock -w 30 9 || { echo "agentbox-keyring-init: timed out waiting for ${bus_dir}/lock" >&2; exit 1; }
+
+if ! bus_call ListNames >/dev/null; then
+    rm -f "${bus_dir}/bus"
+    dbus-daemon --session --address="${own_address}" --fork >/dev/null 2>&1 9>&-
+    wait_for bus_call ListNames >/dev/null \
+        || { echo "agentbox-keyring-init: dbus-daemon did not start on ${own_address}" >&2; exit 1; }
+fi
+
+if secrets_running; then
+    case "$(default_locked)" in
+        true)
+            # Already replaced once on this bus and still locked: the keyring has a real password.
+            # Restarting it again on every call wouldn't help (see the warning further down).
+            # Once that directory is deleted (the fix the warning suggests), replace it again.
+            [ -e "${bus_dir}/locked-warned" ] && [ -d "${HOME}/.local/share/keyrings" ] \
+                && { print_env; exit 1; } ;;
+        false)
+            print_env
+            exit 0 ;;
+    esac
+fi
+
+# Nothing owns the name yet, or the daemon that does is unusable: locked (it was D-Bus-activated
+# before anyone unlocked it, and a later --unlock can't fix that) or without a default collection
+# (its keyring files were deleted). Replace it - only the process that owns the name on this bus.
+pid="$(bus_call GetConnectionUnixProcessID string:org.freedesktop.secrets | awk '/uint32/ { print $2 }')"
+if [ -n "${pid}" ]; then
+    kill "${pid}" 2>/dev/null
+    wait_for sh -c "! kill -0 ${pid} 2>/dev/null"
+fi
+
+# `echo ''`, not `printf ''`: the daemon needs the newline to read an (empty) password, and without
+# one it leaves the keyring locked.
+echo '' | gnome-keyring-daemon --unlock --components=secrets >/dev/null 2>&1 9>&-
+wait_for secrets_running \
+    || { echo "agentbox-keyring-init: gnome-keyring-daemon did not register org.freedesktop.secrets" >&2; exit 1; }
+
+if [ "$(default_locked)" = "true" ]; then
+    # Once per bus directory, so a CLI called in a loop doesn't repeat it every time.
+    if [ ! -e "${bus_dir}/locked-warned" ]; then
+        touch "${bus_dir}/locked-warned"
+        echo "agentbox-keyring-init: ~/.local/share/keyrings is locked with a non-empty password and can't be unlocked automatically. Delete that directory to start over (stored sign-ins are lost)." >&2
+    fi
+    print_env
+    exit 1
+fi
+
+rm -f "${bus_dir}/locked-warned"
+print_env

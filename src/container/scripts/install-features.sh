@@ -57,6 +57,14 @@ jq '{features: (.features + {"ghcr.io/devcontainers/features/dotnet:1": {"versio
 echo "Resolving Feature versions and install order..."
 # resolve-dependencies prints a mermaid flowchart before the JSON result; keep only the JSON.
 RESOLVED="$(devcontainer features resolve-dependencies --workspace-folder "${WORKDIR}" | sed -n '/^{/,$p')"
+# Resolution fails as a whole when any listed Feature can't be fetched - e.g. one that was just added
+# to the manifest on master but isn't published to GHCR until the next release. Installing nothing and
+# exiting 0 would hide that (and bake an empty pre-built image), so fail loudly instead.
+if ! jq -e '.installOrder | length > 0' <<<"${RESOLVED}" >/dev/null 2>&1; then
+    echo "ERROR: could not resolve the Feature list (${FEATURES_MANIFEST_URL}); nothing was installed." >&2
+    echo "A Feature in it may not be published to GHCR yet." >&2
+    exit 1
+fi
 
 install_feature() {
     local entry="$1" n="$2"
@@ -115,11 +123,17 @@ install_feature() {
 }
 
 # Writes /usr/local/bin/<name> as a wrapper that exports DOTNET_ROOT before exec'ing real_path.
+# With a third argument "keyring", the wrapper also starts the Secret Service keyring (the keyring
+# Feature) first, so the tool's credential cache uses it instead of a plaintext fallback even from
+# non-login shells, which never source /etc/profile.d. A no-op where that Feature isn't installed.
 link_dotnet_wrapper() {
-    local name="$1" real_path="$2"
+    local name="$1" real_path="$2" keyring_line=""
+    [ "${3:-}" = "keyring" ] \
+        && keyring_line='command -v agentbox-keyring-init >/dev/null 2>&1 && eval "$(agentbox-keyring-init)"'
     cat > "/usr/local/bin/${name}" <<WRAPPER
 #!/bin/bash
 export DOTNET_ROOT="${DOTNET_ROOT:-}"
+${keyring_line}
 exec "${real_path}" "\$@"
 WRAPPER
     chmod +x "/usr/local/bin/${name}"
@@ -132,8 +146,8 @@ while IFS= read -r entry; do
 done < <(jq -c '.installOrder[]' <<<"${RESOLVED}")
 
 # dotnet global tools (pac, txc) land in ~/.dotnet/tools and also need DOTNET_ROOT at run time.
-[ -x "${HOME}/.dotnet/tools/pac" ] && link_dotnet_wrapper pac "${HOME}/.dotnet/tools/pac"
-[ -x "${HOME}/.dotnet/tools/txc" ] && link_dotnet_wrapper txc "${HOME}/.dotnet/tools/txc"
+[ -x "${HOME}/.dotnet/tools/pac" ] && link_dotnet_wrapper pac "${HOME}/.dotnet/tools/pac" keyring
+[ -x "${HOME}/.dotnet/tools/txc" ] && link_dotnet_wrapper txc "${HOME}/.dotnet/tools/txc" keyring
 
 # The node Feature installs via nvm, which only reaches PATH through /etc/profile.d or shell rc
 # files sourced by a login shell — neither Claude Code's Bash tool, a GitHub Actions step, nor
@@ -144,6 +158,8 @@ done < <(jq -c '.installOrder[]' <<<"${RESOLVED}")
 # claude-code installs into this same nvm-managed npm's global bin dir, so it needs the same
 # treatment — otherwise it's only reachable from within this script's own shell (where the node
 # Feature's containerEnv eval above already put nvm's bin dir on PATH), not from any later shell.
+# Don't add `pa` here: the pa-cli Feature installs it outside nvm's prefix and writes its own
+# /usr/local/bin/pa wrapper (keyring init + exec), which a symlink would overwrite.
 nvm_current="${NVM_DIR:-/usr/local/share/nvm}/current/bin"
 if [ -x "${nvm_current}/node" ]; then
     for bin in node npm npx corepack claude; do
@@ -165,7 +181,7 @@ curl -fsSL --max-time 20 "https://talxis.com/agentbox-harness" \
 # install_feature() logs failures but does not stop on them; report final status per tool.
 echo "=== Tool check ==="
 missing=0
-for tool in dotnet az pwsh terraform gh copilot claude func pac txc; do
+for tool in dotnet az pwsh terraform gh copilot claude func pac txc pa agentbox-keyring-init; do
     if command -v "${tool}" >/dev/null 2>&1; then
         echo "OK   ${tool} -> $(command -v "${tool}")"
     else

@@ -11,6 +11,8 @@
         "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
         "ghcr.io/jlaundry/devcontainer-features/azure-functions-core-tools:1": { "version": "latest" },
         "ghcr.io/talxis/tools-agentbox/pac-cli:1": { "version": "latest" },
-        "ghcr.io/talxis/tools-agentbox/txc-cli:1": { "version": "latest" }
+        "ghcr.io/talxis/tools-agentbox/txc-cli:1": { "version": "latest" },
+        "ghcr.io/talxis/tools-agentbox/keyring:1": {},
+        "ghcr.io/talxis/tools-agentbox/pa-cli:1": { "version": "latest" }
     }
 }

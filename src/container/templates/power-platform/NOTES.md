@@ -24,7 +24,11 @@ For faster Codespace startup, use the pre-built image which has all tools baked 
 
 ## Auto-update behavior
 
-`pac` and `txc` auto-update to the latest version on every container start. This ensures workshop participants always have the latest tooling without manual intervention.
+`pac`, `txc` and `pa` auto-update to the latest version on every container start. This ensures workshop participants always have the latest tooling without manual intervention.
+
+## Credential storage
+
+`txc`, `pac` and `pa` keep sign-in tokens in a gnome-keyring unlocked with an empty password; see the [keyring Feature notes](../../features/keyring/NOTES.md).
 
 ## Agent harness setup
 

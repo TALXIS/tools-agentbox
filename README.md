@@ -83,10 +83,19 @@ docker run -it ghcr.io/talxis/tools-agentbox/image:latest bash
 |----------|---------------|
 | PAC CLI feature | `ghcr.io/talxis/tools-agentbox/pac-cli:latest` |
 | TXC CLI feature | `ghcr.io/talxis/tools-agentbox/txc-cli:latest` |
+| Power Apps CLI (`pa`) feature | `ghcr.io/talxis/tools-agentbox/pa-cli:latest` |
+| Keyring (Secret Service) feature | `ghcr.io/talxis/tools-agentbox/keyring:latest` |
 | Power Platform template | `ghcr.io/talxis/tools-agentbox/power-platform:latest` |
 | Pre-built image | `ghcr.io/talxis/tools-agentbox/image:latest` |
 
 ## Included tools
 
 See [`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json)
-for the current tool/version list.
+for the current tool/version list. `pa` (Power Apps CLI) follows `latest` and updates on every
+container start, like `pac` and `txc`; set the `pa-cli` Feature's `version` option to pin it.
+
+## Credential storage
+
+`txc`, `pac` and `pa` keep sign-in tokens in a gnome-keyring that AgentBox starts and unlocks with an
+**empty password**: no better than file permissions, which is fine for ephemeral, single-user
+containers. Details: [keyring Feature notes](src/container/features/keyring/NOTES.md).

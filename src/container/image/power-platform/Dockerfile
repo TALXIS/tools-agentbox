@@ -14,7 +14,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl wget git zip unzip jq ca-certificates gnupg lsb-release \
     ripgrep fd-find bat delta fzf tree xdg-utils less file \
-    libsecret-1-0 gnome-keyring \
     apt-transport-https software-properties-common \
     sudo procps \
     && rm -rf /var/lib/apt/lists/*

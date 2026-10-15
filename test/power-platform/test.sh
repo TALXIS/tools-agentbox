@@ -46,9 +46,13 @@ run 'PATH="$PATH:/home/vscode/.dotnet/tools" pac help'
 echo "--- txc ---"
 run 'PATH="$PATH:/home/vscode/.dotnet/tools" txc --version'
 
+echo "--- pa (keyring started by its wrapper) ---"
+run 'pa auth status --json | grep -q "\"success\": true" && echo "pa auth status: OK"'
+
 echo "--- auto-update flag files ---"
 run "test -f /etc/devcontainer-pac-cli/auto-update && echo 'pac auto-update: OK'"
 run "test -f /etc/devcontainer-txc-cli/auto-update && echo 'txc auto-update: OK'"
+run "test -f /etc/devcontainer-pa-cli/auto-update && echo 'pa auto-update: OK'"
 
 echo "=== power-platform smoke test PASSED ==="
 docker image rm "devcontainer-template-test-power-platform" 2>/dev/null || true
