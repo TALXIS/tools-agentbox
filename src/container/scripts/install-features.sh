@@ -24,6 +24,11 @@
 # setup for whichever harness isn't relevant to that caller, so nobody pays for another harness's
 # network call or risks seeing its warnings. Left unset (manual/local runs), both are attempted if
 # installed.
+#
+# AGENTBOX_STRICT=1 makes the script exit non-zero when a Feature failed to install or a tool is
+# missing at the end (the Dockerfile sets it, so a broken image never gets published). Left unset
+# the script always exits 0 after printing the same summary, so a hiccup in one Feature doesn't
+# stop a cloud session from starting.
 set -uo pipefail
 
 # $HOME may be unset in the invoking environment; every path below depends on it.
@@ -66,6 +71,8 @@ if ! jq -e '.installOrder | length > 0' <<<"${RESOLVED}" >/dev/null 2>&1; then
     exit 1
 fi
 
+FAILED_FEATURES=()
+
 install_feature() {
     local entry="$1" n="$2"
     local id path registry rest digest token manifest layer_digest feat_dir
@@ -89,12 +96,21 @@ install_feature() {
     manifest="$(curl -fsSL -H "Authorization: Bearer ${token}" \
         -H "Accept: application/vnd.oci.image.manifest.v1+json" \
         "https://${registry}/v2/${path}/manifests/${digest}")"
-    layer_digest="$(jq -r '.layers[0].digest' <<<"${manifest}")"
+    layer_digest="$(jq -r '.layers[0].digest // empty' <<<"${manifest}" 2>/dev/null)"
+    if [ -z "${layer_digest}" ]; then
+        echo "WARNING: could not fetch ${path} from ${registry}, skipping" >&2
+        FAILED_FEATURES+=("${path}")
+        return
+    fi
 
     feat_dir="${WORKDIR}/feat-${n}"
     mkdir -p "${feat_dir}"
-    curl -fsSL -H "Authorization: Bearer ${token}" "https://${registry}/v2/${path}/blobs/${layer_digest}" \
-        | tar -x -C "${feat_dir}"
+    if ! curl -fsSL -H "Authorization: Bearer ${token}" "https://${registry}/v2/${path}/blobs/${layer_digest}" \
+        | tar -x -C "${feat_dir}"; then
+        echo "WARNING: could not download ${path}, skipping" >&2
+        FAILED_FEATURES+=("${path}")
+        return
+    fi
 
     local env_args=()
     while IFS=$'\t' read -r key value; do
@@ -104,8 +120,10 @@ install_feature() {
         env_args+=("${var_name}=${value}")
     done < <(jq -r '.options // {} | to_entries[] | "\(.key)\t\(.value)"' <<<"${entry}")
 
-    ( cd "${feat_dir}" && env "${env_args[@]}" bash install.sh ) \
-        || echo "WARNING: install of ${path} failed, continuing" >&2
+    ( cd "${feat_dir}" && env "${env_args[@]}" bash install.sh ) || {
+        echo "WARNING: install of ${path} failed, continuing" >&2
+        FAILED_FEATURES+=("${path}")
+    }
 
     # Apply each Feature's declared containerEnv (e.g. dotnet's DOTNET_ROOT) to this shell, and
     # persist it to /etc/profile.d for any interactive login shell. Neither Claude Code nor a
@@ -193,6 +211,19 @@ for tool in dotnet dnx az pwsh terraform gh copilot claude func pac txc pa agent
         missing=1
     fi
 done
+
+# A Feature can fail while its tool is still found (already on the host, or an older copy), so the
+# tool check alone would call that a clean run.
+echo "=== Install summary ==="
+if [ "${#FAILED_FEATURES[@]}" -gt 0 ]; then
+    echo "FAILED Features (${#FAILED_FEATURES[@]}): ${FAILED_FEATURES[*]}"
+fi
 [ "${missing}" -eq 1 ] && echo "One or more tools are missing — see the install output above for the matching WARNING line."
+if [ "${#FAILED_FEATURES[@]}" -eq 0 ] && [ "${missing}" -eq 0 ]; then
+    echo "All Features installed and all tools found."
+elif [ "${AGENTBOX_STRICT:-0}" = "1" ]; then
+    echo "AGENTBOX_STRICT=1: failing the run." >&2
+    exit 1
+fi
 
 exit 0
