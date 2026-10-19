@@ -3,8 +3,8 @@ using DotMake.CommandLine;
 namespace TALXIS.AgentBox.CLI;
 
 [CliCommand(
-    Description = "Set up and check the AgentBox environment for Power Platform / Dataverse development: prerequisites, coding-agent harnesses, devcontainer config.",
-    Children = new[] { typeof(Prerequisite.PrerequisiteCliCommand), typeof(Harness.HarnessCliCommand), typeof(Devcontainer.DevcontainerCliCommand) },
+    Description = "Makes this machine or container ready for coding agents working on Power Platform / Dataverse.",
+    Children = new[] { typeof(Prerequisites.PrerequisiteCliCommand), typeof(Harness.HarnessCliCommand) },
     ShortFormAutoGenerate = CliNameAutoGenerate.None
 )]
 public class AgentBoxCliCommand

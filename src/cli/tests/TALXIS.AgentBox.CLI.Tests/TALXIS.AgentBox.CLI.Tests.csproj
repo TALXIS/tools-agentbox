@@ -13,7 +13,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\TALXIS.AgentBox.CLI\TALXIS.AgentBox.CLI.csproj" />
-    <ProjectReference Include="..\..\TALXIS.AgentBox.CLI.Core\TALXIS.AgentBox.CLI.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

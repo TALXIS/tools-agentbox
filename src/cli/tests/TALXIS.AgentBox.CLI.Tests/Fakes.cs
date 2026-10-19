@@ -1,12 +1,11 @@
 using System.Text;
 using NuGet.Versioning;
-using TALXIS.AgentBox.CLI.Core;
-using TALXIS.AgentBox.CLI.Core.Cli;
-using TALXIS.AgentBox.CLI.Core.Features;
-using TALXIS.AgentBox.CLI.Core.Host;
-using TALXIS.AgentBox.CLI.Core.Registry;
+using TALXIS.AgentBox.CLI.Cli;
+using TALXIS.AgentBox.CLI.Host;
+using TALXIS.AgentBox.CLI.Prerequisites;
+using TALXIS.AgentBox.CLI.Registry;
 
-// Command tests swap the static AgentBoxServices.Current, so tests must not run in parallel.
+// Command tests swap the static AgentBoxServices.Current, so they can't run in parallel.
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace TALXIS.AgentBox.CLI.Tests;
@@ -14,14 +13,11 @@ namespace TALXIS.AgentBox.CLI.Tests;
 internal sealed class FakeHost : IHostInfo
 {
     public OsKind Os { get; init; } = OsKind.Linux;
-    public HostClass HostClass { get; init; } = HostClass.Container;
-    public bool IsRoot { get; init; } = true;
-    public string HomeDirectory { get; init; } = Directory.CreateTempSubdirectory("agentbox-home-").FullName;
-    public Dictionary<string, string> Environment { get; } = new()
-    {
-        // Keeps the state store out of /var/lib/agentbox, which tests may not be able to write.
-        ["AGENTBOX_STATE_DIR"] = Directory.CreateTempSubdirectory("agentbox-state-").FullName,
-    };
+    public bool IsContainer { get; init; } = true;
+    public bool IsRoot { get; init; }
+    public bool IsInteractive { get; init; }
+    public string HomeDirectory { get; } = Directory.CreateTempSubdirectory("agentbox-home-").FullName;
+    public Dictionary<string, string> Environment { get; } = new();
     public HashSet<string> Files { get; } = new();
 
     public string? GetEnvironmentVariable(string name) => Environment.GetValueOrDefault(name);
@@ -32,23 +28,37 @@ internal sealed class FakeHost : IHostInfo
 internal sealed class FakeProcesses : IProcessRunner
 {
     public Dictionary<string, string> OnPath { get; } = new();
-    public List<(string File, string[] Args)> Calls { get; } = new();
-    public Func<string, IReadOnlyList<string>, ProcessResult> Handler { get; set; } = (_, _) => new ProcessResult(0, "", "", false);
+    public List<string> Calls { get; } = new();
+    public Func<string, IReadOnlyList<string>, ProcessResult> Handler { get; set; } = (_, _) => new(0, "", "", false);
 
     public string? FindOnPath(string command) => OnPath.GetValueOrDefault(command);
 
     public Task<ProcessResult> RunAsync(string fileName, IReadOnlyList<string> arguments, TimeSpan timeout,
         IReadOnlyDictionary<string, string?>? environment = null, string? workingDirectory = null, CancellationToken cancellationToken = default)
     {
-        Calls.Add((fileName, arguments.ToArray()));
+        Calls.Add($"{fileName} {string.Join(' ', arguments)}");
         return Task.FromResult(Handler(fileName, arguments));
+    }
+
+    /// <summary>Every catalog command on PATH, and a .NET 10 SDK.</summary>
+    public static FakeProcesses WithEverything()
+    {
+        var processes = new FakeProcesses
+        {
+            Handler = (file, args) => file == "dotnet" && args.SequenceEqual(["--list-sdks"])
+                ? new(0, "10.0.100 [/usr/share/dotnet/sdk]\n", "", false)
+                : new(0, "", "", false),
+        };
+        foreach (var p in PrerequisiteCatalog.All)
+            processes.OnPath[p.Command] = "/usr/bin/" + p.Command;
+        return processes;
     }
 }
 
 internal sealed class FakeRegistry : IPackageRegistryClient
 {
     public Dictionary<string, string> Latest { get; } = new(StringComparer.OrdinalIgnoreCase);
-    public bool Offline { get; set; }
+    public bool Offline { get; init; }
 
     public Task<NuGetVersion?> GetLatestNuGetVersionAsync(string packageId, CancellationToken cancellationToken) => Get(packageId);
     public Task<NuGetVersion?> GetLatestNpmVersionAsync(string packageName, CancellationToken cancellationToken) => Get(packageName);
@@ -58,6 +68,17 @@ internal sealed class FakeRegistry : IPackageRegistryClient
         : Task.FromResult(Latest.TryGetValue(id, out var v) ? NuGetVersion.Parse(v) : null);
 }
 
+internal sealed class FakePrompt(string? answer = null) : IPrompt
+{
+    public int Asked { get; private set; }
+
+    public string? Ask(string question)
+    {
+        Asked++;
+        return answer;
+    }
+}
+
 /// <summary>Installs fakes as <see cref="AgentBoxServices.Current"/> and captures stdout for one test.</summary>
 internal sealed class CommandHarness : IDisposable
 {
@@ -65,18 +86,12 @@ internal sealed class CommandHarness : IDisposable
     private readonly IDisposable _redirect;
     private readonly StringBuilder _output = new();
 
-    public CommandHarness(FakeHost host, FakeProcesses? processes = null, FakeRegistry? registry = null)
+    public CommandHarness(FakeHost host, FakeProcesses? processes = null, FakeRegistry? registry = null, IPrompt? prompt = null)
     {
-        Host = host;
-        Processes = processes ?? new FakeProcesses();
-        Registry = registry ?? new FakeRegistry();
-        AgentBoxServices.Current = new AgentBoxServices(Host, Processes, Registry, () => null);
+        AgentBoxServices.Current = new AgentBoxServices(host, processes ?? new FakeProcesses(), registry ?? new FakeRegistry(), prompt ?? new FakePrompt(), null, null);
         _redirect = OutputWriter.RedirectTo(new StringWriter(_output));
     }
 
-    public FakeHost Host { get; }
-    public FakeProcesses Processes { get; }
-    public FakeRegistry Registry { get; }
     public string Output => _output.ToString();
 
     public void Dispose()

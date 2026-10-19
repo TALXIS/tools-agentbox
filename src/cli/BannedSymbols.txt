@@ -1,7 +1,5 @@
-# Banned APIs for agentbox command code. Copied from tools-cli src/BannedSymbols.txt (d70a60e).
-# Use OutputWriter / OutputFormatter for tool result output.
-# Use ILogger (via AgentBoxLoggerFactory) for diagnostic messages.
-# Infrastructure projects (Logging, MCP, Core) opt out of this check.
+# Same rules as tools-cli: results go through OutputFormatter, diagnostics through ILogger.
+# The few approved sinks suppress RS0030 where they touch the console.
 
 # Console.Write / Console.WriteLine — use OutputWriter instead
 M:System.Console.Write(System.String);Use OutputWriter.Write() or OutputFormatter for command output
@@ -22,10 +20,9 @@ P:System.Console.Error;Use ILogger for diagnostics or an approved logging sink
 P:System.Console.Out;Use OutputWriter/OutputFormatter for command output or an approved stdout sink
 
 # Console.ReadKey / Console.ReadLine — interactive I/O forbidden in command code
-# Use IHeadlessDetector to guard interactive flows and prompt via a dedicated abstraction.
-M:System.Console.ReadKey;Use IHeadlessDetector and a prompt abstraction instead
-M:System.Console.ReadKey(System.Boolean);Use IHeadlessDetector and a prompt abstraction instead
-M:System.Console.ReadLine;Use IHeadlessDetector and a prompt abstraction instead
+M:System.Console.ReadKey;Use IPrompt instead
+M:System.Console.ReadKey(System.Boolean);Use IPrompt instead
+M:System.Console.ReadLine;Use IPrompt instead
 
 # Thread.Sleep — blocks the thread; use Task.Delay() in async code
 M:System.Threading.Thread.Sleep(System.Int32);Use await Task.Delay() instead of Thread.Sleep
@@ -35,7 +32,7 @@ M:System.Threading.Thread.Sleep(System.TimeSpan);Use await Task.Delay() instead 
 M:System.Net.Http.HttpClient.#ctor;Use IHttpClientFactory or a shared static HttpClient instance
 M:System.Net.Http.HttpClient.#ctor(System.Net.Http.HttpMessageHandler);Use IHttpClientFactory or a shared static HttpClient instance
 
-# new JsonSerializerOptions() — use AgentBoxOutputJsonOptions.Default (output) or TxcJsonOptions.Default (storage)
+# new JsonSerializerOptions() — use AgentBoxOutputJsonOptions.Default
 M:System.Text.Json.JsonSerializerOptions.#ctor;Use AgentBoxOutputJsonOptions.Default
 M:System.Text.Json.JsonSerializerOptions.#ctor(System.Text.Json.JsonSerializerDefaults);Use AgentBoxOutputJsonOptions.Default
 

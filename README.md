@@ -77,21 +77,13 @@ docker pull ghcr.io/talxis/tools-agentbox/image:latest
 docker run -it ghcr.io/talxis/tools-agentbox/image:latest bash
 ```
 
-## Contract
-
-What consumers put in their configuration, and what stays stable across releases:
-[CONTRACT.md](CONTRACT.md).
-
 ## agentbox CLI
 
-[`agentbox`](src/cli/README.md) checks and installs the AgentBox prerequisites on any machine or
-container, sets up coding-agent harnesses, and adds the devcontainer config to a repository. It runs
-straight from nuget.org with the .NET 10 SDK:
+[`agentbox`](src/cli/README.md) checks, installs and updates the AgentBox prerequisites on any
+machine or container, and sets up the coding-agent harnesses:
 
 ```bash
-dnx TALXIS.AgentBox.CLI --yes prerequisite validate       # what's missing or outdated
-dnx TALXIS.AgentBox.CLI --yes prerequisite update         # bring a running container's tools up to date, no restart
-dnx TALXIS.AgentBox.CLI --yes devcontainer create         # add .devcontainer/devcontainer.json to this repo
+dnx TALXIS.AgentBox.CLI --yes prerequisite update       # bring a running container's tools up to date
 ```
 
 ## Published artifacts

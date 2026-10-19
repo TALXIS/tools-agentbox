@@ -1,7 +1,6 @@
 <Project>
   <PropertyGroup>
-    <!-- Placeholder: publish.yaml packs with -p:Version=<release version>, which also sets the
-         package version and the version the CLI reports. -->
+    <!-- Placeholder; releases pack with -p:Version=<release version>. -->
     <Version>0.0.1</Version>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -14,13 +13,10 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Deterministic>true</Deterministic>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!-- Banned API usage is a build error, as in tools-cli. -->
     <WarningsAsErrors>$(WarningsAsErrors);RS0030</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Same rule set as tools-cli (src/BannedSymbols.txt): command code writes results through
-         OutputFormatter and diagnostics through ILogger, never Console directly. -->
     <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>

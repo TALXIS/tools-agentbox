@@ -214,9 +214,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
-      - run: src/cli/build/write-feature-lock.sh
       - run: dotnet test src/cli --configuration Release
-      - run: dotnet pack src/cli/TALXIS.AgentBox.CLI --configuration Release -p:Version="${{ needs.resolve-version.outputs.version }}" -o nupkg
+      - run: src/cli/build/pack.sh "${{ needs.resolve-version.outputs.version }}" nupkg
       - uses: actions/upload-artifact@v4
         with:
           name: agentbox-nupkg

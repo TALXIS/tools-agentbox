@@ -5,5 +5,5 @@ namespace TALXIS.AgentBox.CLI;
 public static class Program
 {
     public static Task<int> Main(string[] args) =>
-        Cli.RunAsync<AgentBoxCliCommand>(args, new CliSettings { EnableDefaultExceptionHandler = true });
+        DotMake.CommandLine.Cli.RunAsync<AgentBoxCliCommand>(args, new CliSettings { EnableDefaultExceptionHandler = true });
 }

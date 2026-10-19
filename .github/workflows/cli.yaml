@@ -44,20 +44,21 @@ jobs:
       - name: prerequisite list
         run: |
           dotnet build src/cli/TALXIS.AgentBox.CLI --configuration Release --nologo -v q
-          echo "AGENTBOX=$PWD/src/cli/TALXIS.AgentBox.CLI/bin/Release/net10.0/TALXIS.AgentBox.CLI.dll" >> "$GITHUB_ENV"
-          dotnet src/cli/TALXIS.AgentBox.CLI/bin/Release/net10.0/TALXIS.AgentBox.CLI.dll prerequisite list --format json
+          AGENTBOX="$PWD/src/cli/TALXIS.AgentBox.CLI/bin/Release/net10.0/TALXIS.AgentBox.CLI.dll"
+          echo "AGENTBOX=$AGENTBOX" >> "$GITHUB_ENV"
+          dotnet "$AGENTBOX" prerequisite list --format json
 
       - name: install and validate what agentbox installs on a workstation
         if: matrix.os != 'ubuntu-latest'
         env:
           # GITHUB_ACTIONS=true would make it treat the runner as a disposable container.
-          AGENTBOX_HOST_CLASS: workstation
+          AGENTBOX_CONTAINER: "false"
         run: |
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
           export PATH="$PATH:$HOME/.dotnet/tools"
           ids="$(dotnet "$AGENTBOX" prerequisite list --format json | jq -r '[.[] | select(.installedByAgentBox) | .id] | join(" ")')"
           echo "Installing: $ids"
-          dotnet "$AGENTBOX" prerequisite install $ids --strict --format text
+          dotnet "$AGENTBOX" prerequisite install $ids --format text
           dotnet "$AGENTBOX" prerequisite validate $ids --format text
 
   pack:
@@ -69,11 +70,10 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
-      - run: src/cli/build/write-feature-lock.sh
       - id: pack
         run: |
           version="0.0.0-ci.${{ github.run_number }}.${{ github.run_attempt }}"
-          dotnet pack src/cli/TALXIS.AgentBox.CLI --configuration Release -p:Version="$version" -o nupkg
+          src/cli/build/pack.sh "$version" nupkg
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
