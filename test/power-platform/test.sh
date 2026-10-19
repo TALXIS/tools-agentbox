@@ -29,6 +29,8 @@ docker buildx use default
 docker build \
     --file src/container/image/power-platform/Dockerfile \
     --build-context agentbox-cli="${CLI}" \
+    --build-context agentbox-features=src/container/features \
+    --build-arg AGENTBOX_FEATURES_FROM=/tmp/agentbox-features \
     --label "devcontainer.metadata=${METADATA}" \
     --tag "${IMAGE}" \
     .

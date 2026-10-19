@@ -103,6 +103,8 @@ public sealed partial class FeatureInstaller(IProcessRunner processes, HttpClien
 
     internal async Task<string> DownloadAsync(LockedFeature feature, string directory, CancellationToken cancellationToken)
     {
+        if (FromCheckout(feature, directory) is { } copied)
+            return copied;
         for (var attempt = 1; ; attempt++)
         {
             try
@@ -115,6 +117,25 @@ public sealed partial class FeatureInstaller(IProcessRunner processes, HttpClien
                 await Task.Delay(TimeSpan.FromSeconds(2 * attempt), cancellationToken).ConfigureAwait(false);
             }
         }
+    }
+
+    /// <summary>CI only (AGENTBOX_FEATURES_FROM): this repo's Features from the checkout under test,
+    /// so a pull request's Feature changes are what its tests install. Not pinned, so not checked.</summary>
+    private string? FromCheckout(LockedFeature feature, string directory)
+    {
+        const string ThisRepo = "talxis/tools-agentbox/";
+        if (Environment.GetEnvironmentVariable("AGENTBOX_FEATURES_FROM") is not { Length: > 0 } checkout
+            || !feature.Path.StartsWith(ThisRepo, StringComparison.Ordinal))
+            return null;
+        var source = Path.Combine(checkout, feature.Path[ThisRepo.Length..]);
+        logger.LogWarning("Installing {Feature} from {Source}, not the published one.", feature.Path, source);
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            var target = Path.Combine(directory, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target, overwrite: true);
+        }
+        return directory;
     }
 
     private async Task<string> DownloadOnceAsync(LockedFeature feature, string directory, CancellationToken cancellationToken)

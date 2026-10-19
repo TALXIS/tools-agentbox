@@ -10,7 +10,7 @@ public static class Sudo
     // sudo resets the environment; these decide how agentbox and the tools it runs behave.
     private static readonly string[] KeptVariables =
     [
-        "PATH", "DOTNET_ROOT", "NVM_DIR", "AGENTBOX_CONTAINER", "AGENTBOX_LOG_LEVEL", "AGENTBOX_LOG_FORMAT",
+        "PATH", "DOTNET_ROOT", "NVM_DIR", "AGENTBOX_CONTAINER", "AGENTBOX_LOG_LEVEL", "AGENTBOX_LOG_FORMAT", "AGENTBOX_FEATURES_FROM",
         "CODESPACES", "REMOTE_CONTAINERS", "CLAUDE_CODE_REMOTE", "GITHUB_ACTIONS",
         "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "https_proxy", "http_proxy", "no_proxy",
         "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS", "CURL_CA_BUNDLE",

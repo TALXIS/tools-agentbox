@@ -1,6 +1,9 @@
 # The agentbox package to install. publish.yaml and the image test pass the one they just packed
 # (--build-context agentbox-cli=<dir>); without it, agentbox comes from nuget.org.
 FROM scratch AS agentbox-cli
+# The image test also passes this repo's Features (--build-context agentbox-features=<dir> and
+# AGENTBOX_FEATURES_FROM=/tmp/agentbox-features), so it covers a pull request's Feature changes.
+FROM scratch AS agentbox-features
 
 FROM ubuntu:24.04
 
@@ -20,8 +23,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # CACHEBUST makes this layer re-run on every release: most tools follow their latest release, and
 # Docker's cache can't tell.
 ARG CACHEBUST=0
+ARG AGENTBOX_FEATURES_FROM=
 COPY src/container/scripts/install-features.sh /tmp/install-features.sh
 RUN --mount=type=bind,from=agentbox-cli,target=/tmp/agentbox-cli \
+    --mount=type=bind,from=agentbox-features,target=/tmp/agentbox-features \
     CACHEBUST=${CACHEBUST} bash /tmp/install-features.sh --no-harness --source /tmp/agentbox-cli \
     && rm -rf /tmp/install-features.sh /root/.nuget/packages /root/.npm /usr/local/share/nvm/.cache /var/lib/apt/lists/*
 

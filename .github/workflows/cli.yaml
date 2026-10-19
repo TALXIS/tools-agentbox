@@ -83,5 +83,6 @@ jobs:
       - name: ${{ matrix.scenario }}
         run: |
           docker run --rm --user "${{ matrix.user }}" \
+            -e AGENTBOX_FEATURES_FROM=/repo/src/container/features \
             -v "$PWD/nupkg:/nupkg:ro" -v "$PWD:/repo:ro" \
             "${{ matrix.image }}" bash "/repo/test/cli/${{ matrix.scenario }}.sh"
