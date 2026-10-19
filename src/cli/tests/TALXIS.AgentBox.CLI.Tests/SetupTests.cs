@@ -6,7 +6,7 @@ public class SetupTests
 {
     private static FakeHost WithTemplates()
     {
-        var host = new FakeHost { IsRoot = true };
+        var host = new FakeHost();
         var packages = Directory.CreateDirectory(Path.Combine(host.HomeDirectory, ".templateengine", "packages"));
         File.WriteAllText(Path.Combine(packages.FullName, "TALXIS.DevKit.Templates.Dataverse.1.0.0.nupkg"), "");
         return host;
@@ -22,7 +22,7 @@ public class SetupTests
     [Fact]
     public async Task Installs_sets_up_the_harnesses_then_validates()
     {
-        // A test build has no Feature lockfile, so the Feature installs fail; validate still sees everything.
+        // Without root or sudo the Feature installs fail; validate still sees everything.
         using var harness = new CommandHarness(WithTemplates(), FakeProcesses.WithEverything());
         Assert.Equal(1, await new SetupCommand { Format = "json" }.RunAsync());
         using var json = JsonDocument.Parse(harness.Output);

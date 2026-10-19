@@ -57,8 +57,9 @@ check_consumer() {
     dexec 'agentbox prerequisite validate --format text'
     dexec 'agentbox harness validate claude copilot --deep --format text'
     dexec 'test -n "$DBUS_SESSION_BUS_ADDRESS" && echo "keyring env: OK"'
-    # The secret must reach the keyring, not txc's plaintext fallback.
-    dexec 'FAKE_SECRET=x txc config auth add-sp --alias t --tenant contoso.onmicrosoft.com --app-id 00000000-0000-0000-0000-000000000001 --secret-from-env FAKE_SECRET -f json >/dev/null \
+    # The secret must reach the keyring, not txc's plaintext fallback, even where the config opts
+    # into the fallback (TALXIS/lab sets TXC_PLAINTEXT_FALLBACK=1).
+    dexec 'FAKE_SECRET=x TXC_PLAINTEXT_FALLBACK= txc config auth add-sp --alias t --tenant contoso.onmicrosoft.com --app-id 00000000-0000-0000-0000-000000000001 --secret-from-env FAKE_SECRET -f json >/dev/null \
         && test ! -e ~/.txc/auth/txc.secrets.v1.fallback.dat \
         && secret-tool lookup CacheKind TXC_Secret_Vault | grep -q . \
         && echo "txc uses the OS vault: OK"'
