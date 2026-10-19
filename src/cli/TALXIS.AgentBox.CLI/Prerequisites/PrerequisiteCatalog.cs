@@ -1,3 +1,4 @@
+using TALXIS.AgentBox.CLI.Cli;
 namespace TALXIS.AgentBox.CLI.Prerequisites;
 
 /// <summary>
@@ -123,7 +124,7 @@ public static class PrerequisiteCatalog
             return All;
         var unknown = ids.Where(id => !All.Any(p => Matches(p, id))).ToList();
         if (unknown.Count > 0)
-            throw new ArgumentException($"Unknown prerequisite(s): {string.Join(", ", unknown)}. See 'agentbox prerequisite list'.");
+            throw new InvalidInputException($"Unknown prerequisite(s): {string.Join(", ", unknown)}. See 'agentbox prerequisite list'.");
         return All.Where(p => ids.Any(id => Matches(p, id))).ToList();
     }
 

@@ -24,13 +24,15 @@ public interface IProcessRunner
     /// <summary>Full path of <paramref name="command"/> on PATH (PATHEXT-aware on Windows), or null.</summary>
     string? FindOnPath(string command);
 
+    /// <param name="showErrors">Let the command's stderr (its log) go straight to ours instead of collecting it.</param>
     Task<ProcessResult> RunAsync(
         string fileName,
         IReadOnlyList<string> arguments,
         TimeSpan timeout,
         IReadOnlyDictionary<string, string?>? environment = null,
         string? workingDirectory = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        bool showErrors = false);
 }
 
 public sealed class ProcessRunner : IProcessRunner
@@ -67,12 +69,13 @@ public sealed class ProcessRunner : IProcessRunner
         TimeSpan timeout,
         IReadOnlyDictionary<string, string?>? environment = null,
         string? workingDirectory = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool showErrors = false)
     {
         var startInfo = new ProcessStartInfo(FindOnPath(fileName) ?? fileName)
         {
             RedirectStandardOutput = true,
-            RedirectStandardError = true,
+            RedirectStandardError = !showErrors,
             RedirectStandardInput = true,
             UseShellExecute = false,
             WorkingDirectory = workingDirectory ?? Environment.CurrentDirectory,
@@ -103,7 +106,7 @@ public sealed class ProcessRunner : IProcessRunner
 
         var stdout = new StringBuilder();
         var stderr = new StringBuilder();
-        var reading = Task.WhenAll(PumpAsync(process.StandardOutput, stdout), PumpAsync(process.StandardError, stderr));
+        var reading = Task.WhenAll(PumpAsync(process.StandardOutput, stdout), showErrors ? Task.CompletedTask : PumpAsync(process.StandardError, stderr));
         using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutSource.CancelAfter(timeout);
         var timedOut = false;

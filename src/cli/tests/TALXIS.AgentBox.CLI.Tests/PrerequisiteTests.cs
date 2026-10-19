@@ -52,7 +52,7 @@ public class PrerequisiteTests
         var processes = FakeProcesses.WithEverything();
         processes.OnPath.Remove("az");
         using var harness = new CommandHarness(new FakeHost(), processes);
-        Assert.Equal(3, await new PrerequisiteValidateCommand { Format = "json", Ids = ["git", "az"] }.RunAsync());
+        Assert.Equal(3, await new PrerequisiteValidateCommand { Format = "json", Ids = ["git", "az"] }.InvokeAsync());
     }
 
     [Theory]
@@ -63,7 +63,7 @@ public class PrerequisiteTests
         var processes = FakeProcesses.WithEverything();
         processes.Handler = (_, _) => new(0, versionOutput + "\n", "", false);
         using var harness = new CommandHarness(new FakeHost(), processes);
-        Assert.Equal(3, await new PrerequisiteValidateCommand { Format = "json", Ids = [id] }.RunAsync());
+        Assert.Equal(3, await new PrerequisiteValidateCommand { Format = "json", Ids = [id] }.InvokeAsync());
     }
 
     [Fact]
@@ -72,15 +72,15 @@ public class PrerequisiteTests
         var processes = FakeProcesses.WithEverything();
         processes.OnPath.Remove("agentbox-keyring-init");
         using var harness = new CommandHarness(new FakeHost { IsContainer = false }, processes);
-        Assert.Equal(0, await new PrerequisiteValidateCommand { Format = "json", Ids = ["keyring"] }.RunAsync());
+        Assert.Equal(0, await new PrerequisiteValidateCommand { Format = "json", Ids = ["keyring"] }.InvokeAsync());
     }
 
     [Fact]
     public async Task Bad_input_exits_2()
     {
         using var harness = new CommandHarness(new FakeHost());
-        Assert.Equal(2, await new PrerequisiteValidateCommand { Format = "json", Ids = ["nope"] }.RunAsync());
-        Assert.Equal(2, await new PrerequisiteListCommand { Format = "yaml" }.RunAsync());
+        Assert.Equal(2, await new PrerequisiteValidateCommand { Format = "json", Ids = ["nope"] }.InvokeAsync());
+        Assert.Equal(2, await new PrerequisiteListCommand { Format = "yaml" }.InvokeAsync());
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public class PrerequisiteTests
         var processes = new FakeProcesses();
         using (var harness = new CommandHarness(new FakeHost { IsContainer = false }, processes))
         {
-            Assert.Equal(0, await new PrerequisiteInstallCommand { Format = "json" }.RunAsync());
+            Assert.Equal(0, await new PrerequisiteInstallCommand { Format = "json" }.InvokeAsync());
             using var json = JsonDocument.Parse(harness.Output);
             Assert.All(json.RootElement.EnumerateArray(), r => Assert.Contains(r.GetProperty("action").GetString(), new[] { "manual", "present", "not-needed" }));
         }

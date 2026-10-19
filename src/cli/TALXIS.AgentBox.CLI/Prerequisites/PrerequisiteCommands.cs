@@ -56,7 +56,7 @@ public class PrerequisiteValidateCommand : AgentBoxLeafCommand
     protected override async Task<int> ExecuteAsync()
     {
         var inspector = AgentBoxServices.Current.Inspector();
-        var rows = await Task.WhenAll(PrerequisiteCatalog.Select(Ids).Select(p => inspector.InspectAsync(p, CheckUpdates, CancellationToken.None))).ConfigureAwait(false);
+        var rows = await Task.WhenAll(PrerequisiteCatalog.Select(Ids).Select(p => inspector.InspectAsync(p, CheckUpdates, Cancellation))).ConfigureAwait(false);
         OutputFormatter.Write(rows, Render);
         return rows.Any(r => r.Status == PrerequisiteStatus.Missing) ? ExitUnhealthy : ExitSuccess;
     }
@@ -81,7 +81,7 @@ public class PrerequisiteInstallCommand : AgentBoxLeafCommand
 
     protected override async Task<int> ExecuteAsync()
     {
-        var results = await AgentBoxServices.Current.Installer(Logger).InstallAsync(PrerequisiteCatalog.Select(Ids), CancellationToken.None).ConfigureAwait(false);
+        var results = await AgentBoxServices.Current.Installer(Logger).InstallAsync(PrerequisiteCatalog.Select(Ids), Cancellation).ConfigureAwait(false);
         OutputFormatter.Write(results, Render);
         return results.Any(r => r.Action == InstallAction.Failed) ? ExitError : ExitSuccess;
     }
@@ -103,7 +103,7 @@ public class PrerequisiteUpdateCommand : AgentBoxLeafCommand
 
     protected override async Task<int> ExecuteAsync()
     {
-        var results = await AgentBoxServices.Current.Updater(Logger).UpdateAsync(PrerequisiteCatalog.Select(Ids), CancellationToken.None).ConfigureAwait(false);
+        var results = await AgentBoxServices.Current.Updater(Logger).UpdateAsync(PrerequisiteCatalog.Select(Ids), Cancellation).ConfigureAwait(false);
         OutputFormatter.Write(results, items =>
         {
             foreach (var r in items.Where(r => r.Action != UpdateAction.NotManaged))

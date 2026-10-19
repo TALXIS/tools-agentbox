@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using TALXIS.AgentBox.CLI.Cli;
 using TALXIS.AgentBox.CLI.Host;
 
 namespace TALXIS.AgentBox.CLI.Harness;
@@ -57,7 +59,14 @@ public sealed class HarnessService(IHostInfo host, IProcessRunner processes, IPr
             else if (!run.Succeeded)
                 return new(kind, ConfigureStatus.Failed, run.FailureSummary);
         }
-        harness.AfterConfigure(host);
+        try
+        {
+            harness.AfterConfigure(host);
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        {
+            return new(kind, ConfigureStatus.Failed, ex.Message);
+        }
         return new(kind, ConfigureStatus.Configured);
     }
 
@@ -101,7 +110,7 @@ public sealed class HarnessService(IHostInfo host, IProcessRunner processes, IPr
     public static IReadOnlyList<HarnessKind> Parse(IEnumerable<string> names) =>
         names.Select(name => Enum.TryParse<HarnessKind>(name, ignoreCase: true, out var kind) && Enum.IsDefined(kind)
                 ? kind
-                : throw new ArgumentException($"Unknown harness '{name}'. Known: {string.Join(", ", Enum.GetValues<HarnessKind>().Select(Id))}."))
+                : throw new InvalidInputException($"Unknown harness '{name}'. Known: {string.Join(", ", Enum.GetValues<HarnessKind>().Select(Id))}."))
             .Distinct()
             .ToList();
 }

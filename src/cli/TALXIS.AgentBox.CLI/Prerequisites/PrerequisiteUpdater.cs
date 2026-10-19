@@ -17,7 +17,8 @@ public sealed record UpdateResult(string Id, UpdateAction Action, string? From =
 /// </summary>
 public sealed class PrerequisiteUpdater(IHostInfo host, IProcessRunner processes, PrerequisiteInspector inspector, ILogger logger)
 {
-    private static readonly TimeSpan Deadline = TimeSpan.FromMinutes(2);
+    // Under the start hook's `timeout 120`, so it finishes rather than being killed mid-write.
+    private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(100);
 
     public async Task<IReadOnlyList<UpdateResult>> UpdateAsync(IReadOnlyList<Prerequisite> targets, CancellationToken cancellationToken)
     {
@@ -50,7 +51,7 @@ public sealed class PrerequisiteUpdater(IHostInfo host, IProcessRunner processes
             return new(p.Id, UpdateAction.NotManaged, Detail: p.Kind == PrerequisiteKind.SelfUpdating ? "updates itself" : "comes with the image or OS");
 
         var current = await inspector.InspectAsync(p, checkUpdates: false, cancellationToken).ConfigureAwait(false);
-        if (current.Status is PrerequisiteStatus.Missing or PrerequisiteStatus.NotNeeded)
+        if (current.Status == PrerequisiteStatus.Missing)
             return new(p.Id, UpdateAction.Missing);
         if (!current.FollowsLatest)
             return new(p.Id, UpdateAction.NotManaged, current.InstalledVersion, Detail: "pinned, or not installed by AgentBox");

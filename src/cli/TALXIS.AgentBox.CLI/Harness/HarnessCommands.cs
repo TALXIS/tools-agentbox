@@ -51,7 +51,9 @@ public class HarnessConfigureCommand : AgentBoxLeafCommand
         foreach (var harness in service.Select(Names))
             results.Add(await service.ConfigureAsync(harness).ConfigureAwait(false));
         OutputFormatter.Write(results, Render);
-        return results.Any(r => r.Status == ConfigureStatus.Failed) ? ExitError : ExitSuccess;
+        // A harness someone named that isn't there is a failure; unnamed ones are just skipped.
+        var named = Names is { Length: > 0 };
+        return results.Any(r => r.Status == ConfigureStatus.Failed || (named && r.Status == ConfigureStatus.NotInstalled)) ? ExitError : ExitSuccess;
     }
 
     internal static void Render(IEnumerable<ConfigureResult> results)
@@ -76,6 +78,11 @@ public class HarnessValidateCommand : AgentBoxLeafCommand
     {
         var service = AgentBoxServices.Current.Harness(Logger);
         var harnesses = Names is { Length: > 0 } ? HarnessService.Parse(Names) : Enum.GetValues<HarnessKind>().Where(service.IsInstalled).ToList();
+        if (harnesses.Count == 0)
+        {
+            Logger.LogError("No harness is installed, so there's nothing to check.");
+            return ExitUnhealthy;
+        }
         // One at a time: both harnesses usually declare the same server, and two first runs of it
         // (dnx downloading the package) would race.
         var results = new List<HarnessHealth>();

@@ -20,9 +20,9 @@ public class SetupCommand : AgentBoxLeafCommand
     {
         var services = AgentBoxServices.Current;
         if (!services.Host.IsLinuxContainer)
-            throw new ArgumentException("setup is for Linux containers and VMs dedicated to agents (AGENTBOX_CONTAINER=true marks one that isn't detected). On your own machine, run 'prerequisite validate'.");
+            throw new InvalidInputException("setup is for Linux containers and VMs dedicated to agents (AGENTBOX_CONTAINER=true marks one that isn't detected). On your own machine, run 'prerequisite validate'.");
 
-        var install = await services.Installer(Logger).InstallAsync(PrerequisiteCatalog.All, CancellationToken.None).ConfigureAwait(false);
+        var install = await services.Installer(Logger).InstallAsync(PrerequisiteCatalog.All, Cancellation).ConfigureAwait(false);
         var harness = new List<ConfigureResult>();
         if (!NoHarness)
         {
@@ -31,7 +31,7 @@ public class SetupCommand : AgentBoxLeafCommand
                 harness.Add(await harnesses.ConfigureAsync(kind).ConfigureAwait(false));
         }
         var inspector = services.Inspector();
-        var validate = await Task.WhenAll(PrerequisiteCatalog.All.Select(p => inspector.InspectAsync(p, checkUpdates: false, CancellationToken.None))).ConfigureAwait(false);
+        var validate = await Task.WhenAll(PrerequisiteCatalog.All.Select(p => inspector.InspectAsync(p, checkUpdates: false, Cancellation))).ConfigureAwait(false);
 
         OutputFormatter.Write(new Result(install, harness, validate), r =>
         {

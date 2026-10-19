@@ -24,9 +24,15 @@ public abstract class AgentBoxLeafCommand
 
     protected abstract Task<int> ExecuteAsync();
 
+    /// <summary>Cancelled when the person presses Ctrl+C.</summary>
+    protected CancellationToken Cancellation { get; private set; }
+
     /// <summary>Called by DotMake. Implement <see cref="ExecuteAsync"/> instead.</summary>
-    public async Task<int> RunAsync()
+    public Task<int> RunAsync(CliContext context) => InvokeAsync(context.CancellationToken);
+
+    internal async Task<int> InvokeAsync(CancellationToken cancellation = default)
     {
+        Cancellation = cancellation;
         OutputContext.Reset();
         if (Format is not null)
         {
@@ -45,10 +51,15 @@ public abstract class AgentBoxLeafCommand
         {
             return await ExecuteAsync().ConfigureAwait(false);
         }
-        catch (ArgumentException ex)
+        catch (InvalidInputException ex)
         {
             Logger.LogError("{Error}", ex.Message);
             return ExitInvalidInput;
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            Logger.LogWarning("Cancelled.");
+            return ExitError;
         }
         catch (Exception ex)
         {

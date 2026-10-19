@@ -26,6 +26,7 @@ public sealed class PrerequisiteInstaller(
     ILogger logger)
 {
     private static readonly TimeSpan TemplateInstallTimeout = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan RootInstallTimeout = TimeSpan.FromHours(1);
 
     public async Task<IReadOnlyList<InstallResult>> InstallAsync(IReadOnlyList<Prerequisite> requested, CancellationToken cancellationToken)
     {
@@ -77,7 +78,7 @@ public sealed class PrerequisiteInstaller(
     private async Task<IReadOnlyList<InstallResult>> InstallViaFeaturesAsync(IReadOnlyList<Prerequisite> targets, CancellationToken cancellationToken)
     {
         if (!host.IsRoot)
-            return await InstallAsRootAsync(targets).ConfigureAwait(false);
+            return await InstallAsRootAsync(targets, cancellationToken).ConfigureAwait(false);
         if (features is null || featureLock is null)
             return Failed(targets, "this build has no Feature lockfile (a development build)");
 
@@ -91,25 +92,25 @@ public sealed class PrerequisiteInstaller(
         }).ToList();
     }
 
-    private async Task<IReadOnlyList<InstallResult>> InstallAsRootAsync(IReadOnlyList<Prerequisite> targets)
+    private async Task<IReadOnlyList<InstallResult>> InstallAsRootAsync(IReadOnlyList<Prerequisite> targets, CancellationToken cancellationToken)
     {
         if (!await Sudo.IsAvailableAsync(processes).ConfigureAwait(false))
             return Failed(targets, "needs root, and passwordless sudo isn't available");
 
         logger.LogInformation("Installing {Ids} as root with sudo.", string.Join(", ", targets.Select(t => t.Id)));
-        var output = await Sudo.RunAgentBoxAsync(["prerequisite", "install", .. targets.Select(t => t.Id), "--format", "json"]).ConfigureAwait(false);
+        var run = await Sudo.RunAgentBoxAsync(processes, ["prerequisite", "install", .. targets.Select(t => t.Id), "--format", "json"],
+            RootInstallTimeout, cancellationToken).ConfigureAwait(false);
         List<InstallResult> elevated;
         try
         {
-            elevated = JsonSerializer.Deserialize<List<InstallResult>>(output, AgentBoxOutputJsonOptions.Default) ?? [];
+            elevated = JsonSerializer.Deserialize<List<InstallResult>>(run.StandardOutput, AgentBoxOutputJsonOptions.Default) ?? [];
         }
         catch (JsonException)
         {
             elevated = [];
         }
-        return targets
-            .Select(t => elevated.FirstOrDefault(r => r.Id == t.Id) ?? new InstallResult(t.Id, InstallAction.Failed, "the install as root reported nothing"))
-            .ToList();
+        var missing = $"the install as root reported nothing ({run.FailureSummary})";
+        return targets.Select(t => elevated.FirstOrDefault(r => r.Id == t.Id) ?? new InstallResult(t.Id, InstallAction.Failed, missing)).ToList();
     }
 
     /// <summary>Templates have no Feature; they install for the current user.</summary>
