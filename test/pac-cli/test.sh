@@ -15,17 +15,13 @@ docker build \
     . << 'EOF'
 FROM mcr.microsoft.com/dotnet/sdk:10.0
 ARG VERSION=latest
-ENV PATH="${PATH}:/root/.dotnet/tools"
 COPY src/container/features/pac-cli/install.sh /tmp/install.sh
 RUN chmod +x /tmp/install.sh && \
     _REMOTE_USER=root _REMOTE_USER_HOME=/root VERSION=${VERSION} /tmp/install.sh
 EOF
 
-echo "--- Checking pac command exists ---"
-docker run --rm \
-    -e PATH="${PATH}:/root/.dotnet/tools" \
-    "devcontainer-feature-test-${FEATURE_ID}" \
-    bash -c 'PATH="$PATH:/root/.dotnet/tools" pac help'
+echo "--- pac runs through its /usr/local/bin wrapper, with no PATH set up ---"
+docker run --rm "devcontainer-feature-test-${FEATURE_ID}" pac help
 
 echo "--- Checking auto-update flag file exists ---"
 docker run --rm \

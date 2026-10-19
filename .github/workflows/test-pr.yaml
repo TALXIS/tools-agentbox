@@ -17,6 +17,9 @@ jobs:
             txc-cli: ./**/txc-cli/**
             keyring: ./**/keyring/**
             pa-cli: ./**/pa-cli/**
+            agentbox:
+              - ./**/agentbox/**
+              - ./src/cli/**
             power-platform: ./**/power-platform/**
 
   test-features:

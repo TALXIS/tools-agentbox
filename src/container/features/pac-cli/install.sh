@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Installs the Microsoft Power Platform CLI (pac) as a .NET global tool.
-# Follows the same auto-update pattern as ghcr.io/devcontainers/features/copilot-cli.
 set -e
 
 CLI_VERSION="${VERSION:-"latest"}"
@@ -58,10 +57,24 @@ install_pac
 ensure_path
 
 # When version is 'latest', create a flag file so postStartCommand auto-updates
+# Non-login shells (agents, CI steps, docker run) never read /etc/profile.d. This wrapper puts pac
+# on their PATH with DOTNET_ROOT set, and starts the keyring (keyring Feature) so sign-ins go to the
+# OS credential store.
+dotnet_root="${DOTNET_ROOT:-$(dotnet --list-sdks | sed -n '1s/.*\[\(.*\)\/sdk\]$/\1/p')}"
+cat > /usr/local/bin/pac <<WRAPPER
+#!/bin/bash
+export DOTNET_ROOT="${dotnet_root}"
+command -v agentbox-keyring-init >/dev/null 2>&1 && eval "\$(agentbox-keyring-init)"
+exec "${DOTNET_TOOLS_PATH}/pac" "\$@"
+WRAPPER
+chmod 755 /usr/local/bin/pac
+
+# Marks it as following the latest release, for `agentbox prerequisite update`. A pin removes it.
 if [ "${CLI_VERSION}" = "latest" ]; then
     mkdir -p /etc/devcontainer-pac-cli
     touch /etc/devcontainer-pac-cli/auto-update
-    echo "Auto-update enabled: pac will update on each container start."
+else
+    rm -f /etc/devcontainer-pac-cli/auto-update
 fi
 
 echo "Power Platform CLI installed: $(su "${REMOTE_USER}" -c "PATH=\"${DOTNET_TOOLS_PATH}:\$PATH\" pac help" 2>/dev/null || echo 'installed')"
