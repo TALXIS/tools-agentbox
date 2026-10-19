@@ -1,5 +1,5 @@
 {
-    "//": "The AgentBox tool list: the image, the setup script and the agentbox CLI all install exactly these Features (https://containers.dev/implementors/features).",
+    "//": "The AgentBox tool list. The image, the setup script and the agentbox CLI install these Features (https://containers.dev/implementors/features); a tool already there at a usable version, or one that updates itself, is kept.",
     "features": {
         "ghcr.io/devcontainers/features/git:1": {},
         "ghcr.io/devcontainers/features/dotnet:1": {"version": "10.0"},
