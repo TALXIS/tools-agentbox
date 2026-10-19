@@ -9,35 +9,21 @@ isolated environments below instead — see GitHub's own take on why:
 
 ## Choose your environment
 
-### 1. GitHub Codespaces
+### 1. Devcontainers: GitHub Codespaces or any local devcontainer tool
 
-**New project — create `.devcontainer/devcontainer.json`:**
+Point your `.devcontainer/devcontainer.json` at the image. That's all AgentBox needs:
 
 ```json
 {
   "name": "Power Platform",
-  "image": "ghcr.io/talxis/tools-agentbox/image:latest",
-  "customizations": {
-    "codespaces": {
-      "openFiles": ["README.md"]
-    }
-  },
-  "hostRequirements": {
-    "cpus": 2,
-    "memory": "8gb"
-  },
-  "postCreateCommand": "curl -fsSL --max-time 20 https://talxis.com/agentbox-harness | timeout 90 bash || true"
+  "image": "ghcr.io/talxis/tools-agentbox/image:latest"
 }
 ```
 
-**Already have a `devcontainer.json`?** Point `image` at
-`ghcr.io/talxis/tools-agentbox/image:latest` and add that same `postCreateCommand` line — it's
-easy to end up with a working toolchain but no Skills/MCP registration if this step gets skipped,
-since nothing it does is baked into the image itself. It registers the
-[TALXIS/skills](https://github.com/TALXIS/skills) plugin (Skills + the `txc` MCP server) with
-whichever of Claude Code / GitHub Copilot is present — omit it if you don't want that.
-
-Or build your own `devcontainer.json` from individual features listed in
+The image brings its own start-up behaviour (tool updates, the keyring, the
+[TALXIS/skills](https://github.com/TALXIS/skills) plugin for whichever coding agents are present),
+so your file never changes when AgentBox does. Everything about your project and editor stays
+yours to add. Prefer to compose your own? Use the individual Features from
 [`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json).
 
 ### 2. GitHub Copilot cloud sandbox
@@ -64,9 +50,9 @@ with:
 This installs the Feature list from
 [`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json)
 directly on the VM, and registers the [TALXIS/skills](https://github.com/TALXIS/skills) plugin
-(Skills + the `txc` MCP server) with Claude Code. No changes needed in individual repos.
+with Claude Code. No changes needed in individual repos.
 
-To keep `txc` and the Dataverse templates current between setup script runs, merge the `hooks` from
+To keep the tools current between setup script runs, merge the `hooks` from
 [`src/container/claude-code/session-start-hook.json`](src/container/claude-code/session-start-hook.json) into
 [Admin Settings > Claude Code > Managed settings](https://claude.ai/admin-settings/claude-code).
 
@@ -77,34 +63,17 @@ docker pull ghcr.io/talxis/tools-agentbox/image:latest
 docker run -it ghcr.io/talxis/tools-agentbox/image:latest bash
 ```
 
-## agentbox CLI
-
-[`agentbox`](src/cli/README.md) checks, installs and updates the AgentBox prerequisites on any
-machine or container, and sets up the coding-agent harnesses:
-
-```bash
-dnx TALXIS.AgentBox.CLI --yes prerequisite update       # bring a running container's tools up to date
-```
+Plain `docker run` doesn't run devcontainer lifecycle commands, so you get the tool versions the image
+was built with and no plugin registration. The keyring still starts on demand, from the shell and the
+wrappers in `/usr/local/bin`.
 
 ## Published artifacts
 
-| Artifact | GHCR Reference |
-|----------|---------------|
-| PAC CLI feature | `ghcr.io/talxis/tools-agentbox/pac-cli:latest` |
-| TXC CLI feature | `ghcr.io/talxis/tools-agentbox/txc-cli:latest` |
-| Power Apps CLI (`pa`) feature | `ghcr.io/talxis/tools-agentbox/pa-cli:latest` |
-| Keyring (Secret Service) feature | `ghcr.io/talxis/tools-agentbox/keyring:latest` |
-| Power Platform template | `ghcr.io/talxis/tools-agentbox/power-platform:latest` |
-| Pre-built image | `ghcr.io/talxis/tools-agentbox/image:latest` |
+- Every Feature under [`src/container/features/`](src/container/features) as
+  `ghcr.io/talxis/tools-agentbox/<feature>`
+- The devcontainer template: `ghcr.io/talxis/tools-agentbox/power-platform`
+- The pre-built image: `ghcr.io/talxis/tools-agentbox/image:latest`
 
 ## Included tools
 
-See [`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json)
-for the current tool/version list. `pa` (Power Apps CLI) follows `latest` and updates on every
-container start, like `pac` and `txc`; set the `pa-cli` Feature's `version` option to pin it.
-
-## Credential storage
-
-`txc`, `pac` and `pa` keep sign-in tokens in a gnome-keyring that AgentBox starts and unlocks with an
-**empty password**: no better than file permissions, which is fine for ephemeral, single-user
-containers. Details: [keyring Feature notes](src/container/features/keyring/NOTES.md).
+See [`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json).

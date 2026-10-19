@@ -132,6 +132,15 @@ jobs:
         env:
           PLATFORM: ${{ matrix.platform }}
 
+      # The image's own devcontainer config, merged by every devcontainer tool into a consumer's
+      # devcontainer.json - so consumers only need "image". See the script for what goes in it.
+      # build-push-action CSV-parses each "labels" line, which mangles the JSON's quotes, so the
+      # line is CSV-quoted: wrapped in quotes, with inner quotes doubled.
+      - id: devcontainer-metadata
+        run: |
+          line="devcontainer.metadata=$(bash src/container/image/power-platform/devcontainer-metadata.sh)"
+          printf 'label="%s"\n' "${line//\"/\"\"}" >> "$GITHUB_OUTPUT"
+
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -145,7 +154,9 @@ jobs:
             IMAGE_VERSION=${{ needs.resolve-version.outputs.version }}
           cache-from: type=gha,scope=${{ steps.slug.outputs.value }}
           cache-to: type=gha,scope=${{ steps.slug.outputs.value }},mode=max
-          labels: ${{ steps.meta.outputs.labels }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            ${{ steps.devcontainer-metadata.outputs.label }}
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
         id: build
 

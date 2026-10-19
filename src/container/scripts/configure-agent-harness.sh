@@ -10,10 +10,11 @@
 # for who sets this and why).
 #
 # Called from src/container/scripts/install-features.sh (Claude Code cloud, Copilot cloud sandbox), and
-# fetched/run directly from a repo's own devcontainer.json postCreateCommand (Codespaces — only
-# Copilot is ever relevant there, but this script is reused rather than maintaining a Copilot-only
-# copy). Per VS Code's own docs, VS Code's Copilot Chat automatically discovers plugins installed
-# this way, so one install covers both the `copilot` CLI and VS Code.
+# fetched/run by the pre-built image's devcontainer postCreateCommand, from its devcontainer.metadata
+# label (src/container/image/power-platform/devcontainer-metadata.json), in Codespaces and other
+# devcontainer tools. VS Code (1.120+) discovers plugins the copilot CLI installed and starts their
+# MCP servers, so one install covers both the `copilot` CLI and Copilot Chat:
+# https://code.visualstudio.com/docs/agent-customization/agent-plugins
 set -uo pipefail
 
 merge_json_file() {
@@ -27,7 +28,10 @@ merge_json_file() {
 if [ "${AGENTBOX_HARNESS:-}" != "copilot" ] && [ "${AGENTBOX_HARNESS:-}" != "none" ] \
         && command -v claude >/dev/null 2>&1; then
     echo "--- Registering the talxis plugin marketplace with Claude Code ---"
-    export CLAUDE_CODE_PLUGIN_CACHE_DIR="/usr/local/claude-plugin-seed"
+    # Where an environment pre-seeds plugins (Claude Code cloud sets CLAUDE_CODE_PLUGIN_SEED_DIR),
+    # install into the seed; elsewhere (devcontainers) into the user's own plugin directory, the
+    # only one claude reads there. https://code.claude.com/docs/en/plugins/org#seed-containers-and-ci
+    [ -n "${CLAUDE_CODE_PLUGIN_SEED_DIR:-}" ] && export CLAUDE_CODE_PLUGIN_CACHE_DIR="${CLAUDE_CODE_PLUGIN_SEED_DIR%%:*}"
     timeout 30 claude plugin marketplace add TALXIS/skills \
         || echo "WARNING: could not add the talxis plugin marketplace, continuing" >&2
     timeout 30 claude plugin install implement@talxis --yes \

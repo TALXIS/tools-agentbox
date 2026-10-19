@@ -2,7 +2,7 @@
     "id": "power-platform",
     "version": "0.0.1",
     "name": "Power Platform",
-    "description": "Full Power Platform / Dataverse development environment.",
+    "description": "Power Platform / Dataverse development environment from the pre-built AgentBox image.",
     "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/container/templates/power-platform",
     "licenseURL": "https://github.com/TALXIS/tools-agentbox/blob/master/LICENSE",
     "platforms": [

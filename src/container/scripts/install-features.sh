@@ -16,9 +16,9 @@
 #
 # Also used by src/container/image/power-platform/Dockerfile to build the pre-built image, with
 # AGENTBOX_HARNESS=none — the image build shouldn't register the plugin for either harness itself:
-# Codespaces' own postCreateCommand does that once, at container creation, as the container's real
-# user, by fetching and running src/container/scripts/configure-agent-harness.sh directly — the
-# same script this file delegates to below.
+# the image's devcontainer.metadata label does that once, at container creation, as the container's
+# real user, by fetching and running src/container/scripts/configure-agent-harness.sh — the same
+# script this file delegates to below.
 #
 # AGENTBOX_HARNESS ("claude", "copilot", or "none"), set by the callers above, skips the plugin
 # setup for whichever harness isn't relevant to that caller, so nobody pays for another harness's
@@ -174,10 +174,13 @@ fi
 dotnet new install TALXIS.DevKit.Templates.Dataverse || true
 
 # Configure whichever harness this surface actually uses (currently: register the TALXIS/skills
-# plugin) — same script a repo's own devcontainer.json postCreateCommand fetches and runs
-# directly, so there's one place this logic lives regardless of caller. AGENTBOX_HARNESS
+# plugin) — same script the pre-built image's devcontainer postCreateCommand fetches and runs, so there's one place this logic lives regardless of caller. AGENTBOX_HARNESS
 # (already exported by this script's caller) narrows it to the relevant harness; unset (manual/
 # local runs) tries both, skipping whichever binary isn't installed.
+# The Claude Code cloud environment sets CLAUDE_CODE_PLUGIN_SEED_DIR for sessions; make sure the
+# install lands in the same seed even if this setup run doesn't see it.
+[ "${AGENTBOX_HARNESS:-}" = "claude" ] \
+    && export CLAUDE_CODE_PLUGIN_SEED_DIR="${CLAUDE_CODE_PLUGIN_SEED_DIR:-/usr/local/claude-plugin-seed}"
 curl -fsSL --max-time 20 "https://talxis.com/agentbox-harness" \
     -o "${WORKDIR}/configure-agent-harness.sh" \
     && bash "${WORKDIR}/configure-agent-harness.sh"
