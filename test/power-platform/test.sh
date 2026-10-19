@@ -82,6 +82,10 @@ echo "label: OK"
 # A consumer whose devcontainer.json is only "image", brought up with the devcontainer CLI - no
 # editor involved - must get the tooling config from the label.
 command -v devcontainer >/dev/null 2>&1 || npm install -g @devcontainers/cli --silent
+# A consumer with its own Features gets an image built on top of ${IMAGE}. CI's buildx builder
+# (setup-buildx-action) runs in its own container and can't see local images, so build those with
+# the Docker daemon's own builder, which can.
+docker buildx use default
 WORKSPACES=()
 cleanup() {
     for ws in "${WORKSPACES[@]}"; do
