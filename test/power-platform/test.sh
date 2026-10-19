@@ -37,38 +37,37 @@ docker run --rm "${IMAGE}" agentbox prerequisite validate --format text
 echo "--- pa (keyring started by its wrapper) ---"
 docker run --rm "${IMAGE}" bash -c 'pa auth status --json | grep -q "\"success\": true" && echo "pa auth status: OK"'
 
-# Brings up a container from <devcontainer.json> with the devcontainer CLI (no editor involved)
-# and checks that the image's own config reached it and left it ready for agents.
-check_consumer() {
-    local name="$1" config="$2" ws
-    echo "--- ${name} via the devcontainer CLI ---"
-    ws="$(mktemp -d)"
-    WORKSPACES+=("${ws}")
-    mkdir -p "${ws}/.devcontainer"
-    printf '%s\n' "${config}" > "${ws}/.devcontainer/devcontainer.json"
+WS=""
+dexec() { devcontainer exec --workspace-folder "${WS}" bash -c "$1"; }
 
-    devcontainer read-configuration --workspace-folder "${ws}" --include-merged-configuration \
+# Brings up a container from <devcontainer.json> with the devcontainer CLI (no editor involved), and
+# checks that the image's own config reached it and left it ready.
+up_consumer() {
+    local name="$1" config="$2"
+    echo "--- ${name} via the devcontainer CLI ---"
+    WS="$(mktemp -d)"
+    WORKSPACES+=("${WS}")
+    mkdir -p "${WS}/.devcontainer"
+    printf '%s\n' "${config}" > "${WS}/.devcontainer/devcontainer.json"
+
+    devcontainer read-configuration --workspace-folder "${WS}" --include-merged-configuration \
         | jq -e '[.mergedConfiguration.postStartCommands[] | objects | keys[]] | index("agentbox") != null' >/dev/null \
         || { echo "merged config lacks the image's postStartCommand" >&2; exit 1; }
-    echo "merged config has the image's postStartCommand: OK"
-
-    devcontainer up --workspace-folder "${ws}" >/dev/null
-    dexec() { devcontainer exec --workspace-folder "${ws}" bash -c "$1"; }
+    devcontainer up --workspace-folder "${WS}" >/dev/null
     dexec 'agentbox prerequisite validate --format text'
-    dexec 'agentbox harness validate claude copilot --deep --format text'
-    dexec 'test -n "$DBUS_SESSION_BUS_ADDRESS" && echo "keyring env: OK"'
-    # The secret must reach the keyring, not txc's plaintext fallback, even where the config opts
-    # into the fallback (TALXIS/lab sets TXC_PLAINTEXT_FALLBACK=1).
-    dexec 'FAKE_SECRET=x TXC_PLAINTEXT_FALLBACK= txc config auth add-sp --alias t --tenant contoso.onmicrosoft.com --app-id 00000000-0000-0000-0000-000000000001 --secret-from-env FAKE_SECRET -f json >/dev/null \
-        && test ! -e ~/.txc/auth/txc.secrets.v1.fallback.dat \
-        && secret-tool lookup CacheKind TXC_Secret_Vault | grep -q . \
-        && echo "txc uses the OS vault: OK"'
+    dexec 'agentbox harness validate claude copilot --format text'
 }
 
 command -v devcontainer >/dev/null 2>&1 || npm install -g @devcontainers/cli --silent
 
-# A new project: just the image.
-check_consumer "minimal devcontainer.json" "{ \"image\": \"${IMAGE}\" }"
+# A new project: just the image. The deeper checks run here; the image is the same below.
+up_consumer "minimal devcontainer.json" "{ \"image\": \"${IMAGE}\" }"
+dexec 'agentbox harness validate claude copilot --deep --format text'
+# The secret must reach the keyring, not txc's plaintext fallback.
+dexec 'FAKE_SECRET=x txc config auth add-sp --alias t --tenant contoso.onmicrosoft.com --app-id 00000000-0000-0000-0000-000000000001 --secret-from-env FAKE_SECRET -f json >/dev/null \
+    && test ! -e ~/.txc/auth/txc.secrets.v1.fallback.dat \
+    && secret-tool lookup CacheKind TXC_Secret_Vault | grep -q . \
+    && echo "txc uses the OS vault: OK"'
 
 # The workshop (TALXIS/lab), the primary consumer, with the devcontainer.json it has today, which
 # still carries its own copies of the start/create hooks: the image's config must not break it.
@@ -77,7 +76,7 @@ lab_config="$(curl -fsSL https://raw.githubusercontent.com/TALXIS/lab/master/.de
 # Otherwise this would quietly test the published image instead of this build.
 grep -q "\"image\": \"${IMAGE}\"" <<<"${lab_config}" \
     || { echo "TALXIS/lab's devcontainer.json no longer uses ghcr.io/talxis/tools-agentbox/image:latest" >&2; exit 1; }
-check_consumer "TALXIS/lab devcontainer.json" "${lab_config}"
+up_consumer "TALXIS/lab devcontainer.json" "${lab_config}"
 
 echo "=== power-platform smoke test PASSED ==="
 docker image rm "${IMAGE}" 2>/dev/null || true

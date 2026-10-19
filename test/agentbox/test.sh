@@ -26,9 +26,12 @@ docker run --rm --user app "devcontainer-feature-test-${FEATURE_ID}" \
     env -i PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin HOME=/tmp \
     agentbox prerequisite list --format text
 
-echo "--- The Feature's hooks name real commands ---"
-docker run --rm "devcontainer-feature-test-${FEATURE_ID}" bash -ec \
-    'agentbox harness configure --help >/dev/null && agentbox prerequisite update --help >/dev/null'
+echo "--- The Feature's hooks run, without the '|| true' that keeps a container starting ---"
+for hook in postCreateCommand postStartCommand; do
+    command="$(jq -r ".${hook}" "src/container/features/${FEATURE_ID}/devcontainer-feature.json" | sed 's/ || true$//')"
+    echo "${hook}: ${command}"
+    docker run --rm "devcontainer-feature-test-${FEATURE_ID}" bash -ec "${command}"
+done
 
 echo "=== ${FEATURE_ID} smoke test PASSED ==="
 docker image rm "devcontainer-feature-test-${FEATURE_ID}" 2>/dev/null || true

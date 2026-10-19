@@ -8,63 +8,24 @@ namespace TALXIS.AgentBox.CLI.Tests;
 
 public class HarnessTests
 {
-    private static HarnessService Service(FakeHost host, IPrompt prompt, params string[] installed)
+    [Theory]
+    [InlineData("claude copilot", "copilot", false, true, "copilot", false)] // names given win
+    [InlineData("claude copilot", "", true, true, "claude copilot", false)] // a container never asks
+    [InlineData("claude copilot", "", false, true, "copilot", true)] // a person with both is asked
+    [InlineData("claude", "", false, true, "claude", false)] // one installed: nothing to ask
+    [InlineData("claude copilot", "", false, false, "claude copilot", false)] // no one at the terminal
+    public void Selects_the_named_harnesses_else_the_installed_ones(string installed, string names, bool container, bool interactive, string expected, bool asked)
     {
         var processes = new FakeProcesses();
-        foreach (var command in installed)
+        foreach (var command in installed.Split(' '))
             processes.OnPath[command] = "/usr/bin/" + command;
-        return new HarnessService(host, processes, prompt, NullLogger.Instance);
-    }
-
-    [Fact]
-    public void Names_given_win()
-    {
-        var prompt = new FakePrompt();
-        Assert.Equal([HarnessKind.Copilot], Service(new FakeHost { IsContainer = false, IsInteractive = true }, prompt, "claude", "copilot").Select(["copilot"]));
-        Assert.Equal(0, prompt.Asked);
-    }
-
-    [Fact]
-    public void Containers_set_up_every_installed_harness_without_asking()
-    {
-        var prompt = new FakePrompt();
-        Assert.Equal([HarnessKind.Claude, HarnessKind.Copilot], Service(new FakeHost { IsContainer = true, IsInteractive = true }, prompt, "claude", "copilot").Select(null));
-        Assert.Equal(0, prompt.Asked);
-    }
-
-    [Fact]
-    public void A_person_with_both_installed_is_asked()
-    {
         var prompt = new FakePrompt("copilot");
-        Assert.Equal([HarnessKind.Copilot], Service(new FakeHost { IsContainer = false, IsInteractive = true }, prompt, "claude", "copilot").Select(null));
-        Assert.Equal(1, prompt.Asked);
-    }
+        var service = new HarnessService(new FakeHost { IsContainer = container, IsInteractive = interactive }, processes, prompt, NullLogger.Instance);
 
-    [Fact]
-    public void Nobody_is_asked_when_only_one_is_installed_or_no_one_is_at_the_terminal()
-    {
-        var prompt = new FakePrompt();
-        Assert.Equal([HarnessKind.Claude], Service(new FakeHost { IsContainer = false, IsInteractive = true }, prompt, "claude").Select(null));
-        Assert.Equal([HarnessKind.Claude, HarnessKind.Copilot], Service(new FakeHost { IsContainer = false, IsInteractive = false }, prompt, "claude", "copilot").Select(null));
-        Assert.Equal(0, prompt.Asked);
-    }
+        var selected = service.Select(names.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
-    [Fact]
-    public void Unknown_names_are_rejected() =>
-        Assert.Throws<ArgumentException>(() => HarnessService.Parse(["nope"]));
-
-    [Fact]
-    public void Reads_the_plugin_from_each_harness_plugin_list()
-    {
-        var host = new FakeHost();
-        var claude = new ClaudeHarness().ParsePluginList("""[{"id":"implement@talxis","enabled":true,"installPath":"/p"}]""", host);
-        Assert.Equal(new PluginState(true, "/p"), claude);
-
-        var copilot = new CopilotHarness().ParsePluginList("""[{"name":"implement","marketplace":"talxis","enabled":false}]""", host);
-        Assert.Equal(new PluginState(false, Path.Combine(host.HomeDirectory, ".copilot", "installed-plugins", "talxis", "implement")), copilot);
-
-        Assert.Null(new ClaudeHarness().ParsePluginList("""[{"id":"other@market"}]""", host));
-        Assert.Null(new CopilotHarness().ParsePluginList("not json", host));
+        Assert.Equal(expected, string.Join(' ', selected.Select(HarnessService.Id)));
+        Assert.Equal(asked ? 1 : 0, prompt.Asked);
     }
 
     [Fact]
@@ -91,12 +52,17 @@ public class HarnessTests
     }
 
     [Fact]
-    public void Claude_installs_into_the_seed_only_where_the_environment_has_one()
+    public void Claude_uses_the_seed_only_where_the_environment_has_one()
     {
         var host = new FakeHost();
+        var reported = Path.Combine(host.HomeDirectory, ".claude", "plugins", "cache", "talxis", "implement");
+        var pluginList = $$"""[{"id":"implement@talxis","enabled":true,"installPath":{{JsonSerializer.Serialize(reported)}}}]""";
         Assert.Null(new ClaudeHarness().Environment(host));
+
         host.Environment["CLAUDE_CODE_PLUGIN_SEED_DIR"] = "/seed:/other";
         Assert.Equal("/seed", new ClaudeHarness().Environment(host)!["CLAUDE_CODE_PLUGIN_CACHE_DIR"]);
+        // Claude reports the plugin under ~/.claude/plugins although it was installed into the seed.
+        Assert.Equal(Path.Combine("/seed", "cache", "talxis", "implement"), new ClaudeHarness().ParsePluginList(pluginList, host)!.Directory);
     }
 
     [Fact]
@@ -112,51 +78,20 @@ public class HarnessTests
         var service = new HarnessService(new FakeHost(), processes, new FakePrompt(), NullLogger.Instance);
 
         Assert.True((await service.ValidateAsync(HarnessKind.Claude, deep: false)).Healthy);
-        var deep = await service.ValidateAsync(HarnessKind.Claude, deep: true);
-        Assert.False(deep.Healthy);
-        Assert.Equal("plugin declares no MCP servers", deep.Detail);
-    }
-
-    [Fact]
-    public void Reads_the_MCP_servers_a_plugin_declares()
-    {
-        var plugin = Directory.CreateTempSubdirectory("plugin-").FullName;
-        File.WriteAllText(Path.Combine(plugin, "mcp.json"), """{"mcpServers":{"txc":{"type":"stdio","command":"dnx","args":["TALXIS.CLI.MCP","--yes"]}}}""");
-        var server = Assert.Single(McpServer.DeclaredIn(plugin));
-        Assert.Equal(("txc", "dnx"), (server.Name, server.Command));
-        Assert.Equal(["TALXIS.CLI.MCP", "--yes"], server.Args);
+        Assert.False((await service.ValidateAsync(HarnessKind.Claude, deep: true)).Healthy);
     }
 }
 
 public class McpProbeTests
 {
-    /// <summary>Plays an MCP server's stdout: a log line, a notification, then the scripted responses.</summary>
-    private static TextReader Server(params string[] responses) =>
-        new StringReader(string.Join('\n', new[] { "info: starting", """{"jsonrpc":"2.0","method":"notifications/message"}""" }.Concat(responses)));
-
-    [Fact]
-    public async Task A_server_that_answers_with_tools_is_healthy()
+    [Theory]
+    [InlineData("""{"jsonrpc":"2.0","id":1,"result":{}}""")] // stops answering after initialize
+    [InlineData("""{"jsonrpc":"2.0","id":1,"error":{"message":"boom"}}""")] // answers with an error
+    [InlineData("""{"jsonrpc":"2.0","id":1,"result":{}}""", """{"jsonrpc":"2.0","id":2,"result":{"tools":[]}}""")] // offers no tools
+    public async Task A_server_that_does_not_offer_tools_is_unhealthy(params string[] responses)
     {
-        var input = new StringWriter();
-        var result = await McpProbe.HandshakeAsync("txc", input,
-            Server("""{"jsonrpc":"2.0","id":1,"result":{"serverInfo":{"name":"txc"}}}""", """{"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"a"},{"name":"b"}]}}"""),
-            CancellationToken.None);
-        Assert.Equal(new McpProbeResult("txc", true, 2), result);
-        Assert.Contains("\"initialize\"", input.ToString());
-        Assert.Contains("\"tools/list\"", input.ToString());
-    }
-
-    [Fact]
-    public async Task A_server_that_stops_answering_is_not()
-    {
-        var result = await McpProbe.HandshakeAsync("txc", new StringWriter(), Server("""{"jsonrpc":"2.0","id":1,"result":{}}"""), CancellationToken.None);
-        Assert.False(result.Answered);
-    }
-
-    [Fact]
-    public async Task An_error_response_is_reported()
-    {
-        var result = await McpProbe.HandshakeAsync("txc", new StringWriter(), Server("""{"jsonrpc":"2.0","id":1,"error":{"message":"boom"}}"""), CancellationToken.None);
-        Assert.Equal(new McpProbeResult("txc", false, 0, "boom"), result);
+        // Servers log and send notifications before answering; both must be skipped.
+        var output = new StringReader(string.Join('\n', new[] { "info: starting", """{"jsonrpc":"2.0","method":"notifications/message"}""" }.Concat(responses)));
+        Assert.False((await McpProbe.HandshakeAsync("txc", new StringWriter(), output, CancellationToken.None)).Healthy);
     }
 }

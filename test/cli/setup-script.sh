@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The setup script in a bare ubuntu:24.04 container, as root, as a Claude Code cloud environment runs
-# it: within the time a cloud environment allows, then a second update has nothing to do.
+# it: within the time a cloud environment allows, then an update has nothing to do.
 source "$(dirname "$0")/common.sh"
 
 step "setup script"
@@ -12,8 +12,7 @@ echo "setup took ${SECONDS} s"
 hash -r
 check_ready
 
-step "prerequisite update, twice; the second must change nothing"
-agentbox prerequisite update --format text
-agentbox prerequisite update --format json > /tmp/second.json
-jq -e '[.[] | select(.action == "updated" or .action == "failed")] | length == 0' /tmp/second.json >/dev/null \
-    || { cat /tmp/second.json; exit 1; }
+step "prerequisite update right after the install changes nothing"
+agentbox prerequisite update --format json > /tmp/update.json
+jq -e '[.[] | select(.action == "updated" or .action == "failed")] | length == 0' /tmp/update.json >/dev/null \
+    || { cat /tmp/update.json; exit 1; }

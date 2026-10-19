@@ -24,7 +24,10 @@ public sealed record McpServer(string Name, string Command, IReadOnlyList<string
     }
 }
 
-public sealed record McpProbeResult(string Server, bool Answered, int Tools, string? Error = null);
+public sealed record McpProbeResult(string Server, bool Answered, int Tools, string? Error = null)
+{
+    public bool Healthy => Answered && Tools > 0;
+}
 
 /// <summary>
 /// Starts an MCP server and does a real handshake: <c>initialize</c>, then <c>tools/list</c>.

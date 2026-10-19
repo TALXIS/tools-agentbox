@@ -23,13 +23,11 @@ jobs:
             power-platform:
               - ./**/power-platform/**
               - ./src/container/scripts/**
-              - ./src/cli/**
 
   test-features:
     needs: [detect-changes]
     if: needs.detect-changes.outputs.features != '[]'
     runs-on: ubuntu-latest
-    continue-on-error: true
     strategy:
       matrix:
         feature: ${{ fromJSON(needs.detect-changes.outputs.features) }}

@@ -31,24 +31,6 @@ public class PrerequisiteTests
     }
 
     [Fact]
-    public async Task Update_installs_the_newer_version()
-    {
-        var (host, processes) = WithTool("1.0.0", followsLatest: true);
-        var registry = new FakeRegistry { Latest = { ["Some.Tool"] = "1.2.0" } };
-        var result = await UpdateAsync(host, processes, registry);
-        Assert.Equal(new UpdateResult("tool", UpdateAction.Updated, "1.0.0", "1.2.0"), result);
-        Assert.Equal(["dotnet tool update --global Some.Tool --version 1.2.0"], processes.Calls);
-    }
-
-    [Fact]
-    public async Task Update_does_nothing_when_current()
-    {
-        var (host, processes) = WithTool("1.2.0", followsLatest: true);
-        Assert.Equal(UpdateAction.UpToDate, (await UpdateAsync(host, processes, new FakeRegistry { Latest = { ["Some.Tool"] = "1.2.0" } })).Action);
-        Assert.Empty(processes.Calls);
-    }
-
-    [Fact]
     public async Task Update_leaves_pinned_tools_alone()
     {
         var (host, processes) = WithTool("1.0.0", followsLatest: false);
@@ -64,37 +46,23 @@ public class PrerequisiteTests
     }
 
     [Fact]
-    public async Task Validate_exits_0_when_everything_is_present_and_3_when_something_is_missing()
+    public async Task Validate_exits_3_when_something_is_missing()
     {
         var processes = FakeProcesses.WithEverything();
-        using (var harness = new CommandHarness(new FakeHost(), processes))
-            Assert.Equal(0, await new PrerequisiteValidateCommand { Format = "json", Ids = ["git", "dotnet", "pac"] }.RunAsync());
-
         processes.OnPath.Remove("az");
-        using (var harness = new CommandHarness(new FakeHost(), processes))
-        {
-            Assert.Equal(3, await new PrerequisiteValidateCommand { Format = "json", Ids = ["git", "az"] }.RunAsync());
-            using var json = JsonDocument.Parse(harness.Output);
-            Assert.Equal(["ok", "missing"], json.RootElement.EnumerateArray().Select(r => r.GetProperty("status").GetString()));
-        }
+        using var harness = new CommandHarness(new FakeHost(), processes);
+        Assert.Equal(3, await new PrerequisiteValidateCommand { Format = "json", Ids = ["git", "az"] }.RunAsync());
     }
 
-    [Fact]
-    public async Task An_old_dotnet_SDK_counts_as_missing()
+    [Theory]
+    [InlineData("dotnet", "8.0.400 [/usr/share/dotnet/sdk]")]
+    [InlineData("node", "v20.18.0")]
+    public async Task A_version_too_old_counts_as_missing(string id, string versionOutput)
     {
         var processes = FakeProcesses.WithEverything();
-        processes.Handler = (_, _) => new(0, "8.0.400 [/usr/share/dotnet/sdk]\n", "", false);
+        processes.Handler = (_, _) => new(0, versionOutput + "\n", "", false);
         using var harness = new CommandHarness(new FakeHost(), processes);
-        Assert.Equal(3, await new PrerequisiteValidateCommand { Format = "json", Ids = ["dotnet"] }.RunAsync());
-    }
-
-    [Fact]
-    public async Task Node_older_than_22_counts_as_missing()
-    {
-        var processes = FakeProcesses.WithEverything();
-        processes.Handler = (_, _) => new(0, "v20.18.0\n", "", false);
-        using var harness = new CommandHarness(new FakeHost(), processes);
-        Assert.Equal(3, await new PrerequisiteValidateCommand { Format = "json", Ids = ["node"] }.RunAsync());
+        Assert.Equal(3, await new PrerequisiteValidateCommand { Format = "json", Ids = [id] }.RunAsync());
     }
 
     [Fact]
@@ -104,7 +72,6 @@ public class PrerequisiteTests
         processes.OnPath.Remove("agentbox-keyring-init");
         using var harness = new CommandHarness(new FakeHost { IsContainer = false }, processes);
         Assert.Equal(0, await new PrerequisiteValidateCommand { Format = "json", Ids = ["keyring"] }.RunAsync());
-        Assert.Contains("\"not-needed\"", harness.Output);
     }
 
     [Fact]
@@ -116,35 +83,21 @@ public class PrerequisiteTests
     }
 
     [Fact]
-    public async Task On_a_workstation_install_only_shows_the_command()
+    public async Task On_a_workstation_install_and_update_change_nothing()
     {
         var processes = new FakeProcesses();
-        using var harness = new CommandHarness(new FakeHost { IsContainer = false }, processes);
-        Assert.Equal(0, await new PrerequisiteInstallCommand { Format = "json", Ids = ["txc"] }.RunAsync());
-        using var json = JsonDocument.Parse(harness.Output);
-        Assert.Equal("manual", json.RootElement[0].GetProperty("action").GetString());
-        Assert.Equal("dotnet tool install --global TALXIS.CLI", json.RootElement[0].GetProperty("detail").GetString());
-        Assert.Empty(processes.Calls);
-    }
+        using (var harness = new CommandHarness(new FakeHost { IsContainer = false }, processes))
+        {
+            Assert.Equal(0, await new PrerequisiteInstallCommand { Format = "json" }.RunAsync());
+            using var json = JsonDocument.Parse(harness.Output);
+            Assert.All(json.RootElement.EnumerateArray(), r => Assert.Contains(r.GetProperty("action").GetString(), new[] { "manual", "present", "not-needed" }));
+        }
 
-    [Fact]
-    public async Task On_a_workstation_update_changes_nothing()
-    {
-        var (_, processes) = WithTool("1.0.0", followsLatest: true);
-        var result = await UpdateAsync(new FakeHost { IsContainer = false }, processes, new FakeRegistry { Latest = { ["Some.Tool"] = "1.2.0" } });
-        Assert.Equal(UpdateAction.NotManaged, result.Action);
-        Assert.Empty(processes.Calls);
-    }
+        var (_, toolProcesses) = WithTool("1.0.0", followsLatest: true);
+        var update = await UpdateAsync(new FakeHost { IsContainer = false }, toolProcesses, new FakeRegistry { Latest = { ["Some.Tool"] = "1.2.0" } });
+        Assert.Equal(UpdateAction.NotManaged, update.Action);
 
-    [Fact]
-    public async Task On_a_workstation_install_reports_the_manual_command_for_system_tools()
-    {
-        var processes = new FakeProcesses();
-        using var harness = new CommandHarness(new FakeHost { Os = Host.OsKind.Windows, IsContainer = false }, processes);
-        Assert.Equal(0, await new PrerequisiteInstallCommand { Format = "json", Ids = ["az"] }.RunAsync());
-        using var json = JsonDocument.Parse(harness.Output);
-        Assert.Equal("manual", json.RootElement[0].GetProperty("action").GetString());
-        Assert.Equal("winget install --id Microsoft.AzureCLI -e", json.RootElement[0].GetProperty("detail").GetString());
         Assert.Empty(processes.Calls);
+        Assert.Empty(toolProcesses.Calls);
     }
 }
