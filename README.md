@@ -16,7 +16,8 @@ a sandbox: [About cloud and local sandboxes](https://docs.github.com/en/copilot/
 ```
 
 Composing your own instead? Each tool is a [Feature](src/container/features); add `agentbox` to keep
-them current.
+them current. On Windows, use *Dev Containers: Clone Repository in Container Volume* rather than
+opening a Windows folder: Linux line endings and file modes, and much faster.
 
 **GitHub Copilot cloud agent.** Add a step to your `.github/workflows/copilot-setup-steps.yml`:
 

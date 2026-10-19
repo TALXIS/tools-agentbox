@@ -50,12 +50,14 @@ public class HarnessConfigureCommand : AgentBoxLeafCommand
         var results = new List<ConfigureResult>();
         foreach (var harness in service.Select(Names))
             results.Add(await service.ConfigureAsync(harness).ConfigureAwait(false));
-        OutputFormatter.Write(results, items =>
-        {
-            foreach (var r in items)
-                OutputWriter.WriteLine($"  {OutputFormatter.Label(r.Status),-14} {HarnessService.Id(r.Harness),-10} {r.Detail}".TrimEnd());
-        });
+        OutputFormatter.Write(results, Render);
         return results.Any(r => r.Status == ConfigureStatus.Failed) ? ExitError : ExitSuccess;
+    }
+
+    internal static void Render(IEnumerable<ConfigureResult> results)
+    {
+        foreach (var r in results)
+            OutputWriter.WriteLine($"  {OutputFormatter.Label(r.Status),-14} {HarnessService.Id(r.Harness),-10} {r.Detail}".TrimEnd());
     }
 }
 
