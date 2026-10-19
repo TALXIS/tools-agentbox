@@ -10,7 +10,9 @@
 # for who sets this and why).
 #
 # Called from src/container/scripts/install-features.sh (Claude Code cloud, Copilot cloud sandbox), and
-# fetched/run directly from a repo's own devcontainer.json postCreateCommand (Codespaces — only
+# fetched/run by the pre-built image's devcontainer postCreateCommand, from its devcontainer.metadata
+# label (src/container/image/power-platform/devcontainer-metadata.json), in Codespaces and other
+# devcontainer tools (only
 # Copilot is ever relevant there, but this script is reused rather than maintaining a Copilot-only
 # copy). Per VS Code's own docs, VS Code's Copilot Chat automatically discovers plugins installed
 # this way, so one install covers both the `copilot` CLI and VS Code.

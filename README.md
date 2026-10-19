@@ -9,36 +9,56 @@ isolated environments below instead — see GitHub's own take on why:
 
 ## Choose your environment
 
-### 1. GitHub Codespaces
+### 1. Devcontainers: GitHub Codespaces or any local devcontainer tool
 
-**New project — create `.devcontainer/devcontainer.json`:**
+Works in Codespaces (browser, VS Code or JetBrains), VS Code Dev Containers, JetBrains Gateway,
+DevPod and the `devcontainer` CLI. No particular editor is required.
+
+**A project only needs this `.devcontainer/devcontainer.json`:**
 
 ```json
 {
   "name": "Power Platform",
-  "image": "ghcr.io/talxis/tools-agentbox/image:latest",
-  "customizations": {
-    "codespaces": {
-      "openFiles": ["README.md"]
-    }
-  },
-  "hostRequirements": {
-    "cpus": 2,
-    "memory": "8gb"
-  },
-  "postCreateCommand": "curl -fsSL --max-time 20 https://talxis.com/agentbox-harness | timeout 90 bash || true"
+  "image": "ghcr.io/talxis/tools-agentbox/image:latest"
 }
 ```
 
-**Already have a `devcontainer.json`?** Point `image` at
-`ghcr.io/talxis/tools-agentbox/image:latest` and add that same `postCreateCommand` line — it's
-easy to end up with a working toolchain but no Skills/MCP registration if this step gets skipped,
-since nothing it does is baked into the image itself. It registers the
-[TALXIS/skills](https://github.com/TALXIS/skills) plugin (Skills + the `txc` MCP server) with
-whichever of Claude Code / GitHub Copilot is present — omit it if you don't want that.
+The image carries its own devcontainer config (a `devcontainer.metadata` label), which every
+devcontainer tool merges into yours:
+- on every start: update `pac`, `txc`, `pa` and the TALXIS DevKit templates, and start the
+  [keyring](src/container/features/keyring/NOTES.md), all in parallel;
+- on create: register the [TALXIS/skills](https://github.com/TALXIS/skills) plugin (Skills + the
+  `txc` MCP server) with whichever of Claude Code / GitHub Copilot is present;
+- `PATH`, forwarded ports for Azure Functions and Azurite, and VS Code extensions for those who use VS Code.
 
-Or build your own `devcontainer.json` from individual features listed in
+It all updates with the image, so your file never has to change when AgentBox does. The full list is
+in [`devcontainer-metadata.json`](src/container/image/power-platform/devcontainer-metadata.json)
+plus each Feature's own `postStartCommand`.
+
+**Extending it** (for example a workshop repo): add your own Features and settings on top, as usual.
+They merge with the image's config:
+
+```jsonc
+{
+  "name": "Power Platform workshop",
+  "image": "ghcr.io/talxis/tools-agentbox/image:latest",
+  "features": { "ghcr.io/devcontainers/features/sshd:1": {} },
+  "customizations": {
+    "codespaces": { "openFiles": ["README.md"] },
+    "vscode": { "settings": { "terminal.integrated.defaultProfile.linux": "pwsh" } }
+  },
+  "hostRequirements": { "cpus": 4, "memory": "16gb" }
+}
+```
+
+**Already copied AgentBox config into your `devcontainer.json`?** Keep `image`, and remove the
+AgentBox `postStartCommand`/`postCreateCommand` entries (keyring, `pac`/`txc`/`pa`/template updates,
+`agentbox-harness`) and the `remoteEnv.PATH` line. They now come from the image; leaving them only
+runs them twice.
+
+Or build your own `devcontainer.json` from individual Features listed in
 [`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json).
+Each Feature brings its own start-up commands.
 
 ### 2. GitHub Copilot cloud sandbox
 
@@ -76,6 +96,10 @@ To keep `txc` and the Dataverse templates current between setup script runs, mer
 docker pull ghcr.io/talxis/tools-agentbox/image:latest
 docker run -it ghcr.io/talxis/tools-agentbox/image:latest bash
 ```
+
+Plain `docker run` doesn't run devcontainer lifecycle commands, so you get the tool versions the image
+was built with and no plugin registration. The keyring still starts on demand, from the shell and the
+`pa`/`pac`/`txc` wrappers.
 
 ## Published artifacts
 

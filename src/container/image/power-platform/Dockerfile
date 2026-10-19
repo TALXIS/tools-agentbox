@@ -22,8 +22,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Single place this is defined: src/container/scripts/install-features.sh, reading
 # src/container/templates/power-platform/.devcontainer/devcontainer.features.json — the same script
 # the Claude Code cloud environment and the Copilot cloud sandbox already run. AGENTBOX_HARNESS=none
-# skips the TALXIS/skills plugin registration here; Codespaces' own postCreateCommand handles that
-# once, at container creation, as the container's real user — baking it in at build time (as root)
+# skips the TALXIS/skills plugin registration here; the image's devcontainer.metadata label (see
+# devcontainer-metadata.sh, attached by publish.yaml) runs it once, at container creation, as the
+# container's real user — baking it in at build time (as root)
 # wouldn't reliably reach that user. CACHEBUST forces this layer to actually re-run on every build
 # instead of silently reusing a stale cached layer: most Feature versions resolve to "latest", and
 # Docker's cache is keyed on instruction text, not on what a re-run would actually fetch.
