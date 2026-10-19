@@ -9,11 +9,6 @@
     "remoteEnv": {
         "PATH": "${containerEnv:HOME}/.dotnet/tools:${containerEnv:PATH}"
     },
-    "hostRequirements": {
-        "cpus": 2,
-        "memory": "8gb",
-        "storage": "32gb"
-    },
     "forwardPorts": [7071, 10000, 10001, 10002],
     "portsAttributes": {
         "7071": { "label": "Azure Functions", "onAutoForward": "notify" },

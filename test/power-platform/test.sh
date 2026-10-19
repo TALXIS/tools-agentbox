@@ -61,12 +61,24 @@ run "test -f /etc/devcontainer-txc-cli/auto-update && echo 'txc auto-update: OK'
 run "test -f /etc/devcontainer-pa-cli/auto-update && echo 'pa auto-update: OK'"
 
 echo "--- devcontainer.metadata label ---"
+# Every AgentBox Feature in the manifest that has a postStartCommand must reach the label.
+expected_hooks="$(
+    jq -r '.features | keys[] | select(startswith("ghcr.io/talxis/tools-agentbox/"))
+        | sub("^ghcr.io/talxis/tools-agentbox/"; "") | sub(":.*$"; "")' \
+        src/container/templates/power-platform/.devcontainer/devcontainer.features.json \
+    | while read -r id; do
+        jq -e 'has("postStartCommand")' "src/container/features/${id}/devcontainer-feature.json" >/dev/null \
+            && echo "${id}"
+    done | jq -R . | jq -sc .)"
+# `cmd && echo` would not stop the script under `set -e` when cmd fails; test it explicitly.
 docker image inspect "${IMAGE}" --format '{{index .Config.Labels "devcontainer.metadata"}}' \
-    | jq -e '.[0]
-        | (.postStartCommand | has("keyring") and has("pac-cli") and has("txc-cli") and has("pa-cli"))
+    | jq -e --argjson hooks "${expected_hooks}" '.[0]
+        | (.postStartCommand | keys) as $keys
+        | ($hooks | length > 0) and all($hooks[]; . as $h | $keys | index($h))
           and (.postCreateCommand | has("configure-agent-harness"))
           and (.remoteEnv.PATH | startswith("${containerEnv:HOME}/.dotnet/tools"))' >/dev/null \
-    && echo "label: OK"
+    || { echo "label: FAILED" >&2; exit 1; }
+echo "label: OK"
 
 # A consumer whose devcontainer.json is only "image", brought up with the devcontainer CLI - no
 # editor involved - must get the tooling config from the label.
