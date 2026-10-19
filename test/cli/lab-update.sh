@@ -21,7 +21,11 @@ dotnet new install "TALXIS.DevKit.Templates.Dataverse::$(previous_nuget TALXIS.D
 pa_previous="$(npm view @microsoft/power-apps-cli versions --json | jq -r '[.[] | select(test("-") | not)][-2]')"
 npm install --global --prefix /usr/local/lib/power-apps-cli "@microsoft/power-apps-cli@${pa_previous}" >/dev/null
 
-agentbox() { dotnet dnx --add-source /nupkg TALXIS.AgentBox.CLI --yes -- "$@"; }
+# This build, for dnx and the agentbox Feature alike, as the setup script's --source does.
+mkdir -p /etc/opt/NuGet/Config
+printf '<configuration><packageSources><add key="ci" value="/nupkg" /></packageSources></configuration>\n' \
+    > /etc/opt/NuGet/Config/ci.config
+agentbox() { dotnet dnx TALXIS.AgentBox.CLI --yes -- "$@"; }
 
 step "install agentbox itself, which images before it came with lack"
 agentbox prerequisite install agentbox --format text
