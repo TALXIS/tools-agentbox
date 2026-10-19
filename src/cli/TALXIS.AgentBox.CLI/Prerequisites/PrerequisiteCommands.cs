@@ -57,15 +57,17 @@ public class PrerequisiteValidateCommand : AgentBoxLeafCommand
     {
         var inspector = AgentBoxServices.Current.Inspector();
         var rows = await Task.WhenAll(PrerequisiteCatalog.Select(Ids).Select(p => inspector.InspectAsync(p, CheckUpdates, CancellationToken.None))).ConfigureAwait(false);
-        OutputFormatter.Write(rows, items =>
-        {
-            foreach (var r in items)
-            {
-                var version = r.LatestVersion is { } latest && latest != r.InstalledVersion ? $"{r.InstalledVersion} (latest {latest})" : r.InstalledVersion;
-                OutputWriter.WriteLine($"  {OutputFormatter.Label(r.Status),-11} {r.Id,-17} {version,-26} {r.Detail}".TrimEnd());
-            }
-        });
+        OutputFormatter.Write(rows, Render);
         return rows.Any(r => r.Status == PrerequisiteStatus.Missing) ? ExitUnhealthy : ExitSuccess;
+    }
+
+    internal static void Render(IEnumerable<PrerequisiteState> rows)
+    {
+        foreach (var r in rows)
+        {
+            var version = r.LatestVersion is { } latest && latest != r.InstalledVersion ? $"{r.InstalledVersion} (latest {latest})" : r.InstalledVersion;
+            OutputWriter.WriteLine($"  {OutputFormatter.Label(r.Status),-11} {r.Id,-17} {version,-26} {r.Detail}".TrimEnd());
+        }
     }
 }
 
@@ -80,12 +82,14 @@ public class PrerequisiteInstallCommand : AgentBoxLeafCommand
     protected override async Task<int> ExecuteAsync()
     {
         var results = await AgentBoxServices.Current.Installer(Logger).InstallAsync(PrerequisiteCatalog.Select(Ids), CancellationToken.None).ConfigureAwait(false);
-        OutputFormatter.Write(results, items =>
-        {
-            foreach (var r in items)
-                OutputWriter.WriteLine($"  {OutputFormatter.Label(r.Action),-11} {r.Id,-17} {r.Detail}".TrimEnd());
-        });
+        OutputFormatter.Write(results, Render);
         return results.Any(r => r.Action == InstallAction.Failed) ? ExitError : ExitSuccess;
+    }
+
+    internal static void Render(IEnumerable<InstallResult> results)
+    {
+        foreach (var r in results)
+            OutputWriter.WriteLine($"  {OutputFormatter.Label(r.Action),-11} {r.Id,-17} {r.Detail}".TrimEnd());
     }
 }
 
