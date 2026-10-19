@@ -86,8 +86,8 @@ public sealed partial class FeatureInstaller(IProcessRunner processes, HttpClien
             var run = await processes.RunAsync("bash", ["install.sh"], InstallTimeout, OptionEnvironment(feature, DeclaredDefaults(featureJson)), directory, cancellationToken).ConfigureAwait(false);
             if (!run.Succeeded)
             {
-                logger.LogWarning("Feature {Feature} failed: {Reason}\n{Output}", feature.Path, run.FailureSummary,
-                    string.Join('\n', (run.StandardOutput + run.StandardError).Split('\n').TakeLast(15)));
+                logger.LogWarning("Feature {Feature} failed: {Reason}\n{Output}\n{Errors}", feature.Path, run.FailureSummary,
+                    Tail(run.StandardOutput), Tail(run.StandardError));
                 return new(feature, false, run.TimedOut ? "timed out" : $"install.sh exit code {run.ExitCode}");
             }
             ApplyContainerEnv(featureJson);
@@ -144,6 +144,8 @@ public sealed partial class FeatureInstaller(IProcessRunner processes, HttpClien
         await TarFile.ExtractToDirectoryAsync(tar, directory, overwriteFiles: true, cancellationToken).ConfigureAwait(false);
         return directory;
     }
+
+    private static string Tail(string text) => string.Join('\n', text.TrimEnd().Split('\n').TakeLast(10));
 
     /// <summary>What runs as root must be exactly what the lockfile pinned; the manifest pins the layer.</summary>
     internal static void VerifyDigest(byte[] content, string? digest, string what)

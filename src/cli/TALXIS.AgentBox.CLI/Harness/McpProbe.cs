@@ -104,14 +104,15 @@ public static class McpProbe
             await SendAsync(input, new { jsonrpc = "2.0", method = "notifications/initialized" }).ConfigureAwait(false);
             await SendAsync(input, new { jsonrpc = "2.0", id = 2, method = "tools/list" }).ConfigureAwait(false);
             var tools = await ReadResponseAsync(output, 2, cancellationToken).ConfigureAwait(false);
-            var count = tools.TryGetProperty("tools", out var list) ? list.GetArrayLength() : 0;
+            var count = tools.TryGetProperty("tools", out var list) && list.ValueKind == JsonValueKind.Array ? list.GetArrayLength() : 0;
             return new(name, true, count, count == 0 ? "offers no tools" : null);
         }
         catch (OperationCanceledException)
         {
             return new(name, false, 0, $"no answer within {Timeout.TotalSeconds:0} s");
         }
-        catch (Exception ex) when (ex is IOException or JsonException or InvalidDataException)
+        // Whatever else goes wrong, the server didn't answer as an MCP server should.
+        catch (Exception ex)
         {
             return new(name, false, 0, ex.Message);
         }
@@ -123,7 +124,8 @@ public static class McpProbe
         await input.FlushAsync().ConfigureAwait(false);
     }
 
-    /// <summary>Reads lines until the response to <paramref name="id"/>, skipping notifications.</summary>
+    /// <summary>Reads lines until the response to <paramref name="id"/>, skipping log lines and the
+    /// server's own requests and notifications (anything with a method).</summary>
     private static async Task<JsonElement> ReadResponseAsync(TextReader output, int id, CancellationToken cancellationToken)
     {
         while (await output.ReadLineAsync(cancellationToken).ConfigureAwait(false) is { } line)
@@ -131,11 +133,15 @@ public static class McpProbe
             if (!line.TrimStart().StartsWith('{'))
                 continue;
             using var message = JsonDocument.Parse(line);
-            if (!message.RootElement.TryGetProperty("id", out var messageId) || messageId.ValueKind != JsonValueKind.Number || messageId.GetInt32() != id)
+            var root = message.RootElement;
+            if (root.TryGetProperty("method", out _)
+                || !root.TryGetProperty("id", out var messageId) || !messageId.TryGetInt32(out var number) || number != id)
                 continue;
-            if (message.RootElement.TryGetProperty("error", out var error))
+            if (root.TryGetProperty("error", out var error))
                 throw new InvalidDataException(error.TryGetProperty("message", out var text) ? text.GetString() : "error response");
-            return message.RootElement.GetProperty("result").Clone();
+            return root.TryGetProperty("result", out var result) && result.ValueKind == JsonValueKind.Object
+                ? result.Clone()
+                : throw new InvalidDataException("the response has no result");
         }
         throw new InvalidDataException("the server closed its output");
     }

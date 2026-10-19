@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace TALXIS.AgentBox.CLI.Host;
 
@@ -7,12 +8,15 @@ public sealed record ProcessResult(int ExitCode, string StandardOutput, string S
 {
     public bool Succeeded => ExitCode == 0 && !TimedOut;
 
-    /// <summary>One line saying why it failed, for reports.</summary>
+    /// <summary>One line saying why it failed, for reports: the last line naming an error, else the last line.</summary>
     public string FailureSummary =>
-        TimedOut ? "timed out" : FirstLine(StandardError) ?? FirstLine(StandardOutput) ?? $"exit code {ExitCode}";
+        TimedOut ? "timed out"
+        : ErrorLine(StandardError) ?? ErrorLine(StandardOutput) ?? Lines(StandardError).LastOrDefault() ?? Lines(StandardOutput).LastOrDefault()
+          ?? $"exit code {ExitCode}";
 
-    private static string? FirstLine(string text) =>
-        text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();
+    private static string? ErrorLine(string text) => Lines(text).LastOrDefault(l => l.Contains("error", StringComparison.OrdinalIgnoreCase));
+
+    private static string[] Lines(string text) => text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 }
 
 public interface IProcessRunner
@@ -31,6 +35,9 @@ public interface IProcessRunner
 
 public sealed class ProcessRunner : IProcessRunner
 {
+    // A background process the command started can keep its output open long after it exits.
+    private static readonly TimeSpan OutputGrace = TimeSpan.FromSeconds(5);
+
     public string? FindOnPath(string command)
     {
         if (Path.IsPathRooted(command))
@@ -94,10 +101,12 @@ public sealed class ProcessRunner : IProcessRunner
         }
         process.StandardInput.Close();
 
-        var stdout = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var stderr = process.StandardError.ReadToEndAsync(cancellationToken);
+        var stdout = new StringBuilder();
+        var stderr = new StringBuilder();
+        var reading = Task.WhenAll(PumpAsync(process.StandardOutput, stdout), PumpAsync(process.StandardError, stderr));
         using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutSource.CancelAfter(timeout);
+        var timedOut = false;
         try
         {
             await process.WaitForExitAsync(timeoutSource.Token).ConfigureAwait(false);
@@ -108,16 +117,37 @@ public sealed class ProcessRunner : IProcessRunner
             catch (InvalidOperationException) { /* already exited */ }
             if (cancellationToken.IsCancellationRequested)
                 throw;
-            return new ProcessResult(-1, await SafeRead(stdout).ConfigureAwait(false), await SafeRead(stderr).ConfigureAwait(false), TimedOut: true);
+            timedOut = true;
         }
 
-        return new ProcessResult(process.ExitCode, await stdout.ConfigureAwait(false), await stderr.ConfigureAwait(false), TimedOut: false);
+        await Task.WhenAny(reading, Task.Delay(OutputGrace, CancellationToken.None)).ConfigureAwait(false);
+        return new ProcessResult(timedOut ? -1 : process.ExitCode, Snapshot(stdout), Snapshot(stderr), timedOut);
     }
 
-    private static async Task<string> SafeRead(Task<string> read)
+    /// <summary>Copies a stream into <paramref name="into"/> as it arrives, so whatever came is there
+    /// even if the stream never ends.</summary>
+    private static async Task PumpAsync(StreamReader reader, StringBuilder into)
     {
-        try { return await read.ConfigureAwait(false); }
-        catch (Exception ex) when (ex is IOException or OperationCanceledException or InvalidOperationException) { return ""; }
+        var buffer = new char[4096];
+        try
+        {
+            int read;
+            while ((read = await reader.ReadAsync(buffer).ConfigureAwait(false)) > 0)
+            {
+                lock (into)
+                    into.Append(buffer, 0, read);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or ObjectDisposedException)
+        {
+            // The process is gone and its streams with it.
+        }
+    }
+
+    private static string Snapshot(StringBuilder text)
+    {
+        lock (text)
+            return text.ToString();
     }
 
     private static bool IsExecutable(string path)

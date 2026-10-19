@@ -16,6 +16,5 @@
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
-    <None Include="Fixtures/**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

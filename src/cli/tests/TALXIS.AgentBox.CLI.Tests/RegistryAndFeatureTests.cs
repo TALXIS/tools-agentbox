@@ -5,32 +5,51 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
 using TALXIS.AgentBox.CLI.Features;
+using TALXIS.AgentBox.CLI.Host;
 using TALXIS.AgentBox.CLI.Registry;
 
 namespace TALXIS.AgentBox.CLI.Tests;
 
 public class RegistryTests
 {
-    private sealed class StubHandler(string body) : HttpMessageHandler
+    /// <summary>nuget.org: the service index points to search, and search answers.</summary>
+    private sealed class NuGetStub : HttpMessageHandler
     {
-        public Uri? Requested { get; private set; }
+        public Uri? Searched { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            Requested = request.RequestUri;
+            var body = request.RequestUri!.AbsolutePath == "/v3/index.json"
+                ? """{"resources":[{"@id":"https://search.example/query","@type":"SearchQueryService"}]}"""
+                : """{"data":[{"id":"TALXIS.CLI","version":"1.21.1"}]}""";
+            if (request.RequestUri.Host == "search.example")
+                Searched = request.RequestUri;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
         }
     }
 
-    private static string Fixture(string name) => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", name));
-
     [Fact]
-    public async Task NuGet_latest_ignores_prereleases()
+    public async Task NuGet_latest_is_the_latest_listed_stable_version()
     {
-        var handler = new StubHandler(Fixture("nuget-flatcontainer-index.json"));
-        var latest = await new PackageRegistryClient(new HttpClient(handler)).GetLatestNuGetVersionAsync("TALXIS.CLI", CancellationToken.None);
+        var stub = new NuGetStub();
+        var latest = await new PackageRegistryClient(new HttpClient(stub)).GetLatestNuGetVersionAsync("TALXIS.CLI", CancellationToken.None);
         Assert.Equal("1.21.1", latest?.ToNormalizedString());
-        Assert.Equal("https://api.nuget.org/v3-flatcontainer/talxis.cli/index.json", handler.Requested?.ToString());
+        Assert.Contains("prerelease=false", stub.Searched?.Query);
+    }
+}
+
+public class ProcessRunnerTests
+{
+    [Fact]
+    public async Task A_background_process_holding_the_output_does_not_outlast_the_command()
+    {
+        if (OperatingSystem.IsWindows())
+            return; // needs bash
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        var result = await new ProcessRunner().RunAsync("bash", ["-c", "sleep 30 & echo done"], TimeSpan.FromSeconds(20));
+        Assert.True(result.Succeeded);
+        Assert.Equal("done", result.StandardOutput.Trim());
+        Assert.True(started.Elapsed < TimeSpan.FromSeconds(15), $"took {started.Elapsed}");
     }
 }
 

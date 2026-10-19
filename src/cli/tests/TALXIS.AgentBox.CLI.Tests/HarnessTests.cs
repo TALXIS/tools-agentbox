@@ -88,6 +88,7 @@ public class McpProbeTests
     [InlineData("""{"jsonrpc":"2.0","id":1,"result":{}}""")] // stops answering after initialize
     [InlineData("""{"jsonrpc":"2.0","id":1,"error":{"message":"boom"}}""")] // answers with an error
     [InlineData("""{"jsonrpc":"2.0","id":1,"result":{}}""", """{"jsonrpc":"2.0","id":2,"result":{"tools":[]}}""")] // offers no tools
+    [InlineData("""{"jsonrpc":"2.0","id":1,"method":"initialize"}""")] // echoes the request back
     public async Task A_server_that_does_not_offer_tools_is_unhealthy(params string[] responses)
     {
         // Servers log and send notifications before answering; both must be skipped.
