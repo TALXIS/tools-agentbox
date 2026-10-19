@@ -36,12 +36,8 @@ public class CatalogTests
     [InlineData(OsKind.Windows)]
     [InlineData(OsKind.MacOS)]
     [InlineData(OsKind.Linux)]
-    public void On_a_workstation_everything_is_either_installed_by_agentbox_or_has_a_manual_command(OsKind os)
-    {
-        var host = new FakeHost { Os = os, IsContainer = false };
-        Assert.All(PrerequisiteCatalog.All.Where(p => !p.ContainerOnly), p =>
-            Assert.True(PrerequisiteListCommand.InstalledByAgentBox(host, p) || p.Manual.For(os) is not null, p.Id));
-    }
+    public void On_a_workstation_everything_has_a_manual_command(OsKind os) =>
+        Assert.All(PrerequisiteCatalog.All.Where(p => !p.ContainerOnly), p => Assert.NotNull(p.Manual.For(os)));
 
     [Fact]
     public void Only_this_repos_Features_have_a_follows_latest_marker()

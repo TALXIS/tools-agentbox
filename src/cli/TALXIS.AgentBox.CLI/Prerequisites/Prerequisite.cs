@@ -4,7 +4,7 @@ namespace TALXIS.AgentBox.CLI.Prerequisites;
 
 public enum PrerequisiteKind
 {
-    /// <summary>System-wide (SDK, runtime, OS package): installed only in containers.</summary>
+    /// <summary>System-wide (SDK, runtime, OS package).</summary>
     System,
     /// <summary>A .NET global tool.</summary>
     DotnetTool,
@@ -16,7 +16,7 @@ public enum PrerequisiteKind
     SelfUpdating,
 }
 
-/// <summary>How to install a prerequisite by hand, per OS, where agentbox doesn't do it itself.</summary>
+/// <summary>How to install a prerequisite by hand, per OS, on a machine agentbox doesn't install on.</summary>
 public sealed record ManualInstall(string? Linux = null, string? Windows = null, string? MacOS = null)
 {
     public static ManualInstall Everywhere(string command) => new(command, command, command);

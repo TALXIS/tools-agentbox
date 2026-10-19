@@ -116,6 +116,27 @@ public class PrerequisiteTests
     }
 
     [Fact]
+    public async Task On_a_workstation_install_only_shows_the_command()
+    {
+        var processes = new FakeProcesses();
+        using var harness = new CommandHarness(new FakeHost { IsContainer = false }, processes);
+        Assert.Equal(0, await new PrerequisiteInstallCommand { Format = "json", Ids = ["txc"] }.RunAsync());
+        using var json = JsonDocument.Parse(harness.Output);
+        Assert.Equal("manual", json.RootElement[0].GetProperty("action").GetString());
+        Assert.Equal("dotnet tool install --global TALXIS.CLI", json.RootElement[0].GetProperty("detail").GetString());
+        Assert.Empty(processes.Calls);
+    }
+
+    [Fact]
+    public async Task On_a_workstation_update_changes_nothing()
+    {
+        var (_, processes) = WithTool("1.0.0", followsLatest: true);
+        var result = await UpdateAsync(new FakeHost { IsContainer = false }, processes, new FakeRegistry { Latest = { ["Some.Tool"] = "1.2.0" } });
+        Assert.Equal(UpdateAction.NotManaged, result.Action);
+        Assert.Empty(processes.Calls);
+    }
+
+    [Fact]
     public async Task On_a_workstation_install_reports_the_manual_command_for_system_tools()
     {
         var processes = new FakeProcesses();
