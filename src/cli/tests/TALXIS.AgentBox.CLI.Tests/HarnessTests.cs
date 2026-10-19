@@ -75,6 +75,24 @@ public class HarnessTests
     }
 
     [Fact]
+    public async Task Deep_validation_fails_when_the_plugin_declares_no_MCP_server()
+    {
+        var plugin = Directory.CreateTempSubdirectory("plugin-").FullName;
+        Directory.CreateDirectory(Path.Combine(plugin, "skills", "a-skill"));
+        var processes = new FakeProcesses
+        {
+            Handler = (_, _) => new(0, $$"""[{"id":"implement@talxis","enabled":true,"installPath":"{{plugin}}"}]""", "", false),
+        };
+        processes.OnPath["claude"] = "/usr/bin/claude";
+        var service = new HarnessService(new FakeHost(), processes, new FakePrompt(), NullLogger.Instance);
+
+        Assert.True((await service.ValidateAsync(HarnessKind.Claude, deep: false)).Healthy);
+        var deep = await service.ValidateAsync(HarnessKind.Claude, deep: true);
+        Assert.False(deep.Healthy);
+        Assert.Equal("plugin declares no MCP servers", deep.Detail);
+    }
+
+    [Fact]
     public void Reads_the_MCP_servers_a_plugin_declares()
     {
         var plugin = Directory.CreateTempSubdirectory("plugin-").FullName;

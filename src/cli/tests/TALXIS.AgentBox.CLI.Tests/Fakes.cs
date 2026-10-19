@@ -40,14 +40,17 @@ internal sealed class FakeProcesses : IProcessRunner
         return Task.FromResult(Handler(fileName, arguments));
     }
 
-    /// <summary>Every catalog command on PATH, and a .NET 10 SDK.</summary>
+    /// <summary>Every catalog command on PATH, with a .NET 10 SDK and Node 22.</summary>
     public static FakeProcesses WithEverything()
     {
         var processes = new FakeProcesses
         {
-            Handler = (file, args) => file == "dotnet" && args.SequenceEqual(["--list-sdks"])
-                ? new(0, "10.0.100 [/usr/share/dotnet/sdk]\n", "", false)
-                : new(0, "", "", false),
+            Handler = (file, args) => (file, string.Join(' ', args)) switch
+            {
+                ("dotnet", "--list-sdks") => new(0, "10.0.100 [/usr/share/dotnet/sdk]\n", "", false),
+                ("node", "--version") => new(0, "v22.11.0\n", "", false),
+                _ => new(0, "", "", false),
+            },
         };
         foreach (var p in PrerequisiteCatalog.All)
             processes.OnPath[p.Command] = "/usr/bin/" + p.Command;

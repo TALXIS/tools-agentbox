@@ -89,6 +89,15 @@ public class PrerequisiteTests
     }
 
     [Fact]
+    public async Task Node_older_than_22_counts_as_missing()
+    {
+        var processes = FakeProcesses.WithEverything();
+        processes.Handler = (_, _) => new(0, "v20.18.0\n", "", false);
+        using var harness = new CommandHarness(new FakeHost(), processes);
+        Assert.Equal(3, await new PrerequisiteValidateCommand { Format = "json", Ids = ["node"] }.RunAsync());
+    }
+
+    [Fact]
     public async Task Container_only_prerequisites_are_not_needed_on_a_workstation()
     {
         var processes = FakeProcesses.WithEverything();

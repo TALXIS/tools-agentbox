@@ -28,6 +28,7 @@ public static class PrerequisiteCatalog
         {
             Id = "node", Description = "Node.js 22", Command = "node", Kind = PrerequisiteKind.System,
             Feature = "devcontainers/features/node",
+            RequiredVersion = new(["--version"], @"^v(2[2-9]|[3-9]\d)\."),
             Manual = new(
                 "curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash - && sudo apt-get install -y nodejs",
                 "winget install --id OpenJS.NodeJS.22 -e",
