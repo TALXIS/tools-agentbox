@@ -5,17 +5,5 @@
     },
     "postStartCommand": {
         "update-devkit-templates": "dotnet new install TALXIS.DevKit.Templates.Dataverse >/dev/null 2>&1 || true"
-    },
-    "customizations": {
-        "vscode": {
-            "extensions": [
-                "ms-dotnettools.csdevkit",
-                "microsoft-IsvExpTools.powerplatform-vscode",
-                "ms-vscode.azurecli",
-                "ms-azuretools.vscode-azurefunctions",
-                "ms-vscode.powershell",
-                "hashicorp.terraform"
-            ]
-        }
     }
 }

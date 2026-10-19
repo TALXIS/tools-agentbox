@@ -3,9 +3,10 @@
 //
 // This is all AgentBox needs. The image carries the config for its own tools (a devcontainer.metadata
 // label) that every devcontainer tool merges in: tool updates and the keyring on every start, the
-// TALXIS/skills plugin registration on create, and VS Code extensions for its tools. It updates with
-// the image, so nothing here needs to change when AgentBox does.
-// Everything about your project goes below: files to open, ports, settings, Features, machine size.
+// TALXIS/skills plugin registration on create. It updates with the image, so nothing here needs to
+// change when AgentBox does.
+// Everything about your project and editor goes below: files to open, ports, settings, extensions,
+// Features, machine size.
 {
     "name": "Power Platform",
     "image": "ghcr.io/talxis/tools-agentbox/image:latest"

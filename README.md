@@ -27,12 +27,11 @@ The image carries its own devcontainer config (a `devcontainer.metadata` label),
 devcontainer tool merges into yours:
 - on every start: update the tools that follow the latest release, and start the keyring;
 - on create: register the [TALXIS/skills](https://github.com/TALXIS/skills) plugin with the coding
-  agents present;
-- VS Code extensions for the tools it installs, for those who use VS Code.
+  agents present.
 
-The image only covers its own tools. Everything about the project is the repository's to set in its
-`devcontainer.json`: files to open, forwarded ports, editor settings and extensions for its own
-workflow, extra Features, machine size.
+The image only covers its own tools. Everything about the project and the editor is the
+repository's to set in its `devcontainer.json`: files to open, forwarded ports, editor settings and
+extensions, extra Features, machine size.
 
 It all updates with the image, so your file never has to change when AgentBox does. The full list is
 in [`devcontainer-metadata.json`](src/container/image/power-platform/devcontainer-metadata.json)

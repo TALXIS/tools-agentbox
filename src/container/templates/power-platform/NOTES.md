@@ -22,9 +22,8 @@ tool merges in, so it updates with the image and your file doesn't change:
 
 - **On every start:** the tools that follow the latest release update, and the keyring starts.
 - **On create:** the [TALXIS/skills](https://github.com/TALXIS/skills) plugin is registered with the coding agents present.
-- VS Code extensions for its tools (ignored by other editors).
 
-The image only covers its own tools. Files to open, forwarded ports, editor settings, extra Features
-and machine size are your project's to set in its `devcontainer.json`.
+The image only covers its own tools. Files to open, forwarded ports, editor settings and extensions,
+extra Features and machine size are your project's to set in its `devcontainer.json`.
 
 The tool list is [`devcontainer.features.json`](.devcontainer/devcontainer.features.json).
