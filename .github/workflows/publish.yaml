@@ -25,7 +25,7 @@ env:
 # human cut a GitHub Release (or ran this by hand with a version), and everything this repo ships -
 # the image, every Feature, every Template, the agentbox CLI - is published under that one version.
 # The "version" in each devcontainer-feature.json / devcontainer-template.json and the CLI's
-# <PackageVersion> are 0.0.1 placeholders that get overwritten here.
+# <Version> are 0.0.1 placeholders that get overwritten here.
 jobs:
   resolve-version:
     runs-on: ubuntu-latest
@@ -216,7 +216,7 @@ jobs:
           dotnet-version: "10.0.x"
       - run: src/cli/build/write-feature-lock.sh
       - run: dotnet test src/cli --configuration Release
-      - run: dotnet pack src/cli/TALXIS.AgentBox.CLI --configuration Release -p:PackageVersion="${{ needs.resolve-version.outputs.version }}" -o nupkg
+      - run: dotnet pack src/cli/TALXIS.AgentBox.CLI --configuration Release -p:Version="${{ needs.resolve-version.outputs.version }}" -o nupkg
       - uses: actions/upload-artifact@v4
         with:
           name: agentbox-nupkg

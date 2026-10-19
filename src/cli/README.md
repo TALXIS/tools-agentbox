@@ -13,6 +13,9 @@ It needs the .NET 10 SDK. Run the latest release without installing anything:
 dnx TALXIS.AgentBox.CLI --yes prerequisite validate
 ```
 
+`dnx` keeps its own options (`--help`, `--version`, `-v`) wherever they appear; put `--` before
+them to pass them to agentbox: `dnx TALXIS.AgentBox.CLI --yes -- --help`.
+
 Or install it as a tool:
 
 ```bash

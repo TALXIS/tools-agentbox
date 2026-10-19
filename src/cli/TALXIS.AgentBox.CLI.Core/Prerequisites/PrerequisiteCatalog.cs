@@ -31,7 +31,7 @@ public static class PrerequisiteCatalog
             Feature = "devcontainers/features/node",
             Hints = new(
                 Apt: "curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash - && sudo apt-get install -y nodejs",
-                Winget: "winget install --id OpenJS.NodeJS.LTS -e",
+                Winget: "winget install --id OpenJS.NodeJS.22 -e",
                 Brew: "brew install node@22"),
         },
         new()

@@ -25,7 +25,6 @@ public sealed class HarnessService(IHostInfo host, IProcessRunner processes, ILo
     public const string Marketplace = "TALXIS/skills";
     public const string MarketplaceName = "talxis";
     public const string Plugin = "implement@talxis";
-    private const string ClaudeSeedDirectory = "/usr/local/claude-plugin-seed";
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
     public static string CommandFor(HarnessKind harness) => harness == HarnessKind.Claude ? "claude" : "copilot";
@@ -74,13 +73,13 @@ public sealed class HarnessService(IHostInfo host, IProcessRunner processes, ILo
     }
 
     /// <summary>
-    /// Claude Code cloud images pre-seed plugins into a machine-wide cache (the environment sets
-    /// CLAUDE_CODE_PLUGIN_SEED_DIR); keep writing there when running as root in a container, as the
-    /// script did. Elsewhere use the user's own plugin directory.
+    /// Where the environment pre-seeds plugins (Claude Code cloud sets CLAUDE_CODE_PLUGIN_SEED_DIR),
+    /// install into the seed; elsewhere into the user's own plugin directory, the only one claude
+    /// reads there. https://code.claude.com/docs/en/plugins/org#seed-containers-and-ci
     /// </summary>
     private Dictionary<string, string?>? Environment(HarnessKind harness) =>
-        harness == HarnessKind.Claude && host.Os == OsKind.Linux && host.HostClass == HostClass.Container && host.IsRoot
-            ? new() { ["CLAUDE_CODE_PLUGIN_CACHE_DIR"] = ClaudeSeedDirectory }
+        harness == HarnessKind.Claude && host.GetEnvironmentVariable("CLAUDE_CODE_PLUGIN_SEED_DIR") is { Length: > 0 } seed
+            ? new() { ["CLAUDE_CODE_PLUGIN_CACHE_DIR"] = seed.Split(':')[0] }
             : null;
 
     /// <summary>Declarative form too, so `copilot plugin update` finds it, and new users from /etc/skel start with it.</summary>

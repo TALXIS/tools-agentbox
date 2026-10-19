@@ -73,7 +73,7 @@ jobs:
       - id: pack
         run: |
           version="0.0.0-ci.${{ github.run_number }}.${{ github.run_attempt }}"
-          dotnet pack src/cli/TALXIS.AgentBox.CLI --configuration Release -p:PackageVersion="$version" -o nupkg
+          dotnet pack src/cli/TALXIS.AgentBox.CLI --configuration Release -p:Version="$version" -o nupkg
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
