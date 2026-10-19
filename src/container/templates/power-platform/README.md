@@ -7,7 +7,7 @@ Full Power Platform / Dataverse development environment. A minimal devcontainer.
 
 # Power Platform Dev Container Template
 
-This template provides a complete, ready-to-use development environment for Power Platform / Dataverse engineers. It works in GitHub Codespaces and in any local devcontainer tool (VS Code Dev Containers, JetBrains Gateway, DevPod, the `devcontainer` CLI); no particular editor is required.
+This template provides a complete, ready-to-use development environment for Power Platform / Dataverse engineers. It works in GitHub Codespaces and in any local devcontainer tool (VS Code Dev Containers, DevPod, the `devcontainer` CLI); no particular editor is required.
 
 ## Getting started
 

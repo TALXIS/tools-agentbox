@@ -11,8 +11,8 @@ isolated environments below instead — see GitHub's own take on why:
 
 ### 1. Devcontainers: GitHub Codespaces or any local devcontainer tool
 
-Works in Codespaces (browser, VS Code or JetBrains), VS Code Dev Containers, JetBrains Gateway,
-DevPod and the `devcontainer` CLI. No particular editor is required.
+Works in Codespaces, VS Code Dev Containers, DevPod and the `devcontainer` CLI: any tool that
+follows the devcontainer spec. No particular editor is required.
 
 **A project only needs this `.devcontainer/devcontainer.json`:**
 

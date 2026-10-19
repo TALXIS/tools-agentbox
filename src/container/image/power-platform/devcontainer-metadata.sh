@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Prints the value of the pre-built image's `devcontainer.metadata` label: the devcontainer config
-# that every devcontainer tool (Codespaces, VS Code, JetBrains, DevPod, the devcontainer CLI) merges
+# that every devcontainer tool (Codespaces, VS Code Dev Containers, DevPod, the devcontainer CLI) merges
 # into a consumer's devcontainer.json when it uses this image. That's what lets a consumer's file be
 # just {"image": "ghcr.io/talxis/tools-agentbox/image:latest"}.
 #

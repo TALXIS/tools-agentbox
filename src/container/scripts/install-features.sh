@@ -177,6 +177,10 @@ dotnet new install TALXIS.DevKit.Templates.Dataverse || true
 # plugin) — same script the pre-built image's devcontainer postCreateCommand fetches and runs, so there's one place this logic lives regardless of caller. AGENTBOX_HARNESS
 # (already exported by this script's caller) narrows it to the relevant harness; unset (manual/
 # local runs) tries both, skipping whichever binary isn't installed.
+# The Claude Code cloud environment sets CLAUDE_CODE_PLUGIN_SEED_DIR for sessions; make sure the
+# install lands in the same seed even if this setup run doesn't see it.
+[ "${AGENTBOX_HARNESS:-}" = "claude" ] \
+    && export CLAUDE_CODE_PLUGIN_SEED_DIR="${CLAUDE_CODE_PLUGIN_SEED_DIR:-/usr/local/claude-plugin-seed}"
 curl -fsSL --max-time 20 "https://talxis.com/agentbox-harness" \
     -o "${WORKDIR}/configure-agent-harness.sh" \
     && bash "${WORKDIR}/configure-agent-harness.sh"
