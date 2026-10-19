@@ -1,0 +1,4 @@
+bin/
+obj/
+*.nupkg
+TALXIS.AgentBox.CLI.Core/features.lock.json

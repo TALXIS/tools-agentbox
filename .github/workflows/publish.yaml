@@ -23,14 +23,15 @@ env:
 
 # Same shape as tools-cli / tools-devkit-templates / platform-metadata: publishing happens because a
 # human cut a GitHub Release (or ran this by hand with a version), and everything this repo ships -
-# the image, every Feature, every Template - is published under that one version. The "version" in
-# each devcontainer-feature.json / devcontainer-template.json is a 0.0.1 placeholder that gets
-# overwritten here, like those repos' <PackageVersion>0.0.1</PackageVersion>.
+# the image, every Feature, every Template, the agentbox CLI - is published under that one version.
+# The "version" in each devcontainer-feature.json / devcontainer-template.json and the CLI's
+# <PackageVersion> are 0.0.1 placeholders that get overwritten here.
 jobs:
   resolve-version:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - id: version
         env:
@@ -48,9 +49,15 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          [[ "$version" == *-* ]] && prerelease=true || prerelease=false
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
 
   publish-features-templates:
     needs: [resolve-version]
+    # Unlike NuGet, the devcontainer CLI moves a Feature's ":1" and "latest" tags to a prerelease
+    # too, which would hand it to everyone on ":1". A prerelease ships only the CLI; the image
+    # (which needs these) is skipped with them.
+    if: needs.resolve-version.outputs.prerelease == 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -59,12 +66,6 @@ jobs:
         env:
           VERSION: ${{ needs.resolve-version.outputs.version }}
         run: |
-          # Unlike NuGet, the devcontainer CLI moves a Feature's ":1" and "latest" tags to a
-          # prerelease too, which would hand it to everyone on ":1".
-          if [[ "$VERSION" == *-* ]]; then
-            echo "Prerelease '$VERSION' can't be published as Features/Templates: it would move their ':${VERSION%%.*}' and 'latest' tags." >&2
-            exit 1
-          fi
           for f in src/container/features/*/devcontainer-feature.json src/container/templates/*/devcontainer-template.json; do
             jq --arg v "$VERSION" '.version = $v' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
             echo "$f -> $VERSION"
@@ -201,3 +202,46 @@ jobs:
       # weekly-cron-driven sprawl), so a few untagged versions accumulating between them is a
       # non-issue - not worth risking the published image over. If cleanup is ever wanted again,
       # use a manifest-list-aware tool (e.g. dataaxiom/ghcr-cleanup-action), not this one.
+
+  cli-pack:
+    # The lockfile pins the Features this release just published, so wait for them (a prerelease
+    # skips that job and pins the current ones).
+    needs: [resolve-version, publish-features-templates]
+    if: ${{ !cancelled() && needs.resolve-version.result == 'success' && needs.publish-features-templates.result != 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: src/cli/build/write-feature-lock.sh
+      - run: dotnet test src/cli --configuration Release
+      - run: dotnet pack src/cli/TALXIS.AgentBox.CLI --configuration Release -p:PackageVersion="${{ needs.resolve-version.outputs.version }}" -o nupkg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agentbox-nupkg
+          path: nupkg/*.nupkg
+          if-no-files-found: error
+          retention-days: 7
+
+  cli-publish:
+    needs: [cli-pack]
+    if: ${{ !cancelled() && needs.cli-pack.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      # nuget.org trusted publishing: OIDC token for a short-lived API key, no stored secret.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: agentbox-nupkg
+          path: nupkg
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: NuGet login (OIDC -> temp API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER || 'prokop.tomas' }}
+      - run: dotnet nuget push nupkg/*.nupkg --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate

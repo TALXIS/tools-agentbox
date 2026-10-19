@@ -1,0 +1,115 @@
+name: "CI - agentbox CLI"
+on:
+  pull_request:
+    paths:
+      - "src/cli/**"
+      - "test/cli/**"
+      - "src/container/templates/power-platform/.devcontainer/devcontainer.features.json"
+      - ".github/workflows/cli.yaml"
+  push:
+    branches: [master]
+    paths:
+      - "src/cli/**"
+      - "test/cli/**"
+      - "src/container/templates/power-platform/.devcontainer/devcontainer.features.json"
+      - ".github/workflows/cli.yaml"
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  # Unit tests and the commands that change nothing, on every OS; then the user-scope installs on the
+  # workstation OSes (system prerequisites are only printed there, never installed).
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - run: dotnet test src/cli --configuration Release
+
+      - name: prerequisite list
+        run: |
+          dotnet build src/cli/TALXIS.AgentBox.CLI --configuration Release --nologo -v q
+          echo "AGENTBOX=$PWD/src/cli/TALXIS.AgentBox.CLI/bin/Release/net10.0/TALXIS.AgentBox.CLI.dll" >> "$GITHUB_ENV"
+          dotnet src/cli/TALXIS.AgentBox.CLI/bin/Release/net10.0/TALXIS.AgentBox.CLI.dll prerequisite list --format json
+
+      - name: install and validate what agentbox installs on a workstation
+        if: matrix.os != 'ubuntu-latest'
+        env:
+          # GITHUB_ACTIONS=true would make it treat the runner as a disposable container.
+          AGENTBOX_HOST_CLASS: workstation
+        run: |
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          ids="$(dotnet "$AGENTBOX" prerequisite list --format json | jq -r '[.[] | select(.installedByAgentBox) | .id] | join(" ")')"
+          echo "Installing: $ids"
+          dotnet "$AGENTBOX" prerequisite install $ids --strict --format text
+          dotnet "$AGENTBOX" prerequisite validate $ids --format text
+
+  pack:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.pack.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: src/cli/build/write-feature-lock.sh
+      - id: pack
+        run: |
+          version="0.0.0-ci.${{ github.run_number }}.${{ github.run_attempt }}"
+          dotnet pack src/cli/TALXIS.AgentBox.CLI --configuration Release -p:PackageVersion="$version" -o nupkg
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agentbox-nupkg
+          path: nupkg/*.nupkg
+          if-no-files-found: error
+          retention-days: 3
+
+  # The packed tool in containers, the way it will be used: a bare Linux container as root, another
+  # vendor's devcontainer image as its non-root user (sudo), and the published AgentBox image with
+  # outdated tools (the lab's "update without restarting" instruction).
+  container:
+    needs: [pack]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scenario: container
+            image: ubuntu:24.04
+            user: root
+          - scenario: foreign-image
+            image: mcr.microsoft.com/devcontainers/base:ubuntu
+            user: vscode
+          - scenario: lab-update
+            image: ghcr.io/talxis/tools-agentbox/image:latest
+            user: root
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: agentbox-nupkg
+          path: nupkg
+      - name: ${{ matrix.scenario }}
+        run: |
+          docker run --rm --user "${{ matrix.user }}" \
+            -e AGENTBOX_VERSION="${{ needs.pack.outputs.version }}" \
+            -v "$PWD/nupkg:/nupkg:ro" -v "$PWD/test/cli:/ci:ro" \
+            "${{ matrix.image }}" bash "/ci/${{ matrix.scenario }}.sh"

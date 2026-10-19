@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>TALXIS.AgentBox.CLI</RootNamespace>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>agentbox</ToolCommandName>
+    <PackageId>TALXIS.AgentBox.CLI</PackageId>
+    <Title>TALXIS AgentBox CLI (agentbox)</Title>
+    <Product>TALXIS AgentBox CLI</Product>
+    <Description>agentbox checks and installs the prerequisites for running coding agents on Power Platform / Dataverse projects, on this machine or in a container, sets up coding-agent harnesses, and adds the AgentBox devcontainer config to a repository.</Description>
+    <PackageTags>cli;dotnet-tool;talxis;agentbox;powerplatform;devcontainer</PackageTags>
+    <PackageProjectUrl>https://github.com/TALXIS/tools-agentbox</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <Copyright>© 2026 NETWORG Corporation - MIT License</Copyright>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="../README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TALXIS.AgentBox.CLI.Core\TALXIS.AgentBox.CLI.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="DotMake.CommandLine" Version="2.6.7" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="TALXIS.AgentBox.CLI.Tests" />
+  </ItemGroup>
+</Project>

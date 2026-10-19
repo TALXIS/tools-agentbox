@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/TALXIS.AgentBox.CLI.Tests/TALXIS.AgentBox.CLI.Tests.csproj" />
+  </Folder>
+  <Project Path="TALXIS.AgentBox.CLI.Core/TALXIS.AgentBox.CLI.Core.csproj" />
+  <Project Path="TALXIS.AgentBox.CLI/TALXIS.AgentBox.CLI.csproj" />
+</Solution>

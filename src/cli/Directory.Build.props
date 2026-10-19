@@ -1,0 +1,30 @@
+<Project>
+  <PropertyGroup>
+    <!-- Placeholder: publish.yaml packs with -p:PackageVersion=<release version>, like tools-cli. -->
+    <Version>0.0.1</Version>
+    <PackageVersion>0.0.1</PackageVersion>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Company>TALXIS</Company>
+    <Authors>NETWORG</Authors>
+    <RepositoryUrl>https://github.com/TALXIS/tools-agentbox</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Deterministic>true</Deterministic>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Banned API usage is a build error, as in tools-cli. -->
+    <WarningsAsErrors>$(WarningsAsErrors);RS0030</WarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Same rule set as tools-cli (src/BannedSymbols.txt): command code writes results through
+         OutputFormatter and diagnostics through ILogger, never Console directly. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
+  </ItemGroup>
+</Project>
