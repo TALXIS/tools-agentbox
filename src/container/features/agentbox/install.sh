@@ -16,7 +16,7 @@ if ! command -v dotnet >/dev/null 2>&1; then
 fi
 
 # Installs it, or updates an existing one.
-dotnet tool update TALXIS.AgentBox.CLI --tool-path "${TOOL_PATH}"
+dotnet tool update TALXIS.DevKit.AgentBox.CLI --tool-path "${TOOL_PATH}"
 
 dotnet_root="${DOTNET_ROOT:-$(dotnet --list-sdks | sed -n '1s/.*\[\(.*\)\/sdk\]$/\1/p')}"
 cat > /usr/local/bin/agentbox <<WRAPPER

@@ -25,7 +25,7 @@ npm install --global --prefix /usr/local/lib/power-apps-cli "@microsoft/power-ap
 mkdir -p /etc/opt/NuGet/Config
 printf '<configuration><packageSources><add key="ci" value="/nupkg" /></packageSources></configuration>\n' \
     > /etc/opt/NuGet/Config/ci.config
-agentbox() { dotnet dnx TALXIS.AgentBox.CLI --yes -- "$@"; }
+agentbox() { dotnet dnx TALXIS.DevKit.AgentBox.CLI --yes -- "$@"; }
 
 step "install agentbox itself, which images before it came with lack"
 agentbox prerequisite install agentbox --format text

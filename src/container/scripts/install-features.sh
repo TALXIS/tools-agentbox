@@ -49,7 +49,7 @@ main() {
     fi
     export DOTNET_ROOT="$(dotnet --list-sdks | sed -n 's/^10\..*\[\(.*\)\/sdk\]$/\1/p' | head -1)"
 
-    if [ -n "${source}" ] && ls "${source}"/TALXIS.AgentBox.CLI.*.nupkg >/dev/null 2>&1; then
+    if [ -n "${source}" ] && ls "${source}"/TALXIS.DevKit.AgentBox.CLI.*.nupkg >/dev/null 2>&1; then
         # A NuGet source for every user, so agentbox here, under sudo, and the agentbox Feature all
         # find it. It wins wherever its version is the highest.
         local nuget_config=/etc/opt/NuGet/Config/agentbox-setup.config
@@ -60,7 +60,7 @@ main() {
     fi
 
     # This machine is dedicated to agents, whether or not agentbox would detect it as a container.
-    AGENTBOX_CONTAINER=true dotnet dnx TALXIS.AgentBox.CLI --yes -- setup --format text "${args[@]}"
+    AGENTBOX_CONTAINER=true dotnet dnx TALXIS.DevKit.AgentBox.CLI --yes -- setup --format text "${args[@]}"
 }
 
 main "$@"

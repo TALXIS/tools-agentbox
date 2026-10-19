@@ -5,8 +5,8 @@ Dataverse: the tools they need, kept current, and the agent harnesses set up wit
 [TALXIS/skills](https://github.com/TALXIS/skills) plugin.
 
 ```bash
-dnx TALXIS.AgentBox.CLI --yes prerequisite validate     # what's missing or outdated
-dnx TALXIS.AgentBox.CLI --yes prerequisite update       # in a sandbox: bring it up to date, in place
+dnx TALXIS.DevKit.AgentBox.CLI --yes prerequisite validate     # what's missing or outdated
+dnx TALXIS.DevKit.AgentBox.CLI --yes prerequisite update       # in a sandbox: bring it up to date, in place
 ```
 
 `dnx` comes with the .NET 10 SDK and always runs the latest release. `agentbox --help` describes

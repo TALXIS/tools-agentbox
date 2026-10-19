@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="TALXIS.AgentBox.CLI/TALXIS.AgentBox.CLI.csproj" />
-  <Project Path="tests/TALXIS.AgentBox.CLI.Tests/TALXIS.AgentBox.CLI.Tests.csproj" />
-</Solution>

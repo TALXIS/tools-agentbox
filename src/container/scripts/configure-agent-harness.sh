@@ -5,7 +5,7 @@
 if command -v agentbox >/dev/null 2>&1; then
     agentbox harness configure || echo "WARNING: agentbox couldn't set up every agent harness (see above)." >&2
 elif grep -q '^10\.' <<<"$(dotnet --list-sdks 2>/dev/null)"; then
-    dotnet dnx TALXIS.AgentBox.CLI --yes -- harness configure \
+    dotnet dnx TALXIS.DevKit.AgentBox.CLI --yes -- harness configure \
         || echo "WARNING: agentbox couldn't set up every agent harness (see above)." >&2
 else
     echo "WARNING: skipping the agent harness setup: agentbox needs the .NET 10 SDK (https://dot.net)." >&2

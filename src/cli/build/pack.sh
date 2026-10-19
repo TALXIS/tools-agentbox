@@ -47,5 +47,5 @@ done < <(jq -c '.installOrder[] | {id, options}' <<<"${resolved}")
 jq '{features: (reduce .[] as $f ([]; if any(.[]; (.id | sub("@.*$"; "")) == ($f.id | sub("@.*$"; ""))) then . else . + [$f] end))}' \
     <<<"${features}" > "${workdir}/features.lock.json"
 
-dotnet pack "${cli}/TALXIS.AgentBox.CLI" --configuration Release -p:Version="${version}" \
+dotnet pack "${cli}/TALXIS.DevKit.AgentBox.CLI" --configuration Release -p:Version="${version}" \
     -p:AgentBoxFeatureLock="${workdir}/features.lock.json" --output "${out}"

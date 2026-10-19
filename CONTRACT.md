@@ -11,7 +11,7 @@ is internal and can change at any release.
 | Pre-built image | Codespaces, any devcontainer tool | `"image": "ghcr.io/talxis/tools-agentbox/image:latest"` |
 | Features | Their own devcontainer composition | `ghcr.io/talxis/tools-agentbox/<feature>:1` |
 | Setup script | Machines dedicated to agents: Claude Code cloud, the Copilot cloud agent, VMs, containers | `curl -fsSL https://talxis.com/agentbox-setup \| bash` |
-| `agentbox` CLI | Anyone, any OS | `dnx TALXIS.AgentBox.CLI --yes <command>`, or `agentbox` where the image or Feature installed it |
+| `agentbox` CLI | Anyone, any OS | `dnx TALXIS.DevKit.AgentBox.CLI --yes <command>`, or `agentbox` where the image or Feature installed it |
 
 The CLI's commands, options, exit codes and `--format json` fields are part of it.
 `https://talxis.com/agentbox-harness` keeps working for configs that still call it.

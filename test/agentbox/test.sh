@@ -13,7 +13,7 @@ docker build \
     . << 'EOF2'
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS cli
 COPY src/cli/ /src/
-RUN dotnet pack /src/TALXIS.AgentBox.CLI --configuration Release -p:Version=999.0.0 --output /nupkg
+RUN dotnet pack /src/TALXIS.DevKit.AgentBox.CLI --configuration Release -p:Version=999.0.0 --output /nupkg
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0
 COPY --from=cli /nupkg/ /nupkg/

@@ -148,10 +148,6 @@ jobs:
       # nuget.org trusted publishing: OIDC token for a short-lived API key, no stored secret.
       id-token: write
     steps:
-      - name: The nuget.org account is configured
-        env:
-          NUGET_USER: ${{ secrets.NUGET_USER }}
-        run: '[ -n "$NUGET_USER" ] || { echo "Set the NUGET_USER secret: the nuget.org account that holds the trusted-publishing policy." >&2; exit 1; }'
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: agentbox-nupkg
@@ -163,7 +159,7 @@ jobs:
         uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
         id: login
         with:
-          user: ${{ secrets.NUGET_USER }}
+          user: ${{ secrets.NUGET_USER || 'prokop.tomas' }}
       - run: dotnet nuget push nupkg/*.nupkg --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
 
   build:
