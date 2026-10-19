@@ -27,8 +27,9 @@ public sealed class PrerequisiteInstaller(
 {
     private static readonly TimeSpan TemplateInstallTimeout = TimeSpan.FromMinutes(10);
 
-    public async Task<IReadOnlyList<InstallResult>> InstallAsync(IReadOnlyList<Prerequisite> targets, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<InstallResult>> InstallAsync(IReadOnlyList<Prerequisite> requested, CancellationToken cancellationToken)
     {
+        var targets = WithDependencies(requested);
         var results = new Dictionary<string, InstallResult>(StringComparer.OrdinalIgnoreCase);
         var viaFeatures = new List<Prerequisite>();
         var templates = new List<Prerequisite>();
@@ -56,6 +57,21 @@ public sealed class PrerequisiteInstaller(
             results[p.Id] = await InstallTemplateAsync(p, cancellationToken).ConfigureAwait(false);
 
         return targets.Select(t => results[t.Id]).ToList();
+    }
+
+    /// <summary>In a container, a prerequisite comes with what its Feature depends on (pa needs the keyring).</summary>
+    private IReadOnlyList<Prerequisite> WithDependencies(IReadOnlyList<Prerequisite> requested)
+    {
+        if (!host.IsLinuxContainer || featureLock is null)
+            return requested;
+        var needed = requested.Select(p => p.Feature).OfType<string>().ToHashSet();
+        for (var grew = true; grew;)
+        {
+            grew = false;
+            foreach (var dependency in featureLock.Features.Where(f => needed.Contains(f.Path)).SelectMany(f => f.DependsOn ?? []).ToList())
+                grew |= needed.Add(dependency);
+        }
+        return PrerequisiteCatalog.All.Where(p => requested.Contains(p) || (p.Feature is not null && needed.Contains(p.Feature))).ToList();
     }
 
     private async Task<IReadOnlyList<InstallResult>> InstallViaFeaturesAsync(IReadOnlyList<Prerequisite> targets, CancellationToken cancellationToken)

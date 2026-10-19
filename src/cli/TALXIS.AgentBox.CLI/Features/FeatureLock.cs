@@ -5,10 +5,12 @@ using TALXIS.AgentBox.CLI.Cli;
 
 namespace TALXIS.AgentBox.CLI.Features;
 
-/// <summary>One resolved Feature: <c>registry/path@sha256:digest</c> plus its options.</summary>
+/// <summary>One resolved Feature: <c>registry/path@sha256:digest</c>, its options, and the paths of
+/// the Features it depends on.</summary>
 public sealed record LockedFeature(
     [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("options")] Dictionary<string, JsonElement>? Options)
+    [property: JsonPropertyName("options")] Dictionary<string, JsonElement>? Options,
+    [property: JsonPropertyName("dependsOn")] IReadOnlyList<string>? DependsOn = null)
 {
     public string Registry => Id[..Id.IndexOf('/', StringComparison.Ordinal)];
 

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
+using TALXIS.AgentBox.CLI.Features;
 using TALXIS.AgentBox.CLI.Prerequisites;
 
 namespace TALXIS.AgentBox.CLI.Tests;
@@ -99,5 +100,31 @@ public class PrerequisiteTests
 
         Assert.Empty(processes.Calls);
         Assert.Empty(toolProcesses.Calls);
+    }
+
+    private sealed class RecordingFeatureInstaller : IFeatureInstaller
+    {
+        public List<string> Installed { get; } = [];
+
+        public Task<IReadOnlyList<FeatureResult>> InstallAsync(IReadOnlyList<LockedFeature> features, CancellationToken cancellationToken)
+        {
+            Installed.AddRange(features.Select(f => f.Path));
+            return Task.FromResult<IReadOnlyList<FeatureResult>>(features.Select(f => new FeatureResult(f, true)).ToList());
+        }
+    }
+
+    [Fact]
+    public async Task In_a_container_a_prerequisite_comes_with_what_its_Feature_depends_on()
+    {
+        var features = new RecordingFeatureInstaller();
+        var featureLock = new FeatureLock([
+            new("ghcr.io/talxis/tools-agentbox/keyring@sha256:a", null),
+            new("ghcr.io/talxis/tools-agentbox/pa-cli@sha256:b", null, ["talxis/tools-agentbox/keyring"]),
+        ]);
+        var services = new AgentBoxServices(new FakeHost { IsRoot = true }, new FakeProcesses(), new FakeRegistry(), new FakePrompt(), features, featureLock);
+
+        await services.Installer(NullLogger.Instance).InstallAsync(PrerequisiteCatalog.Select(["pa"]), CancellationToken.None);
+
+        Assert.Equal(["talxis/tools-agentbox/keyring", "talxis/tools-agentbox/pa-cli"], features.Installed);
     }
 }
