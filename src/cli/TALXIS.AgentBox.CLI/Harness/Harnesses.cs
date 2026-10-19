@@ -111,19 +111,26 @@ public sealed class CopilotHarness : IHarness
 
     public PluginState? ParsePluginList(string json, IHostInfo host) =>
         Harnesses.FindPlugin(json, p => p.Text("name") == "implement" && p.Text("marketplace") == "talxis") is { } plugin
-            ? new(plugin.Flag("enabled"), Path.Combine(host.HomeDirectory, ".copilot", "installed-plugins", "talxis", "implement"))
+            ? new(plugin.Flag("enabled"), Path.Combine(Home(host), "installed-plugins", "talxis", "implement"))
             : null;
+
+    /// <summary>Copilot's own directory: <c>COPILOT_HOME</c>, else <c>~/.copilot</c>.</summary>
+    private static string Home(IHostInfo host) =>
+        host.GetEnvironmentVariable("COPILOT_HOME") is { Length: > 0 } home ? home : Path.Combine(host.HomeDirectory, ".copilot");
+
+    private static readonly JsonDocumentOptions Jsonc = new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
 
     /// <summary>Also declare it in settings, so `copilot plugin update` keeps it and users created
     /// later from /etc/skel start with it.</summary>
     public void AfterConfigure(IHostInfo host)
     {
-        var files = new List<string> { Path.Combine(host.HomeDirectory, ".copilot", "settings.json") };
+        var files = new List<string> { Path.Combine(Home(host), "settings.json") };
         if (host.IsLinuxContainer && host.IsRoot)
             files.Add("/etc/skel/.copilot/settings.json");
         foreach (var file in files)
         {
-            var settings = File.Exists(file) && JsonNode.Parse(File.ReadAllText(file)) is JsonObject existing ? existing : [];
+            // Copilot reads settings.json as JSONC; its comments don't survive the rewrite.
+            var settings = File.Exists(file) && JsonNode.Parse(File.ReadAllText(file), documentOptions: Jsonc) is JsonObject existing ? existing : [];
             var marketplaces = settings["extraKnownMarketplaces"] as JsonObject ?? [];
             marketplaces["talxis"] = new JsonObject { ["source"] = new JsonObject { ["source"] = "github", ["repo"] = Harnesses.Marketplace } };
             settings["extraKnownMarketplaces"] = marketplaces;

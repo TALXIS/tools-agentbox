@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging.Abstractions;
 using TALXIS.AgentBox.CLI.Harness;
 using TALXIS.AgentBox.CLI.Host;
@@ -63,6 +64,29 @@ public class HarnessTests
 
         Assert.Null(new ClaudeHarness().ParsePluginList("""[{"id":"other@market"}]""", host));
         Assert.Null(new CopilotHarness().ParsePluginList("not json", host));
+    }
+
+    [Fact]
+    public void Copilot_settings_keep_what_was_there_and_follow_COPILOT_HOME()
+    {
+        var host = new FakeHost();
+        var copilotHome = Path.Combine(host.HomeDirectory, "elsewhere");
+        host.Environment["COPILOT_HOME"] = copilotHome;
+        Directory.CreateDirectory(copilotHome);
+        File.WriteAllText(Path.Combine(copilotHome, "settings.json"), """
+            {
+              // the user's own setting
+              "theme": "dark",
+            }
+            """);
+
+        new CopilotHarness().AfterConfigure(host);
+
+        var settings = JsonNode.Parse(File.ReadAllText(Path.Combine(copilotHome, "settings.json")))!;
+        Assert.Equal("dark", settings["theme"]!.GetValue<string>());
+        Assert.True(settings["enabledPlugins"]!["implement@talxis"]!.GetValue<bool>());
+        Assert.Equal(Path.Combine(copilotHome, "installed-plugins", "talxis", "implement"),
+            new CopilotHarness().ParsePluginList("""[{"name":"implement","marketplace":"talxis","enabled":true}]""", host)!.Directory);
     }
 
     [Fact]
