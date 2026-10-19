@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging.Abstractions;
 using TALXIS.AgentBox.CLI.Harness;
@@ -105,7 +106,7 @@ public class HarnessTests
         Directory.CreateDirectory(Path.Combine(plugin, "skills", "a-skill"));
         var processes = new FakeProcesses
         {
-            Handler = (_, _) => new(0, $$"""[{"id":"implement@talxis","enabled":true,"installPath":"{{plugin}}"}]""", "", false),
+            Handler = (_, _) => new(0, $$"""[{"id":"implement@talxis","enabled":true,"installPath":{{JsonSerializer.Serialize(plugin)}}}]""", "", false),
         };
         processes.OnPath["claude"] = "/usr/bin/claude";
         var service = new HarnessService(new FakeHost(), processes, new FakePrompt(), NullLogger.Instance);
