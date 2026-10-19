@@ -7,7 +7,7 @@ using TALXIS.AgentBox.CLI.Core.Logging;
 namespace TALXIS.AgentBox.CLI.Devcontainer;
 
 [CliIdempotent]
-[CliCommand(Name = "create", Description = "Write .devcontainer/devcontainer.json pointing at the AgentBox image. The image brings everything else, so the file never needs changing when AgentBox does.")]
+[CliCommand(Name = "create", Description = "Write .devcontainer/devcontainer.json pointing at the AgentBox image. The image brings the config for its own tools, so the file never needs changing when AgentBox does; add your project's own settings to it.")]
 public class DevcontainerCreateCliCommand : AgentBoxLeafCommand
 {
     protected override ILogger Logger { get; } = AgentBoxLoggerFactory.CreateLogger(nameof(DevcontainerCreateCliCommand));
