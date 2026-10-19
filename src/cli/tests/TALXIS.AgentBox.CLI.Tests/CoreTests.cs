@@ -148,6 +148,26 @@ public class FeatureTests
         Assert.Equal("x", environment["INSTALL_DIR"]);
         Assert.Contains("_REMOTE_USER", environment.Keys);
     }
+
+    [Fact]
+    public void Declared_defaults_fill_in_options_the_lockfile_leaves_out()
+    {
+        if (!OperatingSystem.IsLinux())
+            return; // Features only install on Linux.
+        var featureJson = Path.Combine(Directory.CreateTempSubdirectory("agentbox-feature-").FullName, "devcontainer-feature.json");
+        File.WriteAllText(featureJson, """
+            {"id": "git", "options": {
+              "version": {"type": "string", "default": "os-provided"},
+              "ppa": {"type": "boolean", "default": true},
+              "install-dir": {"type": "string", "default": "/usr"}
+            }}
+            """);
+        var parsed = FeatureLock.Parse(new MemoryStream(Encoding.UTF8.GetBytes(Lock)))!;
+        var environment = FeatureInstaller.OptionEnvironment(parsed.Features[1], FeatureInstaller.DeclaredDefaults(featureJson));
+        Assert.Equal("latest", environment["VERSION"]);   // set in the lockfile: wins
+        Assert.Equal("x", environment["INSTALL_DIR"]);
+        Assert.Equal("true", environment["PPA"]);         // only declared: default
+    }
 }
 
 public class HarnessTests

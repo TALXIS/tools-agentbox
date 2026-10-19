@@ -42,7 +42,7 @@ public sealed partial class FeatureInstaller(IProcessRunner processes, HttpClien
                 {
                     var directory = Path.Combine(workRoot.FullName, $"feat-{i}");
                     await DownloadAsync(feature, directory, cancellationToken).ConfigureAwait(false);
-                    var run = await processes.RunAsync("bash", ["install.sh"], TimeSpan.FromMinutes(20), OptionEnvironment(feature), directory, cancellationToken).ConfigureAwait(false);
+                    var run = await processes.RunAsync("bash", ["install.sh"], TimeSpan.FromMinutes(20), OptionEnvironment(feature, DeclaredDefaults(Path.Combine(directory, "devcontainer-feature.json"))), directory, cancellationToken).ConfigureAwait(false);
                     if (!run.Succeeded)
                     {
                         var tail = string.Join('\n', (run.StandardError + run.StandardOutput).Split('\n').TakeLast(15));
@@ -99,7 +99,29 @@ public sealed partial class FeatureInstaller(IProcessRunner processes, HttpClien
     }
 
     /// <summary>Feature options become upper-cased env vars (as install-features.sh and the devcontainer CLI do).</summary>
-    internal static Dictionary<string, string?> OptionEnvironment(LockedFeature feature)
+    /// <summary>
+    /// Each option's declared default. The devcontainer CLI passes these for options the
+    /// devcontainer.json leaves out, and install.sh scripts rely on it (git's empty VERSION, for
+    /// one, falls through to a source build).
+    /// </summary>
+    internal static Dictionary<string, JsonElement> DeclaredDefaults(string featureJsonPath)
+    {
+        var defaults = new Dictionary<string, JsonElement>();
+        if (!File.Exists(featureJsonPath))
+            return defaults;
+        using var document = JsonDocument.Parse(File.ReadAllText(featureJsonPath));
+        if (document.RootElement.TryGetProperty("options", out var options) && options.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var option in options.EnumerateObject())
+            {
+                if (option.Value.TryGetProperty("default", out var value))
+                    defaults[option.Name] = value.Clone();
+            }
+        }
+        return defaults;
+    }
+
+    internal static Dictionary<string, string?> OptionEnvironment(LockedFeature feature, IReadOnlyDictionary<string, JsonElement>? defaults = null)
     {
         // Run through sudo, the Features still set up user-scope bits for the user who asked.
         var (user, home) = Elevation.InvokingUser();
@@ -109,7 +131,10 @@ public sealed partial class FeatureInstaller(IProcessRunner processes, HttpClien
             ["_REMOTE_USER"] = user,
             ["_REMOTE_USER_HOME"] = home,
         };
+        var options = new Dictionary<string, JsonElement>(defaults ?? new Dictionary<string, JsonElement>());
         foreach (var (key, value) in feature.Options ?? [])
+            options[key] = value;
+        foreach (var (key, value) in options)
         {
             var name = InvalidEnvChars().Replace(key.ToUpperInvariant(), "_");
             name = LeadingDigitsOrUnderscores().Replace(name, "_");
