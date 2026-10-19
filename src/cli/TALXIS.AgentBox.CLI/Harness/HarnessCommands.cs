@@ -74,7 +74,11 @@ public class HarnessValidateCommand : AgentBoxLeafCommand
     {
         var service = AgentBoxServices.Current.Harness(Logger);
         var harnesses = Names is { Length: > 0 } ? HarnessService.Parse(Names) : Enum.GetValues<HarnessKind>().Where(service.IsInstalled).ToList();
-        var results = await Task.WhenAll(harnesses.Select(h => service.ValidateAsync(h, Deep))).ConfigureAwait(false);
+        // One at a time: both harnesses usually declare the same server, and two first runs of it
+        // (dnx downloading the package) would race.
+        var results = new List<HarnessHealth>();
+        foreach (var harness in harnesses)
+            results.Add(await service.ValidateAsync(harness, Deep).ConfigureAwait(false));
         OutputFormatter.Write(results, items =>
         {
             foreach (var r in items)

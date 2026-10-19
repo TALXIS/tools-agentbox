@@ -43,8 +43,11 @@ public sealed partial class FeatureInstaller(IProcessRunner processes, HttpClien
                 .ToList();
             var results = new List<FeatureResult>();
             for (var i = 0; i < features.Count; i++)
+            {
                 results.Add(await InstallOneAsync(features[i], downloads[i], cancellationToken).ConfigureAwait(false));
-            NonLoginShellLinks.Write();
+                // After each one: later Features run tools as the remote user (su resets PATH).
+                NonLoginShellLinks.Write();
+            }
             return results;
         }
         finally

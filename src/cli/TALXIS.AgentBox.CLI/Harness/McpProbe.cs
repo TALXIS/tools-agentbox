@@ -60,16 +60,35 @@ public static class McpProbe
         }
         using (process)
         {
-            _ = process.StandardError.ReadToEndAsync(timeout.Token); // drain logs so the server never blocks on them
+            var log = process.StandardError.ReadToEndAsync(timeout.Token); // drained so the server never blocks on it
             try
             {
-                return await HandshakeAsync(server.Name, process.StandardInput, process.StandardOutput, timeout.Token).ConfigureAwait(false);
+                var result = await HandshakeAsync(server.Name, process.StandardInput, process.StandardOutput, timeout.Token).ConfigureAwait(false);
+                if (result.Answered)
+                    return result;
+                // Why it failed is usually the last thing it logged.
+                if (!process.HasExited)
+                    process.Kill(entireProcessTree: true);
+                var lastLine = await LastLineAsync(log).ConfigureAwait(false);
+                return lastLine is null ? result : result with { Error = $"{result.Error}: {lastLine}" };
             }
             finally
             {
                 if (!process.HasExited)
                     process.Kill(entireProcessTree: true);
             }
+        }
+    }
+
+    private static async Task<string?> LastLineAsync(Task<string> log)
+    {
+        try
+        {
+            return (await log.ConfigureAwait(false)).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault();
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
         }
     }
 
