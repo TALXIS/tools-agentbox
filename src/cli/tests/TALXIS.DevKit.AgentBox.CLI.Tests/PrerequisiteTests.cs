@@ -52,19 +52,23 @@ public class PrerequisiteTests
         var result = Assert.Single(await AgentBoxServices.Current.Updater(NullLogger.Instance).UpdateAsync([shared], CancellationToken.None));
 
         Assert.Equal(UpdateAction.Updated, result.Action);
-        Assert.Equal([$"dotnet tool update Some.Tool --tool-path {shared.ToolPath} --version 1.2.0"], processes.Calls);
+        Assert.Equal($"dotnet tool update Some.Tool --tool-path {shared.ToolPath} --version 1.2.0", processes.Calls.Last());
     }
 
-    [Fact]
-    public async Task Without_root_or_sudo_a_shared_tool_is_not_updated_somewhere_else()
+    [Theory]
+    [InlineData(true, UpdateAction.Failed)]
+    [InlineData(false, UpdateAction.NotManaged)]
+    public async Task Without_root_or_sudo_a_shared_tool_is_not_updated_somewhere_else(bool followsLatest, UpdateAction expected)
     {
         var host = new FakeHost();
         var (shared, processes, registry) = SharedTool(host);
+        if (!followsLatest)
+            host.Files.Remove(Tool.FollowsLatestMarker!);
         using var harness = new CommandHarness(host, processes, registry);
 
         var result = Assert.Single(await AgentBoxServices.Current.Updater(NullLogger.Instance).UpdateAsync([shared], CancellationToken.None));
 
-        Assert.Equal(UpdateAction.Failed, result.Action);
+        Assert.Equal(expected, result.Action);
         Assert.Empty(processes.Calls);
     }
 

@@ -5,6 +5,7 @@ on:
       - "src/cli/**"
       - "test/cli/**"
       - "src/container/scripts/**"
+      - "src/container/features/**"
       - "src/container/agentbox-features.json"
       - ".github/workflows/cli.yaml"
   push:

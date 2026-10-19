@@ -63,7 +63,7 @@ public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner process
     }
 
     /// <summary>Templates always follow latest; tools do when their Feature said so.</summary>
-    private bool FollowsLatest(Prerequisite p) =>
+    public bool FollowsLatest(Prerequisite p) =>
         p.Kind == PrerequisiteKind.DotnetTemplate
         || (p.Package is not null && p.FollowsLatestMarker is { } marker && host.FileExists(marker));
 

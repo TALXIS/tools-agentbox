@@ -38,6 +38,13 @@ docker build \
 echo "--- tools, from a non-login shell ---"
 docker run --rm "${IMAGE}" agentbox prerequisite validate --format text
 
+echo "--- an outdated tool in an image layer is updated (the mid-workshop update) ---"
+txc_previous="$(curl -fsSL https://api.nuget.org/v3-flatcontainer/talxis.cli/index.json | jq -r '[.versions[] | select(test("-") | not)][-2]')"
+printf 'FROM %s\nRUN rm -rf /usr/local/share/txc && dotnet tool install TALXIS.CLI --tool-path /usr/local/share/txc --version %s\n' \
+    "${IMAGE}" "${txc_previous}" | docker build --quiet --tag "${IMAGE}-outdated" - >/dev/null
+docker run --rm "${IMAGE}-outdated" agentbox prerequisite update txc --format json \
+    | jq -e '.[0].action == "updated"' >/dev/null && echo "txc updated: OK"
+
 echo "--- pa (keyring started by its wrapper) ---"
 docker run --rm "${IMAGE}" bash -c 'pa auth status --json | grep -q "\"success\": true" && echo "pa auth status: OK"'
 

@@ -21,6 +21,7 @@ public sealed class PrerequisiteUpdater(IHostInfo host, IProcessRunner processes
 {
     // Under the start hook's `timeout 120`, so it finishes rather than being killed mid-write.
     private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(100);
+    private const string WritableCopy = """rm -rf "$0.agentbox" && cp -a "$0" "$0.agentbox" && rm -rf "$0" && mv "$0.agentbox" "$0" """;
 
     public async Task<IReadOnlyList<UpdateResult>> UpdateAsync(IReadOnlyList<Prerequisite> targets, CancellationToken cancellationToken)
     {
@@ -43,7 +44,8 @@ public sealed class PrerequisiteUpdater(IHostInfo host, IProcessRunner processes
         {
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             deadline.CancelAfter(Deadline);
-            var asRoot = host.IsRoot ? [] : targets.Where(inspector.IsShared).ToList();
+            // Only what may need an update: a pinned tool needs no root to be left alone.
+            var asRoot = host.IsRoot ? [] : targets.Where(t => inspector.IsShared(t) && inspector.FollowsLatest(t)).ToList();
             var here = Task.WhenAll(targets.Except(asRoot).Select(t => UpdateOneAsync(t, deadline.Token)));
             var elevated = asRoot.Count > 0 ? await UpdateAsRootAsync(asRoot, deadline.Token).ConfigureAwait(false) : [];
             var results = (await here.ConfigureAwait(false)).Concat(elevated).ToList();
@@ -106,6 +108,15 @@ public sealed class PrerequisiteUpdater(IHostInfo host, IProcessRunner processes
         logger.LogInformation(installing ? "Installing {Id} {To}" : "Updating {Id} {From} -> {To}", p.Id, current.InstalledVersion ?? "?", version);
         try
         {
+            // Docker's overlay can't rename a directory from an image layer, which dotnet tool update
+            // does to the old version ("Invalid cross-device link", dotnet/sdk#3838). So the update
+            // gets a copy in the container's own layer first.
+            if (p.Kind == PrerequisiteKind.DotnetTool && inspector.IsShared(p))
+            {
+                var copy = await processes.RunAsync("bash", ["-c", WritableCopy, p.ToolPath!], Deadline, cancellationToken: cancellationToken).ConfigureAwait(false);
+                if (!copy.Succeeded)
+                    return new(p.Id, UpdateAction.Failed, current.InstalledVersion, version, copy.FailureSummary);
+            }
             var run = await processes.RunAsync(file, arguments, Deadline, cancellationToken: cancellationToken).ConfigureAwait(false);
             return run.Succeeded
                 ? new(p.Id, installing ? UpdateAction.Installed : UpdateAction.Updated, current.InstalledVersion, version)

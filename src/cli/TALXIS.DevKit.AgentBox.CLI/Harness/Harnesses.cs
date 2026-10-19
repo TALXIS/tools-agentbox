@@ -139,9 +139,10 @@ public sealed class CopilotHarness : IHarness
             enabled[Harnesses.Plugin] = true;
             settings["enabledPlugins"] = enabled;
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-            // Whole or not at all: Copilot may read it at any moment.
-            File.WriteAllText(file + ".tmp", settings.ToJsonString(AgentBoxOutputJsonOptions.Default));
-            File.Move(file + ".tmp", file, overwrite: true);
+            // Whole or not at all: Copilot, or another configure, may read it at any moment.
+            var temporary = $"{file}.{Guid.NewGuid():N}.tmp";
+            File.WriteAllText(temporary, settings.ToJsonString(AgentBoxOutputJsonOptions.Default));
+            File.Move(temporary, file, overwrite: true);
         }
     }
 }

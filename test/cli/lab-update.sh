@@ -10,10 +10,16 @@ previous_nuget() {
 
 step "make the image's tools outdated"
 # Where the image has it: the shared tool path, or (images before it) the user's global tools.
+# A shared tool is deleted and installed again: it can't be updated in place while it's in an image layer.
 downgrade_tool() {
-    local package="$1" tool="$2" where=(--global)
-    [ -d "/usr/local/share/${tool}" ] && where=(--tool-path "/usr/local/share/${tool}")
-    dotnet tool update "${package}" "${where[@]}" --version "$(previous_nuget "${package}")" --allow-downgrade
+    local package="$1" tool="$2" version
+    version="$(previous_nuget "${package}")"
+    if [ -d "/usr/local/share/${tool}" ]; then
+        rm -rf "/usr/local/share/${tool}"
+        dotnet tool install "${package}" --tool-path "/usr/local/share/${tool}" --version "${version}"
+    else
+        dotnet tool update "${package}" --global --version "${version}" --allow-downgrade
+    fi
 }
 downgrade_tool TALXIS.CLI txc
 downgrade_tool Microsoft.PowerApps.CLI.Tool pac
