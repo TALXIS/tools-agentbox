@@ -179,18 +179,12 @@ public sealed partial class FeatureInstaller(IProcessRunner processes, HttpClien
 [SupportedOSPlatform("linux")]
 internal static class NonLoginShellLinks
 {
-    private const string KeyringStart = "command -v agentbox-keyring-init >/dev/null 2>&1 && eval \"$(agentbox-keyring-init)\"";
-
     public static void Write()
     {
         if (Environment.GetEnvironmentVariable("DOTNET_ROOT") is { Length: > 0 } dotnetRoot)
         {
             foreach (var tool in new[] { "dotnet", "dnx" })
-                WriteWrapper(tool, Path.Combine(dotnetRoot, tool), dotnetRoot, keyring: false);
-            // The dotnet-tool Features install into the invoking user's home.
-            var tools = Path.Combine(Sudo.InvokingUser().Home, ".dotnet", "tools");
-            foreach (var tool in new[] { "pac", "txc" })
-                WriteWrapper(tool, Path.Combine(tools, tool), dotnetRoot, keyring: true);
+                WriteWrapper(tool, Path.Combine(dotnetRoot, tool), dotnetRoot);
         }
 
         // nvm is only on PATH in login shells; Claude Code installs into the same prefix.
@@ -206,12 +200,12 @@ internal static class NonLoginShellLinks
         }
     }
 
-    private static void WriteWrapper(string name, string target, string dotnetRoot, bool keyring)
+    private static void WriteWrapper(string name, string target, string dotnetRoot)
     {
         if (!File.Exists(target))
             return;
         var path = Path.Combine("/usr/local/bin", name);
-        File.WriteAllText(path, $"#!/bin/bash\nexport DOTNET_ROOT=\"{dotnetRoot}\"\n{(keyring ? KeyringStart + "\n" : "")}exec \"{target}\" \"$@\"\n");
+        File.WriteAllText(path, $"#!/bin/bash\nexport DOTNET_ROOT=\"{dotnetRoot}\"\nexec \"{target}\" \"$@\"\n");
         File.SetUnixFileMode(path, FeatureInstaller.Executable);
     }
 }

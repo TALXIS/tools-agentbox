@@ -19,7 +19,6 @@ FEATURE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 apt-get update
 apt-get install -y --no-install-recommends \
     libsecret-1-0 libsecret-tools gnome-keyring dbus dbus-user-session
-rm -rf /var/lib/apt/lists/*
 
 install -m 755 "${FEATURE_DIR}/agentbox-keyring-init" /usr/local/bin/agentbox-keyring-init
 install -m 644 "${FEATURE_DIR}/agentbox-keyring.sh" /etc/profile.d/agentbox-keyring.sh

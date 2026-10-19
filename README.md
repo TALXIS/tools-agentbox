@@ -1,79 +1,48 @@
 # tools-agentbox
 
-Devcontainer features, templates, and pre-built Docker images for Power Platform / Dataverse developers.
+A ready environment for coding agents doing Power Platform and Dataverse work: the tools they need,
+kept current, and Claude Code and GitHub Copilot set up with the [TALXIS/skills](https://github.com/TALXIS/skills)
+plugin. Wherever the agent runs, it gets the same tools.
 
-**Don't run coding agents directly on your own workstation.** They execute arbitrary commands, which is a
-real security exposure, and heavy agent workloads wear on a machine over time. Run them in one of the
-isolated environments below instead — see GitHub's own take on why:
-[About cloud and local sandboxes](https://docs.github.com/en/copilot/concepts/about-cloud-and-local-sandboxes).
+**Don't run coding agents directly on your own workstation.** They run arbitrary commands. Give them
+a sandbox: [About cloud and local sandboxes](https://docs.github.com/en/copilot/concepts/about-cloud-and-local-sandboxes).
 
-## Choose your environment
+## Pick your sandbox
 
-### 1. Devcontainers: GitHub Codespaces or any local devcontainer tool
-
-Point your `.devcontainer/devcontainer.json` at the image. That's all AgentBox needs:
+**Codespaces or any devcontainer tool.** Your `.devcontainer/devcontainer.json` needs only the image:
 
 ```json
-{
-  "name": "Power Platform",
-  "image": "ghcr.io/talxis/tools-agentbox/image:latest"
-}
+{ "name": "Power Platform", "image": "ghcr.io/talxis/tools-agentbox/image:latest" }
 ```
 
-The image brings its own start-up behaviour (tool updates, the keyring, the
-[TALXIS/skills](https://github.com/TALXIS/skills) plugin for whichever coding agents are present),
-so your file never changes when AgentBox does. Everything about your project and editor stays
-yours to add. Prefer to compose your own? Use the individual Features from
-[`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json).
+Composing your own instead? Each tool is a [Feature](src/container/features); add `agentbox` to keep
+them current.
 
-### 2. GitHub Copilot cloud sandbox
+**GitHub Copilot cloud agent.** Add a step to your `.github/workflows/copilot-setup-steps.yml`:
 
-Copilot's cloud agent environment doesn't use `devcontainer.json` — customize it with
-[`.github/workflows/copilot-setup-steps.yml`](.github/workflows/copilot-setup-steps.yml) instead.
+```yaml
+      - name: Set up AgentBox
+        run: curl -fsSL https://talxis.com/agentbox-setup | bash
+```
 
-### 3. Claude Code cloud environment
+**Claude Code cloud environment.** In an org-shared [cloud environment](https://code.claude.com/docs/en/cloud-environments):
 
-Create an org-shared [Claude Code cloud environment](https://code.claude.com/docs/en/cloud-environments)
-with:
+- **Setup script:** `curl -fsSL https://talxis.com/agentbox-setup | bash`
+- **Environment variable:** `CLAUDE_CODE_PLUGIN_SEED_DIR=/usr/local/claude-plugin-seed`
+- **Network access:** Custom, with the defaults, plus `cli.github.com` and `talxis.com`
+- **Optional:** to update the tools as sessions start, merge the hook in
+  [`session-start-hook.json`](src/container/claude-code/session-start-hook.json) into
+  [managed settings](https://claude.ai/admin-settings/claude-code).
 
-- **Setup script**:
-  ```bash
-  curl -fsSL https://talxis.com/agentbox-setup \
-    -o /tmp/agentbox-setup.sh && AGENTBOX_HARNESS=claude bash /tmp/agentbox-setup.sh || echo "agentbox setup failed to download or run" >&2
-  ```
-- **Environment variables**: `DOTNET_ROOT=/usr/local/dotnet/current`,
-  `CLAUDE_CODE_PLUGIN_SEED_DIR=/usr/local/claude-plugin-seed`
-- **Network access**: Custom, with the defaults included, plus `cli.github.com` and `talxis.com`
-  (the setup script's short links redirect through it to raw.githubusercontent.com, which is
-  already on the default list)
+## Keeping current
 
-This installs the Feature list from
-[`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json)
-directly on the VM, and registers the [TALXIS/skills](https://github.com/TALXIS/skills) plugin
-with Claude Code. No changes needed in individual repos.
-
-To keep the tools current between setup script runs, merge the `hooks` from
-[`src/container/claude-code/session-start-hook.json`](src/container/claude-code/session-start-hook.json) into
-[Admin Settings > Claude Code > Managed settings](https://claude.ai/admin-settings/claude-code).
-
-### 4. Docker
+Tools that follow their latest release update on every container start. Mid-session, or anywhere
+else:
 
 ```bash
-docker pull ghcr.io/talxis/tools-agentbox/image:latest
-docker run -it ghcr.io/talxis/tools-agentbox/image:latest bash
+agentbox prerequisite update
 ```
 
-Plain `docker run` doesn't run devcontainer lifecycle commands, so you get the tool versions the image
-was built with and no plugin registration. The keyring still starts on demand, from the shell and the
-wrappers in `/usr/local/bin`.
-
-## Published artifacts
-
-- Every Feature under [`src/container/features/`](src/container/features) as
-  `ghcr.io/talxis/tools-agentbox/<feature>`
-- The devcontainer template: `ghcr.io/talxis/tools-agentbox/power-platform`
-- The pre-built image: `ghcr.io/talxis/tools-agentbox/image:latest`
-
-## Included tools
-
-See [`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json).
+The [`agentbox` CLI](src/cli/README.md) also checks a machine (`prerequisite validate`,
+`harness validate`). The [contract](CONTRACT.md) lists what stays stable. The tools are listed in
+[`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json).

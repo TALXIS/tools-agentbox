@@ -15,7 +15,10 @@ dotnet new install "TALXIS.DevKit.Templates.Dataverse::$(previous_nuget TALXIS.D
 pa_previous="$(npm view @microsoft/power-apps-cli versions --json | jq -r '[.[] | select(test("-") | not)][-2]')"
 npm install --global --prefix /usr/local/lib/power-apps-cli "@microsoft/power-apps-cli@${pa_previous}" >/dev/null
 
-agentbox() { dotnet dnx --add-source "${AGENTBOX_NUPKG:-/nupkg}" TALXIS.AgentBox.CLI --version "${AGENTBOX_VERSION}" --yes "$@"; }
+agentbox() { dotnet dnx --add-source /nupkg TALXIS.AgentBox.CLI --yes -- "$@"; }
+
+step "install agentbox itself, which images before it came with lack"
+agentbox prerequisite install agentbox --format text
 
 step "validate --check-updates reports them"
 agentbox prerequisite validate --check-updates --format text
@@ -28,4 +31,7 @@ step "nothing is outdated any more"
 agentbox prerequisite validate --check-updates --format json > /tmp/after.json
 jq -e '[.[] | select(.status == "outdated")] | length == 0' /tmp/after.json >/dev/null \
     || { cat /tmp/after.json; exit 1; }
+
+step "harness configure"
+agentbox harness configure --format text
 check_ready

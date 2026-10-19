@@ -2,7 +2,7 @@
     "id": "pa-cli",
     "version": "0.0.1",
     "name": "Power Apps CLI (pa)",
-    "description": "Installs the Microsoft Power Apps CLI (pa, npm @microsoft/power-apps-cli). Needs Node.js 22 or newer and a Secret Service keyring, which the keyring Feature provides. When version is 'latest', auto-updates on every container start via postStartCommand.",
+    "description": "Installs the Microsoft Power Apps CLI (pa, npm @microsoft/power-apps-cli). Needs Node.js 22 or newer and a Secret Service keyring, which the keyring Feature provides. With version 'latest' it follows the latest release (`agentbox prerequisite update` keeps it current).",
     "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/container/features/pa-cli",
     "licenseURL": "https://github.com/TALXIS/tools-agentbox/blob/master/LICENSE",
     "options": {
@@ -12,10 +12,9 @@
                 "latest"
             ],
             "default": "latest",
-            "description": "Version of @microsoft/power-apps-cli to install. Use 'latest' for auto-updates on each start."
+            "description": "Version of @microsoft/power-apps-cli to install."
         }
     },
-    "postStartCommand": "[ -f /etc/devcontainer-pa-cli/auto-update ] && npm install -g --prefix /usr/local/lib/power-apps-cli @microsoft/power-apps-cli@latest >/dev/null 2>&1 || true",
     "customizations": {
         "vscode": {
             "settings": {

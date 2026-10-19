@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Prints the image's devcontainer.metadata label: one entry holding the start/create hooks of this
-# repo's Features in the image, plus devcontainer-metadata.json. The image isn't built by the
-# devcontainer CLI, which would otherwise write this label. One entry, object-form commands: they
-# run in parallel.
+# Prints the image's devcontainer.metadata label: one entry holding the create and start hooks of
+# this repo's Features in the image. The image isn't built by the devcontainer CLI, which would
+# otherwise write this label. One entry, object-form commands: they run in parallel.
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
@@ -16,8 +15,5 @@ hooks() {
     done | jq -cs 'add // {}'
 }
 
-jq -c --argjson create "$(hooks postCreateCommand)" --argjson start "$(hooks postStartCommand)" '
-    [ . + {
-        postCreateCommand: ($create + (.postCreateCommand // {})),
-        postStartCommand: ($start + (.postStartCommand // {}))
-    } ]' "${repo}/src/container/image/power-platform/devcontainer-metadata.json"
+jq -nc --argjson create "$(hooks postCreateCommand)" --argjson start "$(hooks postStartCommand)" \
+    '[{id: "ghcr.io/talxis/tools-agentbox/image", postCreateCommand: $create, postStartCommand: $start}]'

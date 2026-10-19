@@ -1,7 +1,14 @@
 name: "Copilot Setup Steps"
 
+# Prepares the GitHub Copilot cloud agent's runner. Here it runs this checkout's setup script; other
+# repositories use `curl -fsSL https://talxis.com/agentbox-setup | bash` instead (see the README).
+# Pull requests that change the script run it too, on a real runner.
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/container/scripts/**"
+      - ".github/workflows/copilot-setup-steps.yml"
 
 jobs:
   copilot-setup-steps:
@@ -11,13 +18,5 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install the agentbox toolchain
-        env:
-          AGENTBOX_HARNESS: copilot
-        run: |
-          sudo -E bash src/container/scripts/install-features.sh
-          sudo chmod o+x /root
-          sudo chmod -R o+rX /root/.dotnet /usr/local/dotnet 2>/dev/null || true
-          # install-features.sh runs as root; hand the runner user's cache back so
-          # Copilot's own tooling can write to it.
-          sudo chown -R "$(id -u):$(id -g)" "$HOME/.cache" "$HOME/.npm" 2>/dev/null || true
+      - name: Set up AgentBox
+        run: bash src/container/scripts/install-features.sh

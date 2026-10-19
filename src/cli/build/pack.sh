@@ -14,8 +14,7 @@ command -v devcontainer >/dev/null 2>&1 || npm install -g @devcontainers/cli --s
 workdir="$(mktemp -d)"
 trap 'rm -rf "${workdir}"' EXIT
 mkdir -p "${workdir}/.devcontainer"
-jq '{features: (.features + {"ghcr.io/devcontainers/features/dotnet:1": {"version": "10.0"}})}' "${manifest}" \
-    > "${workdir}/.devcontainer/devcontainer.json"
+cp "${manifest}" "${workdir}/.devcontainer/devcontainer.json"
 
 # resolve-dependencies prints a diagram before its JSON; keep the JSON.
 resolved="$(devcontainer features resolve-dependencies --workspace-folder "${workdir}" | sed -n '/^{/,$p')"

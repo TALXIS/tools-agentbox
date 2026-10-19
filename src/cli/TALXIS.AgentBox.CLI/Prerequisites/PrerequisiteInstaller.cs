@@ -14,7 +14,7 @@ public sealed record InstallResult(string Id, InstallAction Action, string? Deta
 /// <summary>
 /// Makes prerequisites present. In a Linux container it applies the pinned AgentBox Features (as
 /// root, through passwordless sudo if needed), so every container ends up with the same tool set
-/// whatever the base image brought; only tools that update themselves are left alone when present.
+/// whatever the base image brought, keeping only installs that are managed elsewhere or verified.
 /// Elsewhere it installs what's missing at user scope and reports the command for the rest.
 /// </summary>
 public sealed class PrerequisiteInstaller(
@@ -38,7 +38,7 @@ public sealed class PrerequisiteInstaller(
             var status = (await inspector.InspectAsync(p, checkUpdates: false, cancellationToken).ConfigureAwait(false)).Status;
             if (status == PrerequisiteStatus.NotNeeded)
                 results[p.Id] = new(p.Id, InstallAction.NotNeeded);
-            else if (host.IsLinuxContainer && p.Feature is not null && !(p.Kind == PrerequisiteKind.SelfUpdating && status == PrerequisiteStatus.Ok))
+            else if (host.IsLinuxContainer && p.Feature is not null && !(p.KeepWhenPresent && status == PrerequisiteStatus.Ok))
                 viaFeatures.Add(p);
             else if (status == PrerequisiteStatus.Ok)
                 results[p.Id] = new(p.Id, InstallAction.Present);

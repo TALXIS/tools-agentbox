@@ -20,7 +20,10 @@ jobs:
             agentbox:
               - ./**/agentbox/**
               - ./src/cli/**
-            power-platform: ./**/power-platform/**
+            power-platform:
+              - ./**/power-platform/**
+              - ./src/container/scripts/**
+              - ./src/cli/**
 
   test-features:
     needs: [detect-changes]
@@ -32,6 +35,12 @@ jobs:
         feature: ${{ fromJSON(needs.detect-changes.outputs.features) }}
     steps:
       - uses: actions/checkout@v4
+
+      # The image test packs the CLI from this checkout.
+      - uses: actions/setup-dotnet@v4
+        if: matrix.feature == 'power-platform'
+        with:
+          dotnet-version: "10.0.x"
 
       - name: Smoke test '${{ matrix.feature }}'
         uses: ./.github/actions/smoke-test

@@ -2,7 +2,7 @@
     "id": "txc-cli",
     "version": "0.0.1",
     "name": "TALXIS DevKit CLI (txc)",
-    "description": "Installs the TALXIS DevKit CLI (txc), a code-first toolkit for Power Platform and Dataverse development. When version is 'latest', auto-updates on every container start.",
+    "description": "Installs the TALXIS DevKit CLI (txc), a code-first toolkit for Power Platform and Dataverse development. With version 'latest' it follows the latest release (`agentbox prerequisite update` keeps it current).",
     "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/container/features/txc-cli",
     "licenseURL": "https://github.com/TALXIS/tools-agentbox/blob/master/LICENSE",
     "options": {
@@ -12,10 +12,9 @@
                 "latest"
             ],
             "default": "latest",
-            "description": "Version of TALXIS.CLI to install. Use 'latest' for auto-updates on each start."
+            "description": "Version of TALXIS.CLI to install."
         }
     },
-    "postStartCommand": "[ -f /etc/devcontainer-txc-cli/auto-update ] && dotnet tool update --global TALXIS.CLI 2>/dev/null || true",
     "customizations": {
         "vscode": {
             "settings": {

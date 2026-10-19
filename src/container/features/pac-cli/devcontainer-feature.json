@@ -2,7 +2,7 @@
     "id": "pac-cli",
     "version": "0.0.1",
     "name": "Power Platform CLI (pac)",
-    "description": "Installs the Microsoft Power Platform CLI (pac). When version is 'latest', auto-updates on every container start via postStartCommand.",
+    "description": "Installs the Microsoft Power Platform CLI (pac). With version 'latest' it follows the latest release (`agentbox prerequisite update` keeps it current).",
     "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/container/features/pac-cli",
     "licenseURL": "https://github.com/TALXIS/tools-agentbox/blob/master/LICENSE",
     "options": {
@@ -12,10 +12,9 @@
                 "latest"
             ],
             "default": "latest",
-            "description": "Version of the Power Platform CLI to install. Use 'latest' for auto-updates on each start."
+            "description": "Version of the Power Platform CLI to install."
         }
     },
-    "postStartCommand": "[ -f /etc/devcontainer-pac-cli/auto-update ] && dotnet tool update --global Microsoft.PowerApps.CLI.Tool 2>/dev/null || true",
     "customizations": {
         "vscode": {
             "extensions": [

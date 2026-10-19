@@ -34,7 +34,7 @@ REMOTE_USER="${_REMOTE_USER:-"$(id -un)"}"
 echo "Installing ${PACKAGE}@${CLI_VERSION} into ${PREFIX}"
 mkdir -p "${PREFIX}"
 npm install -g --prefix "${PREFIX}" "${PACKAGE}@${CLI_VERSION}"
-# postStartCommand updates run as the remote user, not root.
+# `agentbox prerequisite update` runs as the remote user, not root.
 chown -R "${REMOTE_USER}" "${PREFIX}" 2>/dev/null || true
 
 cat > /usr/local/bin/pa <<WRAPPER
@@ -48,9 +48,7 @@ chmod 755 /usr/local/bin/pa
 if [ "${CLI_VERSION}" = "latest" ]; then
     mkdir -p /etc/devcontainer-pa-cli
     touch /etc/devcontainer-pa-cli/auto-update
-    echo "Auto-update enabled: pa will update on each container start."
 else
-    # A pin installed over an image that already has the marker would be undone on the next start.
     rm -f /etc/devcontainer-pa-cli/auto-update
 fi
 

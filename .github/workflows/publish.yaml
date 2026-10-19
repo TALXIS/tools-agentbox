@@ -93,9 +93,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build:
-    # Waits for the Features: install-features.sh resolves them from GHCR, so building first would
-    # race the publish (and fail on any Feature that is new in this release).
-    needs: [resolve-version, publish-features-templates]
+    # Installs the agentbox package cli-pack just made, which pins the Features this release
+    # published. A prerelease doesn't touch the image.
+    needs: [resolve-version, cli-pack]
+    if: needs.resolve-version.outputs.prerelease == 'false'
     strategy:
       fail-fast: false
       matrix:
@@ -107,6 +108,11 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: agentbox-nupkg
+          path: ${{ runner.temp }}/agentbox-cli
 
       - uses: docker/setup-buildx-action@v3
 
@@ -146,14 +152,10 @@ jobs:
           context: .
           file: ${{ env.DOCKERFILE }}
           platforms: ${{ matrix.platform }}
-          # Forces the toolchain layer (install-features.sh) to actually re-run every build instead
-          # of silently reusing a stale cached layer — most Feature versions resolve to "latest",
-          # and the cache below is keyed on instruction text, not on what a re-run would fetch.
+          build-contexts: agentbox-cli=${{ runner.temp }}/agentbox-cli
           build-args: |
             CACHEBUST=${{ github.run_id }}-${{ github.run_attempt }}
             IMAGE_VERSION=${{ needs.resolve-version.outputs.version }}
-          cache-from: type=gha,scope=${{ steps.slug.outputs.value }}
-          cache-to: type=gha,scope=${{ steps.slug.outputs.value }},mode=max
           labels: |
             ${{ steps.meta.outputs.labels }}
             ${{ steps.devcontainer-metadata.outputs.label }}

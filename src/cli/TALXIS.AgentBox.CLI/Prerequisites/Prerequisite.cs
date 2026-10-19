@@ -12,8 +12,9 @@ public enum PrerequisiteKind
     NpmTool,
     /// <summary>A <c>dotnet new</c> template package.</summary>
     DotnetTemplate,
-    /// <summary>Updates itself (Claude Code, Copilot): agentbox only makes sure it's there.</summary>
-    SelfUpdating,
+    /// <summary>Kept current by something else (Claude Code and Copilot update themselves; agentbox
+    /// comes with the image or dnx): agentbox only makes sure it's there.</summary>
+    SelfManaged,
 }
 
 /// <summary>How to install a prerequisite by hand, per OS, where agentbox doesn't do it itself.</summary>
@@ -59,6 +60,10 @@ public sealed record Prerequisite
     public RequiredVersion? RequiredVersion { get; init; }
 
     public ManualInstall Manual { get; init; } = new();
+
+    /// <summary>In a container, a present install is kept rather than re-applied from its Feature:
+    /// it's managed elsewhere, or its version was just checked.</summary>
+    public bool KeepWhenPresent => Kind == PrerequisiteKind.SelfManaged || RequiredVersion is not null;
 
     /// <summary>This repo's Features leave this file when they follow the latest release
     /// (version "latest"); a pinned install has none, and agentbox doesn't update it.</summary>

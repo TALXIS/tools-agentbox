@@ -4,6 +4,8 @@ on:
     paths:
       - "src/cli/**"
       - "test/cli/**"
+      - "src/container/scripts/**"
+      - "src/container/features/**"
       - "src/container/templates/power-platform/.devcontainer/devcontainer.features.json"
       - ".github/workflows/cli.yaml"
   push:
@@ -11,6 +13,8 @@ on:
     paths:
       - "src/cli/**"
       - "test/cli/**"
+      - "src/container/scripts/**"
+      - "src/container/features/**"
       - "src/container/templates/power-platform/.devcontainer/devcontainer.features.json"
       - ".github/workflows/cli.yaml"
 
@@ -63,8 +67,6 @@ jobs:
 
   pack:
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.pack.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -72,9 +74,10 @@ jobs:
           dotnet-version: "10.0.x"
       - id: pack
         run: |
-          version="0.0.0-ci.${{ github.run_number }}.${{ github.run_attempt }}"
+          # Above any release, so it's the agentbox the container tests install wherever they'd
+          # otherwise take nuget.org's.
+          version="999.${{ github.run_number }}.${{ github.run_attempt }}"
           src/cli/build/pack.sh "$version" nupkg
-          echo "version=$version" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
           name: agentbox-nupkg
@@ -82,16 +85,16 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-  # The packed tool in containers, the way it will be used: a bare Linux container as root, another
-  # vendor's devcontainer image as its non-root user (sudo), and the published AgentBox image with
-  # outdated tools (the lab's "update without restarting" instruction).
+  # The packed tool in containers, the way it will be used: the setup script in a bare Linux
+  # container as root and in another vendor's devcontainer image as its non-root user (sudo), and
+  # the published AgentBox image with outdated tools (the lab's "update without restarting").
   container:
     needs: [pack]
     strategy:
       fail-fast: false
       matrix:
         include:
-          - scenario: container
+          - scenario: setup-script
             image: ubuntu:24.04
             user: root
           # Pinned to 24.04 like the AgentBox image: "ubuntu" moves to new releases before
@@ -112,6 +115,5 @@ jobs:
       - name: ${{ matrix.scenario }}
         run: |
           docker run --rm --user "${{ matrix.user }}" \
-            -e AGENTBOX_VERSION="${{ needs.pack.outputs.version }}" \
-            -v "$PWD/nupkg:/nupkg:ro" -v "$PWD/test/cli:/ci:ro" \
-            "${{ matrix.image }}" bash "/ci/${{ matrix.scenario }}.sh"
+            -v "$PWD/nupkg:/nupkg:ro" -v "$PWD:/repo:ro" \
+            "${{ matrix.image }}" bash "/repo/test/cli/${{ matrix.scenario }}.sh"

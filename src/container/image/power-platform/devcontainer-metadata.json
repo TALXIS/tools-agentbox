@@ -1,9 +1,0 @@
-{
-    "id": "ghcr.io/talxis/tools-agentbox/image",
-    "postCreateCommand": {
-        "configure-agent-harness": "curl -fsSL --max-time 20 https://talxis.com/agentbox-harness | timeout 90 bash || true"
-    },
-    "postStartCommand": {
-        "update-devkit-templates": "dotnet new install TALXIS.DevKit.Templates.Dataverse >/dev/null 2>&1 || true"
-    }
-}

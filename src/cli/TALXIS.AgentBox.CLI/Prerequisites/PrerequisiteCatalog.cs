@@ -74,13 +74,13 @@ public static class PrerequisiteCatalog
         },
         new()
         {
-            Id = "copilot", Description = "GitHub Copilot CLI", Command = "copilot", Kind = PrerequisiteKind.SelfUpdating,
+            Id = "copilot", Description = "GitHub Copilot CLI", Command = "copilot", Kind = PrerequisiteKind.SelfManaged,
             Feature = "devcontainers/features/copilot-cli",
             Manual = ManualInstall.Everywhere("npm install -g @github/copilot"),
         },
         new()
         {
-            Id = "claude", Description = "Claude Code", Command = "claude", Kind = PrerequisiteKind.SelfUpdating,
+            Id = "claude", Description = "Claude Code", Command = "claude", Kind = PrerequisiteKind.SelfManaged,
             Feature = "anthropics/devcontainer-features/claude-code",
             Manual = new("curl -fsSL https://claude.ai/install.sh | bash", "irm https://claude.ai/install.ps1 | iex", "curl -fsSL https://claude.ai/install.sh | bash"),
         },
@@ -103,6 +103,12 @@ public static class PrerequisiteCatalog
         {
             Id = "pa", Description = "Power Apps CLI", Command = "pa", Kind = PrerequisiteKind.NpmTool,
             Package = "@microsoft/power-apps-cli", Feature = "talxis/tools-agentbox/pa-cli", NpmPrefix = "/usr/local/lib/power-apps-cli",
+        },
+        new()
+        {
+            // In a container its hooks run it; elsewhere dnx is enough.
+            Id = "agentbox", Description = "AgentBox CLI", Command = "agentbox", Kind = PrerequisiteKind.SelfManaged,
+            Feature = "talxis/tools-agentbox/agentbox", ContainerOnly = true,
         },
         new()
         {

@@ -8,9 +8,6 @@ public class CatalogTests
 {
     private const string Manifest = "src/container/templates/power-platform/.devcontainer/devcontainer.features.json";
 
-    // The lockfile adds the dotnet Feature to the manifest's list (build/pack.sh).
-    private const string DotnetFeature = "devcontainers/features/dotnet";
-
     [Fact]
     public void Ids_are_unique() =>
         Assert.Equal(PrerequisiteCatalog.All.Count, PrerequisiteCatalog.All.Select(p => p.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count());
@@ -21,7 +18,6 @@ public class CatalogTests
         using var manifest = JsonDocument.Parse(File.ReadAllText(Repo.File(Manifest)));
         var inManifest = manifest.RootElement.GetProperty("features").EnumerateObject()
             .Select(f => f.Name[(f.Name.IndexOf('/') + 1)..f.Name.LastIndexOf(':')])
-            .Append(DotnetFeature)
             .Order();
         var inCatalog = PrerequisiteCatalog.All.Where(p => p.Feature is not null).Select(p => p.Feature!).Order();
         Assert.Equal(inManifest, inCatalog);
