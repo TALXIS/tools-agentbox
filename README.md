@@ -11,10 +11,7 @@ isolated environments below instead — see GitHub's own take on why:
 
 ### 1. Devcontainers: GitHub Codespaces or any local devcontainer tool
 
-Works in Codespaces, VS Code Dev Containers, DevPod and the `devcontainer` CLI: any tool that
-follows the devcontainer spec. No particular editor is required.
-
-**A project only needs this `.devcontainer/devcontainer.json`:**
+Point your `.devcontainer/devcontainer.json` at the image. That's all AgentBox needs:
 
 ```json
 {
@@ -23,43 +20,11 @@ follows the devcontainer spec. No particular editor is required.
 }
 ```
 
-The image carries its own devcontainer config (a `devcontainer.metadata` label), which every
-devcontainer tool merges into yours:
-- on every start: update the tools that follow the latest release, and start the keyring;
-- on create: register the [TALXIS/skills](https://github.com/TALXIS/skills) plugin with the coding
-  agents present.
-
-The image only covers its own tools. Everything about the project and the editor is the
-repository's to set in its `devcontainer.json`: files to open, forwarded ports, editor settings and
-extensions, extra Features, machine size.
-
-It all updates with the image, so your file never has to change when AgentBox does. The full list is
-in [`devcontainer-metadata.json`](src/container/image/power-platform/devcontainer-metadata.json)
-plus each Feature's own `postStartCommand`.
-
-**Adding the project's own config** (for example a workshop repo): add it on top, as usual. It merges
-with the image's config:
-
-```jsonc
-{
-  "name": "Power Platform workshop",
-  "image": "ghcr.io/talxis/tools-agentbox/image:latest",
-  "features": { "ghcr.io/devcontainers/features/sshd:1": {} },
-  "forwardPorts": [7071],
-  "customizations": {
-    "codespaces": { "openFiles": ["README.md"] },
-    "vscode": { "settings": { "editor.formatOnSave": true } }
-  }
-}
-```
-
-**Already copied AgentBox config into your `devcontainer.json`?** Keep `image`, and remove the
-AgentBox `postStartCommand`/`postCreateCommand` entries and the `remoteEnv.PATH` line. The image
-brings the commands (leaving them only runs them twice), and its tools are on `PATH` without it.
-
-Or build your own `devcontainer.json` from individual Features listed in
+The image brings its own start-up behaviour (tool updates, the keyring, the
+[TALXIS/skills](https://github.com/TALXIS/skills) plugin for whichever coding agents are present),
+so your file never changes when AgentBox does. Everything about your project and editor stays
+yours to add. Prefer to compose your own? Use the individual Features from
 [`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json).
-Each Feature brings its own start-up commands.
 
 ### 2. GitHub Copilot cloud sandbox
 
