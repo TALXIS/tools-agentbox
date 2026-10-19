@@ -77,6 +77,11 @@ docker pull ghcr.io/talxis/tools-agentbox/image:latest
 docker run -it ghcr.io/talxis/tools-agentbox/image:latest bash
 ```
 
+## Contract
+
+What consumers put in their configuration, and what stays stable across releases:
+[CONTRACT.md](CONTRACT.md).
+
 ## agentbox CLI
 
 [`agentbox`](src/cli/README.md) checks and installs the AgentBox prerequisites on any machine or
