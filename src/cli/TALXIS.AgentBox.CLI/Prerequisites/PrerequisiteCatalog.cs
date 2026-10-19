@@ -28,10 +28,11 @@ public static class PrerequisiteCatalog
         {
             Id = "node", Description = "Node.js 22", Command = "node", Kind = PrerequisiteKind.System,
             Feature = "devcontainers/features/node",
+            RequiredVersion = new(["--version"], @"^v(2[2-9]|[3-9]\d)\."),
             Manual = new(
                 "curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash - && sudo apt-get install -y nodejs",
                 "winget install --id OpenJS.NodeJS.22 -e",
-                "brew install node@22"),
+                "brew install node@22 && brew link --overwrite --force node@22"),
         },
         new()
         {
@@ -88,11 +89,13 @@ public static class PrerequisiteCatalog
         {
             Id = "pac", Description = "Power Platform CLI", Command = "pac", Kind = PrerequisiteKind.DotnetTool,
             Package = "Microsoft.PowerApps.CLI.Tool", Feature = "talxis/tools-agentbox/pac-cli",
+            Manual = ManualInstall.Everywhere("dotnet tool install --global Microsoft.PowerApps.CLI.Tool"),
         },
         new()
         {
             Id = "txc", Description = "TALXIS DevKit CLI", Command = "txc", Kind = PrerequisiteKind.DotnetTool,
             Package = "TALXIS.CLI", Feature = "talxis/tools-agentbox/txc-cli",
+            Manual = ManualInstall.Everywhere("dotnet tool install --global TALXIS.CLI"),
         },
         new()
         {
@@ -103,6 +106,7 @@ public static class PrerequisiteCatalog
         {
             Id = "pa", Description = "Power Apps CLI", Command = "pa", Kind = PrerequisiteKind.NpmTool,
             Package = "@microsoft/power-apps-cli", Feature = "talxis/tools-agentbox/pa-cli", NpmPrefix = "/usr/local/lib/power-apps-cli",
+            Manual = ManualInstall.Everywhere("npm install --global @microsoft/power-apps-cli"),
         },
         new()
         {
@@ -114,6 +118,7 @@ public static class PrerequisiteCatalog
         {
             Id = "devkit-templates", Description = "TALXIS DevKit templates", Command = "dotnet", Kind = PrerequisiteKind.DotnetTemplate,
             Package = "TALXIS.DevKit.Templates.Dataverse",
+            Manual = ManualInstall.Everywhere("dotnet new install TALXIS.DevKit.Templates.Dataverse"),
         },
     ];
 

@@ -39,8 +39,7 @@ public class PrerequisiteListCommand : AgentBoxLeafCommand
     }
 
     internal static bool InstalledByAgentBox(IHostInfo host, Prerequisite p) =>
-        (host.IsLinuxContainer && p.Feature is not null)
-        || p.Kind is PrerequisiteKind.DotnetTool or PrerequisiteKind.NpmTool or PrerequisiteKind.DotnetTemplate;
+        host.IsLinuxContainer && (p.Feature is not null || p.Kind == PrerequisiteKind.DotnetTemplate);
 }
 
 [CliCommand(Name = "validate", Description = "Check the prerequisites. Exits with 3 when any is missing; outdated ones don't fail the check.")]
@@ -70,7 +69,7 @@ public class PrerequisiteValidateCommand : AgentBoxLeafCommand
     }
 }
 
-[CliCommand(Name = "install", Description = "Make the prerequisites present. In a container this applies the full AgentBox tool set (as root, through sudo if needed); on your own machine it installs what it can for you and shows the command for the rest.")]
+[CliCommand(Name = "install", Description = "Make the prerequisites present. In a container this applies the full AgentBox tool set (as root, through sudo if needed); on your own machine it changes nothing and shows the command for what's missing.")]
 public class PrerequisiteInstallCommand : AgentBoxLeafCommand
 {
     protected override ILogger Logger { get; } = AgentBoxLoggerFactory.CreateLogger("prerequisite install");
@@ -90,7 +89,7 @@ public class PrerequisiteInstallCommand : AgentBoxLeafCommand
     }
 }
 
-[CliCommand(Name = "update", Description = "Bring the prerequisites that follow the latest release up to date, in place. Pinned and self-updating tools are left alone; offline is not an error.")]
+[CliCommand(Name = "update", Description = "Bring the prerequisites that follow the latest release up to date, in place, in a container. Pinned and self-updating tools are left alone; offline is not an error.")]
 public class PrerequisiteUpdateCommand : AgentBoxLeafCommand
 {
     protected override ILogger Logger { get; } = AgentBoxLoggerFactory.CreateLogger("prerequisite update");

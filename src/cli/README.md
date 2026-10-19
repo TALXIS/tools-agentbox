@@ -13,9 +13,9 @@ dnx TALXIS.AgentBox.CLI --yes prerequisite update       # bring it up to date, i
 every command.
 
 **In a container or cloud VM** it installs the full AgentBox tool set from the same pinned
-devcontainer Features the pre-built image uses (as root, through `sudo` if needed). **On your own
-machine** it installs only what belongs to you (.NET tools, npm tools, templates) and shows the
-command for the rest.
+devcontainer Features the pre-built image uses (as root, through `sudo` if needed), and keeps it
+current. **On your own machine** it only checks: it shows what's missing and the command to install
+it, and sets up the agent harnesses. Agents are better off in a sandbox anyway.
 
 | Exit code | Meaning |
 |---|---|

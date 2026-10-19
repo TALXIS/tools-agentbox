@@ -12,19 +12,24 @@ public sealed record UpdateResult(string Id, UpdateAction Action, string? From =
 /// <summary>
 /// Brings prerequisites that follow the latest release up to date, in place, when a newer version is
 /// published. Runs on every container start, so it is quick when there's nothing to do, never touches
-/// pinned tools or someone's own installs, treats offline as normal, and lets only one run at a time.
+/// pinned tools, treats offline as normal, and lets only one run at a time. Containers only: on a
+/// person's own machine it changes nothing.
 /// </summary>
-public sealed class PrerequisiteUpdater(IHostInfo host, IProcessRunner processes, PrerequisiteInspector inspector, StateStore state, ILogger logger)
+public sealed class PrerequisiteUpdater(IHostInfo host, IProcessRunner processes, PrerequisiteInspector inspector, ILogger logger)
 {
     private static readonly TimeSpan Deadline = TimeSpan.FromMinutes(2);
 
     public async Task<IReadOnlyList<UpdateResult>> UpdateAsync(IReadOnlyList<Prerequisite> targets, CancellationToken cancellationToken)
     {
-        Directory.CreateDirectory(state.Directory);
+        if (!host.IsLinuxContainer)
+            return targets.Select(t => new UpdateResult(t.Id, UpdateAction.NotManaged, Detail: "agentbox only checks on your own machine")).ToList();
+
+        var lockPath = Path.Combine(host.HomeDirectory, ".agentbox", "update.lock");
+        Directory.CreateDirectory(Path.GetDirectoryName(lockPath)!);
         FileStream lockFile;
         try
         {
-            lockFile = new FileStream(state.UpdateLockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            lockFile = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
         }
         catch (IOException)
         {

@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging.Abstractions;
 using TALXIS.AgentBox.CLI.Harness;
 using TALXIS.AgentBox.CLI.Host;
@@ -66,12 +67,53 @@ public class HarnessTests
     }
 
     [Fact]
+    public void Copilot_settings_keep_what_was_there_and_follow_COPILOT_HOME()
+    {
+        var host = new FakeHost();
+        var copilotHome = Path.Combine(host.HomeDirectory, "elsewhere");
+        host.Environment["COPILOT_HOME"] = copilotHome;
+        Directory.CreateDirectory(copilotHome);
+        File.WriteAllText(Path.Combine(copilotHome, "settings.json"), """
+            {
+              // the user's own setting
+              "theme": "dark",
+            }
+            """);
+
+        new CopilotHarness().AfterConfigure(host);
+
+        var settings = JsonNode.Parse(File.ReadAllText(Path.Combine(copilotHome, "settings.json")))!;
+        Assert.Equal("dark", settings["theme"]!.GetValue<string>());
+        Assert.True(settings["enabledPlugins"]!["implement@talxis"]!.GetValue<bool>());
+        Assert.Equal(Path.Combine(copilotHome, "installed-plugins", "talxis", "implement"),
+            new CopilotHarness().ParsePluginList("""[{"name":"implement","marketplace":"talxis","enabled":true}]""", host)!.Directory);
+    }
+
+    [Fact]
     public void Claude_installs_into_the_seed_only_where_the_environment_has_one()
     {
         var host = new FakeHost();
         Assert.Null(new ClaudeHarness().Environment(host));
         host.Environment["CLAUDE_CODE_PLUGIN_SEED_DIR"] = "/seed:/other";
         Assert.Equal("/seed", new ClaudeHarness().Environment(host)!["CLAUDE_CODE_PLUGIN_CACHE_DIR"]);
+    }
+
+    [Fact]
+    public async Task Deep_validation_fails_when_the_plugin_declares_no_MCP_server()
+    {
+        var plugin = Directory.CreateTempSubdirectory("plugin-").FullName;
+        Directory.CreateDirectory(Path.Combine(plugin, "skills", "a-skill"));
+        var processes = new FakeProcesses
+        {
+            Handler = (_, _) => new(0, $$"""[{"id":"implement@talxis","enabled":true,"installPath":"{{plugin}}"}]""", "", false),
+        };
+        processes.OnPath["claude"] = "/usr/bin/claude";
+        var service = new HarnessService(new FakeHost(), processes, new FakePrompt(), NullLogger.Instance);
+
+        Assert.True((await service.ValidateAsync(HarnessKind.Claude, deep: false)).Healthy);
+        var deep = await service.ValidateAsync(HarnessKind.Claude, deep: true);
+        Assert.False(deep.Healthy);
+        Assert.Equal("plugin declares no MCP servers", deep.Detail);
     }
 
     [Fact]

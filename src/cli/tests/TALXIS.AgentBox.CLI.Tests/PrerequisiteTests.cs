@@ -89,6 +89,15 @@ public class PrerequisiteTests
     }
 
     [Fact]
+    public async Task Node_older_than_22_counts_as_missing()
+    {
+        var processes = FakeProcesses.WithEverything();
+        processes.Handler = (_, _) => new(0, "v20.18.0\n", "", false);
+        using var harness = new CommandHarness(new FakeHost(), processes);
+        Assert.Equal(3, await new PrerequisiteValidateCommand { Format = "json", Ids = ["node"] }.RunAsync());
+    }
+
+    [Fact]
     public async Task Container_only_prerequisites_are_not_needed_on_a_workstation()
     {
         var processes = FakeProcesses.WithEverything();
@@ -104,6 +113,27 @@ public class PrerequisiteTests
         using var harness = new CommandHarness(new FakeHost());
         Assert.Equal(2, await new PrerequisiteValidateCommand { Format = "json", Ids = ["nope"] }.RunAsync());
         Assert.Equal(2, await new PrerequisiteListCommand { Format = "yaml" }.RunAsync());
+    }
+
+    [Fact]
+    public async Task On_a_workstation_install_only_shows_the_command()
+    {
+        var processes = new FakeProcesses();
+        using var harness = new CommandHarness(new FakeHost { IsContainer = false }, processes);
+        Assert.Equal(0, await new PrerequisiteInstallCommand { Format = "json", Ids = ["txc"] }.RunAsync());
+        using var json = JsonDocument.Parse(harness.Output);
+        Assert.Equal("manual", json.RootElement[0].GetProperty("action").GetString());
+        Assert.Equal("dotnet tool install --global TALXIS.CLI", json.RootElement[0].GetProperty("detail").GetString());
+        Assert.Empty(processes.Calls);
+    }
+
+    [Fact]
+    public async Task On_a_workstation_update_changes_nothing()
+    {
+        var (_, processes) = WithTool("1.0.0", followsLatest: true);
+        var result = await UpdateAsync(new FakeHost { IsContainer = false }, processes, new FakeRegistry { Latest = { ["Some.Tool"] = "1.2.0" } });
+        Assert.Equal(UpdateAction.NotManaged, result.Action);
+        Assert.Empty(processes.Calls);
     }
 
     [Fact]

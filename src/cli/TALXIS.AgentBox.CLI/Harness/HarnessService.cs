@@ -62,7 +62,7 @@ public sealed class HarnessService(IHostInfo host, IProcessRunner processes, IPr
     }
 
     /// <summary>Healthy: installed, the plugin enabled and shipping skills, and with <paramref name="deep"/>
-    /// every MCP server it declares answering a handshake.</summary>
+    /// at least one MCP server declared, each answering a handshake.</summary>
     public async Task<HarnessHealth> ValidateAsync(HarnessKind kind, bool deep)
     {
         if (!IsInstalled(kind))
@@ -80,7 +80,7 @@ public sealed class HarnessService(IHostInfo host, IProcessRunner processes, IPr
         var probes = new List<McpProbeResult>();
         foreach (var server in servers)
             probes.Add(await McpProbe.ProbeAsync(server, processes.FindOnPath(server.Command)).ConfigureAwait(false));
-        var healthy = probes.All(p => p.Answered && p.Tools > 0);
+        var healthy = servers.Count > 0 && probes.All(p => p.Answered && p.Tools > 0);
         return new(kind, healthy, skills, probes, servers.Count == 0 ? "plugin declares no MCP servers" : null);
     }
 

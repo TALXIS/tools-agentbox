@@ -12,27 +12,26 @@ public enum InstallAction { Present, Installed, Manual, Failed, NotNeeded }
 public sealed record InstallResult(string Id, InstallAction Action, string? Detail = null);
 
 /// <summary>
-/// Makes prerequisites present. In a Linux container it applies the pinned AgentBox Features (as
+/// Makes prerequisites present in a Linux container: it applies the pinned AgentBox Features (as
 /// root, through passwordless sudo if needed), so every container ends up with the same tool set
 /// whatever the base image brought, keeping only installs that are managed elsewhere or verified.
-/// Elsewhere it installs what's missing at user scope and reports the command for the rest.
+/// On a person's own machine it changes nothing and reports the command for what's missing.
 /// </summary>
 public sealed class PrerequisiteInstaller(
     IHostInfo host,
     IProcessRunner processes,
     PrerequisiteInspector inspector,
-    StateStore state,
     IFeatureInstaller? features,
     FeatureLock? featureLock,
     ILogger logger)
 {
-    private static readonly TimeSpan PackageInstallTimeout = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan TemplateInstallTimeout = TimeSpan.FromMinutes(10);
 
     public async Task<IReadOnlyList<InstallResult>> InstallAsync(IReadOnlyList<Prerequisite> targets, CancellationToken cancellationToken)
     {
         var results = new Dictionary<string, InstallResult>(StringComparer.OrdinalIgnoreCase);
         var viaFeatures = new List<Prerequisite>();
-        var viaPackages = new List<Prerequisite>();
+        var templates = new List<Prerequisite>();
         foreach (var p in targets)
         {
             var status = (await inspector.InspectAsync(p, checkUpdates: false, cancellationToken).ConfigureAwait(false)).Status;
@@ -42,8 +41,8 @@ public sealed class PrerequisiteInstaller(
                 viaFeatures.Add(p);
             else if (status == PrerequisiteStatus.Ok)
                 results[p.Id] = new(p.Id, InstallAction.Present);
-            else if (p.Kind is PrerequisiteKind.DotnetTool or PrerequisiteKind.NpmTool or PrerequisiteKind.DotnetTemplate)
-                viaPackages.Add(p);
+            else if (host.IsLinuxContainer && p.Kind == PrerequisiteKind.DotnetTemplate)
+                templates.Add(p);
             else
                 results[p.Id] = new(p.Id, InstallAction.Manual, p.Manual.For(host.Os));
         }
@@ -53,8 +52,8 @@ public sealed class PrerequisiteInstaller(
             foreach (var result in await InstallViaFeaturesAsync(viaFeatures, cancellationToken).ConfigureAwait(false))
                 results[result.Id] = result;
         }
-        foreach (var p in viaPackages)
-            results[p.Id] = await InstallPackageAsync(p, cancellationToken).ConfigureAwait(false);
+        foreach (var p in templates)
+            results[p.Id] = await InstallTemplateAsync(p, cancellationToken).ConfigureAwait(false);
 
         return targets.Select(t => results[t.Id]).ToList();
     }
@@ -97,23 +96,15 @@ public sealed class PrerequisiteInstaller(
             .ToList();
     }
 
-    private async Task<InstallResult> InstallPackageAsync(Prerequisite p, CancellationToken cancellationToken)
+    /// <summary>Templates have no Feature; they install for the current user.</summary>
+    private async Task<InstallResult> InstallTemplateAsync(Prerequisite p, CancellationToken cancellationToken)
     {
-        var (file, arguments) = p.Kind switch
-        {
-            PrerequisiteKind.DotnetTool => ("dotnet", new[] { "tool", "install", "--global", p.Package! }),
-            PrerequisiteKind.NpmTool => ("npm", ["install", "--global", p.Package + "@latest"]),
-            _ => ("dotnet", ["new", "install", p.Package!]),
-        };
-        if (processes.FindOnPath(file) is null)
-            return new(p.Id, InstallAction.Failed, $"needs '{file}' first");
+        if (processes.FindOnPath("dotnet") is null)
+            return new(p.Id, InstallAction.Failed, "needs 'dotnet' first");
 
         logger.LogInformation("Installing {Id}", p.Id);
-        var run = await processes.RunAsync(file, arguments, PackageInstallTimeout, cancellationToken: cancellationToken).ConfigureAwait(false);
-        if (!run.Succeeded)
-            return new(p.Id, InstallAction.Failed, run.FailureSummary);
-        state.RecordInstalled(p.Id);
-        return new(p.Id, InstallAction.Installed);
+        var run = await processes.RunAsync("dotnet", ["new", "install", p.Package!], TemplateInstallTimeout, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return run.Succeeded ? new(p.Id, InstallAction.Installed) : new(p.Id, InstallAction.Failed, run.FailureSummary);
     }
 
     private static IReadOnlyList<InstallResult> Failed(IEnumerable<Prerequisite> targets, string reason) =>

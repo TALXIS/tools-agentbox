@@ -24,11 +24,11 @@ public sealed class AgentBoxServices(IHostInfo host, IProcessRunner processes, I
 
     public IHostInfo Host => host;
 
-    public PrerequisiteInspector Inspector() => new(host, processes, registry, new StateStore(host));
+    public PrerequisiteInspector Inspector() => new(host, processes, registry);
 
-    public PrerequisiteInstaller Installer(ILogger logger) => new(host, processes, Inspector(), new StateStore(host), features, featureLock, logger);
+    public PrerequisiteInstaller Installer(ILogger logger) => new(host, processes, Inspector(), features, featureLock, logger);
 
-    public PrerequisiteUpdater Updater(ILogger logger) => new(host, processes, Inspector(), new StateStore(host), logger);
+    public PrerequisiteUpdater Updater(ILogger logger) => new(host, processes, Inspector(), logger);
 
     public HarnessService Harness(ILogger logger) => new(host, processes, prompt, logger);
 }

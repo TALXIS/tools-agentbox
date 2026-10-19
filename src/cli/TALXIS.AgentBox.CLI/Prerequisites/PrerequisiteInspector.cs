@@ -23,7 +23,7 @@ public sealed record PrerequisiteState(string Id, string Description, Prerequisi
 /// Looks at one prerequisite without changing anything. Cheap by default: a PATH lookup and versions
 /// read from disk. With <c>checkUpdates</c> it also asks nuget.org or npm for the latest version.
 /// </summary>
-public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner processes, IPackageRegistryClient registry, StateStore state)
+public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner processes, IPackageRegistryClient registry)
 {
     public async Task<PrerequisiteState> InspectAsync(Prerequisite p, bool checkUpdates, CancellationToken cancellationToken)
     {
@@ -33,7 +33,7 @@ public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner process
         var followsLatest = FollowsLatest(p);
         var missing = new PrerequisiteState(p.Id, p.Description, PrerequisiteStatus.Missing) { FollowsLatest = followsLatest };
         var path = p.Kind == PrerequisiteKind.DotnetTemplate ? null : processes.FindOnPath(p.Command);
-        var version = p.Kind == PrerequisiteKind.DotnetTemplate ? TemplateVersion(p.Package!) : path is null ? null : InstalledVersion(p, path);
+        var version = p.Kind == PrerequisiteKind.DotnetTemplate ? TemplateVersion(p.Package!) : path is null ? null : InstalledVersion(p);
         if (version is null && path is null)
             return missing;
         if (p.RequiredVersion is { } required && !await HasRequiredVersionAsync(p, required, cancellationToken).ConfigureAwait(false))
@@ -62,10 +62,10 @@ public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner process
         }
     }
 
-    /// <summary>Templates always follow latest; tools do when their Feature said so or agentbox installed them.</summary>
+    /// <summary>Templates always follow latest; tools do when their Feature said so.</summary>
     private bool FollowsLatest(Prerequisite p) =>
         p.Kind == PrerequisiteKind.DotnetTemplate
-        || (p.Package is not null && ((p.FollowsLatestMarker is { } marker && host.FileExists(marker)) || state.WasInstalledByAgentBox(p.Id)));
+        || (p.Package is not null && p.FollowsLatestMarker is { } marker && host.FileExists(marker));
 
     public Task<NuGetVersion?> LatestAsync(Prerequisite p, CancellationToken cancellationToken) =>
         p.Kind == PrerequisiteKind.NpmTool
@@ -78,10 +78,10 @@ public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner process
         return run.Succeeded && Regex.IsMatch(run.StandardOutput, required.OutputPattern, RegexOptions.Multiline);
     }
 
-    private NuGetVersion? InstalledVersion(Prerequisite p, string commandPath) => p.Kind switch
+    private NuGetVersion? InstalledVersion(Prerequisite p) => p.Kind switch
     {
         PrerequisiteKind.DotnetTool => DotnetToolVersion(p.Package!),
-        PrerequisiteKind.NpmTool => NpmPackageVersion(p, commandPath),
+        PrerequisiteKind.NpmTool => NpmPackageVersion(p),
         _ => null,
     };
 
@@ -102,39 +102,22 @@ public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner process
                 .Max()
             : null;
 
-    /// <summary>Reads the package's package.json: in the Feature's prefix, else next to the command's target.</summary>
-    private NuGetVersion? NpmPackageVersion(Prerequisite p, string commandPath)
+    /// <summary>Reads the package's package.json in the Feature's own prefix.</summary>
+    private NuGetVersion? NpmPackageVersion(Prerequisite p)
     {
-        var candidates = new List<string>();
-        if (p.NpmPrefix is { } prefix)
-            candidates.Add(Path.Combine(prefix, "lib", "node_modules", p.Package!, "package.json"));
-        if (host.GetEnvironmentVariable("APPDATA") is { } appData)
-            candidates.Add(Path.Combine(appData, "npm", "node_modules", p.Package!, "package.json"));
+        if (p.NpmPrefix is null)
+            return null;
+        var manifest = Path.Combine(p.NpmPrefix, "lib", "node_modules", p.Package!, "package.json");
+        if (!host.FileExists(manifest))
+            return null;
         try
         {
-            var target = new FileInfo(commandPath).ResolveLinkTarget(returnFinalTarget: true)?.FullName;
-            for (var dir = Path.GetDirectoryName(target); dir is not null; dir = Path.GetDirectoryName(dir))
-                candidates.Add(Path.Combine(dir, "package.json"));
+            using var json = JsonDocument.Parse(File.ReadAllText(manifest));
+            return NuGetVersion.TryParse(json.RootElement.GetProperty("version").GetString(), out var version) ? version : null;
         }
-        catch (IOException)
+        catch (Exception ex) when (ex is JsonException or KeyNotFoundException)
         {
-            // Gone or unreadable: no version, not an error.
+            return null;
         }
-
-        foreach (var candidate in candidates.Where(host.FileExists))
-        {
-            try
-            {
-                using var json = JsonDocument.Parse(File.ReadAllText(candidate));
-                if (json.RootElement.TryGetProperty("name", out var name) && name.GetString() == p.Package
-                    && NuGetVersion.TryParse(json.RootElement.GetProperty("version").GetString(), out var version))
-                    return version;
-            }
-            catch (JsonException)
-            {
-                // Not a package manifest; try the next one.
-            }
-        }
-        return null;
     }
 }

@@ -46,7 +46,14 @@ public sealed partial class FeatureInstaller(IProcessRunner processes, HttpClien
             {
                 results.Add(await InstallOneAsync(features[i], downloads[i], cancellationToken).ConfigureAwait(false));
                 // After each one: later Features run tools as the remote user (su resets PATH).
-                NonLoginShellLinks.Write();
+                try
+                {
+                    NonLoginShellLinks.Write();
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    logger.LogWarning("Couldn't write the /usr/local/bin entries: {Error}", ex.Message);
+                }
             }
             return results;
         }
@@ -205,6 +212,9 @@ internal static class NonLoginShellLinks
         if (!File.Exists(target))
             return;
         var path = Path.Combine("/usr/local/bin", name);
+        if (Path.GetFullPath(target) == path)
+            return;
+        File.Delete(path); // writing would follow a symlink to the real executable and overwrite it
         File.WriteAllText(path, $"#!/bin/bash\nexport DOTNET_ROOT=\"{dotnetRoot}\"\nexec \"{target}\" \"$@\"\n");
         File.SetUnixFileMode(path, FeatureInstaller.Executable);
     }
