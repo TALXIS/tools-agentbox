@@ -5,8 +5,10 @@
 # just {"image": "ghcr.io/talxis/tools-agentbox/image:latest"}.
 #
 # One entry, built from:
-#   - devcontainer-metadata.json next to this script: image-level config (ports, VS Code
-#     extras, the plugin registration on create, the templates update on start);
+#   - devcontainer-metadata.json next to this script: what the image itself needs beyond its
+#     Features (the plugin registration on create, the templates update on start) and VS Code
+#     extensions for the tools it installs. Nothing about the project: files to open, ports,
+#     settings and machine size are the repository's to set;
 #   - the postCreateCommand/postStartCommand of each of this repo's Features in the image's Feature
 #     list. The image is built by install-features.sh, not the devcontainer CLI, so their hooks
 #     wouldn't reach the label otherwise. The Features stay the only place they're defined.

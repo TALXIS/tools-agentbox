@@ -28,20 +28,25 @@ devcontainer tool merges into yours:
 - on every start: update the tools that follow the latest release, and start the keyring;
 - on create: register the [TALXIS/skills](https://github.com/TALXIS/skills) plugin with the coding
   agents present;
-- forwarded ports, and VS Code extensions for those who use VS Code.
+- VS Code extensions for the tools it installs, for those who use VS Code.
+
+The image only covers its own tools. Everything about the project is the repository's to set in its
+`devcontainer.json`: files to open, forwarded ports, editor settings and extensions for its own
+workflow, extra Features, machine size.
 
 It all updates with the image, so your file never has to change when AgentBox does. The full list is
 in [`devcontainer-metadata.json`](src/container/image/power-platform/devcontainer-metadata.json)
 plus each Feature's own `postStartCommand`.
 
-**Extending it** (for example a workshop repo): add your own Features and settings on top, as usual.
-They merge with the image's config:
+**Adding the project's own config** (for example a workshop repo): add it on top, as usual. It merges
+with the image's config:
 
 ```jsonc
 {
   "name": "Power Platform workshop",
   "image": "ghcr.io/talxis/tools-agentbox/image:latest",
   "features": { "ghcr.io/devcontainers/features/sshd:1": {} },
+  "forwardPorts": [7071],
   "customizations": {
     "codespaces": { "openFiles": ["README.md"] },
     "vscode": { "settings": { "editor.formatOnSave": true } }

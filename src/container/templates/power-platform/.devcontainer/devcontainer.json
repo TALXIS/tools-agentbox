@@ -1,18 +1,12 @@
 // Power Platform dev container template
 // Docs: https://github.com/TALXIS/tools-agentbox/tree/master/src/container/templates/power-platform
 //
-// This is all a project needs. The image carries its own devcontainer config (a devcontainer.metadata
+// This is all AgentBox needs. The image carries the config for its own tools (a devcontainer.metadata
 // label) that every devcontainer tool merges in: tool updates and the keyring on every start, the
-// TALXIS/skills plugin registration on create, PATH, ports, and VS Code extensions for those who use
-// VS Code. It updates with the image, so nothing here needs to change when AgentBox does.
-// Add your project's own Features and settings below as usual.
+// TALXIS/skills plugin registration on create, and VS Code extensions for its tools. It updates with
+// the image, so nothing here needs to change when AgentBox does.
+// Everything about your project goes below: files to open, ports, settings, Features, machine size.
 {
     "name": "Power Platform",
-    "image": "ghcr.io/talxis/tools-agentbox/image:latest",
-
-    "customizations": {
-        "codespaces": {
-            "openFiles": ["README.md"]
-        }
-    }
+    "image": "ghcr.io/talxis/tools-agentbox/image:latest"
 }
