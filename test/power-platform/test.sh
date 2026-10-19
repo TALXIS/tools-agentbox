@@ -93,7 +93,11 @@ check_consumer() {
     dexec 'for t in dotnet dnx pac txc pa; do command -v "$t" >/dev/null || { echo "$t not on PATH ($PATH)"; exit 1; }; done; echo "tools on PATH: OK"'
     dexec 'test -n "$DBUS_SESSION_BUS_ADDRESS" && echo "keyring env: OK"'
     dexec 'pa auth status --json | grep -q "\"success\": true" && echo "pa runs: OK"'
-    dexec 'FAKE_SECRET=x txc config auth add-sp --alias t --tenant contoso.onmicrosoft.com --app-id 00000000-0000-0000-0000-000000000001 --secret-from-env FAKE_SECRET -f json 2>&1 | grep -qi "vault is unavailable" && exit 1; echo "txc uses the OS vault: OK"'
+    # The secret must reach the keyring, not txc's plaintext fallback.
+    dexec 'FAKE_SECRET=x txc config auth add-sp --alias t --tenant contoso.onmicrosoft.com --app-id 00000000-0000-0000-0000-000000000001 --secret-from-env FAKE_SECRET -f json >/dev/null \
+        && test ! -e ~/.txc/auth/txc.secrets.v1.fallback.dat \
+        && secret-tool lookup CacheKind TXC_Secret_Vault | grep -q . \
+        && echo "txc uses the OS vault: OK"'
 }
 
 # A new project: just the image.
