@@ -28,7 +28,7 @@ devcontainer tool merges into yours:
 - on every start: update the tools that follow the latest release, and start the keyring;
 - on create: register the [TALXIS/skills](https://github.com/TALXIS/skills) plugin with the coding
   agents present;
-- `PATH`, forwarded ports, and VS Code extensions for those who use VS Code.
+- forwarded ports, and VS Code extensions for those who use VS Code.
 
 It all updates with the image, so your file never has to change when AgentBox does. The full list is
 in [`devcontainer-metadata.json`](src/container/image/power-platform/devcontainer-metadata.json)
@@ -50,8 +50,8 @@ They merge with the image's config:
 ```
 
 **Already copied AgentBox config into your `devcontainer.json`?** Keep `image`, and remove the
-AgentBox `postStartCommand`/`postCreateCommand` entries and the `remoteEnv.PATH` line. They now come
-from the image; leaving them only runs them twice.
+AgentBox `postStartCommand`/`postCreateCommand` entries and the `remoteEnv.PATH` line. The image
+brings the commands (leaving them only runs them twice), and its tools are on `PATH` without it.
 
 Or build your own `devcontainer.json` from individual Features listed in
 [`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json).

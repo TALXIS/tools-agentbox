@@ -6,9 +6,6 @@
     "postStartCommand": {
         "update-devkit-templates": "dotnet new install TALXIS.DevKit.Templates.Dataverse >/dev/null 2>&1 || true"
     },
-    "remoteEnv": {
-        "PATH": "${containerEnv:HOME}/.dotnet/tools:${containerEnv:PATH}"
-    },
     "forwardPorts": [7071, 10000, 10001, 10002],
     "portsAttributes": {
         "7071": { "label": "Azure Functions", "onAutoForward": "notify" },

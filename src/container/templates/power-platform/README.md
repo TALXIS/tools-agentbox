@@ -29,7 +29,7 @@ tool merges in, so it updates with the image and your file doesn't change:
 
 - **On every start:** the tools that follow the latest release update, and the keyring starts.
 - **On create:** the [TALXIS/skills](https://github.com/TALXIS/skills) plugin is registered with the coding agents present.
-- `PATH`, forwarded ports, and VS Code extensions (ignored by other editors).
+- Forwarded ports, and VS Code extensions (ignored by other editors).
 
 The tool list is [`devcontainer.features.json`](.devcontainer/devcontainer.features.json).
 
