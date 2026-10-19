@@ -11,6 +11,10 @@ Installs the agentbox CLI. It sets up the installed agent harnesses when the con
 }
 ```
 
+## Options
+
+| Options Id | Description | Type | Default Value |
+|-----|-----|-----|-----|
 
 
 ## What it does in a container

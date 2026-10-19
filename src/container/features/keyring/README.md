@@ -11,6 +11,10 @@ Starts a D-Bus session bus and an unlocked gnome-keyring Secret Service, so CLIs
 }
 ```
 
+## Options
+
+| Options Id | Description | Type | Default Value |
+|-----|-----|-----|-----|
 
 
 ## How it works
@@ -60,6 +64,7 @@ or processes on the same machine aren't trusted.
   different password and can't be unlocked automatically. Delete that directory to start over;
   stored sign-ins are lost.
 - Check by hand: `eval "$(agentbox-keyring-init)" && printf x | secret-tool store --label=t k v && secret-tool lookup k v`
+
 
 ---
 

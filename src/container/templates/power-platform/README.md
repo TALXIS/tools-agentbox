@@ -1,7 +1,7 @@
 
 # Power Platform (power-platform)
 
-Full Power Platform / Dataverse development environment. A minimal devcontainer.json: the pre-built image brings its own tool updates, keyring and agent plugin setup, so the file needs no changes when AgentBox does.
+Power Platform / Dataverse development environment from the pre-built AgentBox image.
 
 
 
