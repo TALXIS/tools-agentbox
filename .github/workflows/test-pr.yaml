@@ -18,6 +18,10 @@ jobs:
             keyring: ./**/keyring/**
             pa-cli: ./**/pa-cli/**
             power-platform: ./**/power-platform/**
+            agent:
+              - src/agent/**
+              - src/container/scripts/configure-agent-harness.sh
+              - test/agent/**
 
   test-features:
     needs: [detect-changes]

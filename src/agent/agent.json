@@ -1,0 +1,13 @@
+{
+    "//": "What an AgentBox provisions into a box: the plugin marketplaces and plugins every harness gets, and where the harness-behaviour config lives. Applied by src/container/scripts/configure-agent-harness.sh — see src/agent/README.md.",
+
+    "marketplaces": {
+        "talxis": "TALXIS/skills"
+    },
+
+    "plugins": [
+        "implement@talxis"
+    ],
+
+    "instructions": "https://talxis.com/agentbox-instructions"
+}
