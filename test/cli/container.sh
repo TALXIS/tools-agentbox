@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# A bare ubuntu:24.04 container, as root: agentbox installs everything, and a second update has
+# A bare ubuntu:24.04 container, as root: agentbox installs everything, and an update right after has
 # nothing to do.
 source "$(dirname "$0")/common.sh"
 
@@ -13,8 +13,7 @@ agentbox prerequisite install --format text
 hash -r
 check_ready
 
-step "prerequisite update, twice; the second must change nothing"
-agentbox prerequisite update --format text
-agentbox prerequisite update --format json > /tmp/second.json
-jq -e '[.[] | select(.action == "updated" or .action == "failed")] | length == 0' /tmp/second.json >/dev/null \
-    || { cat /tmp/second.json; exit 1; }
+step "prerequisite update right after the install changes nothing"
+agentbox prerequisite update --format json > /tmp/update.json
+jq -e '[.[] | select(.action == "updated" or .action == "failed")] | length == 0' /tmp/update.json >/dev/null \
+    || { cat /tmp/update.json; exit 1; }

@@ -18,14 +18,12 @@ npm install --global --prefix /usr/local/lib/power-apps-cli "@microsoft/power-ap
 agentbox() { dotnet dnx --add-source "${AGENTBOX_NUPKG:-/nupkg}" TALXIS.AgentBox.CLI --version "${AGENTBOX_VERSION}" --yes "$@"; }
 
 step "validate --check-updates reports them"
-agentbox prerequisite validate --check-updates --format text
 agentbox prerequisite validate --check-updates --format json | jq -e '[.[] | select(.status == "outdated")] | length >= 4' >/dev/null
 
 step "the lab instruction: prerequisite update"
 agentbox prerequisite update --format text
 
-step "nothing is outdated any more"
+step "everything is there and current"
 agentbox prerequisite validate --check-updates --format json > /tmp/after.json
-jq -e '[.[] | select(.status == "outdated")] | length == 0' /tmp/after.json >/dev/null \
+jq -e 'all(.[]; .status == "ok" or .status == "not-needed")' /tmp/after.json >/dev/null \
     || { cat /tmp/after.json; exit 1; }
-check_ready
