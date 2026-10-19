@@ -15,6 +15,11 @@ public abstract class AgentBoxLeafCommand
     [CliOption(Name = "--format", Aliases = ["-f"], Description = "Output format: json (default when piped) or text.", Required = false)]
     public string? Format { get; set; }
 
+    private const string SandboxAdvice =
+        "This is your own machine. Coding agents are best run in a sandbox (Codespaces, a devcontainer, a cloud environment): "
+        + "isolated from your system, so an incident stays contained, and recreated often, so stray processes and leaks don't build up. "
+        + "See https://github.com/TALXIS/tools-agentbox";
+
     protected abstract ILogger Logger { get; }
 
     protected abstract Task<int> ExecuteAsync();
@@ -32,6 +37,9 @@ public abstract class AgentBoxLeafCommand
             }
             OutputContext.Format = format;
         }
+
+        if (!AgentBoxServices.Current.Host.IsLinuxContainer)
+            Logger.LogWarning(SandboxAdvice);
 
         try
         {
