@@ -80,13 +80,24 @@ public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner process
 
     private NuGetVersion? InstalledVersion(Prerequisite p) => p.Kind switch
     {
-        PrerequisiteKind.DotnetTool => DotnetToolVersion(p.Package!),
+        PrerequisiteKind.DotnetTool => DotnetToolVersion(p),
         PrerequisiteKind.NpmTool => NpmPackageVersion(p),
         _ => null,
     };
 
-    private NuGetVersion? DotnetToolVersion(string packageId) =>
-        HighestVersionIn(Path.Combine(host.HomeDirectory, ".dotnet", "tools", ".store", packageId.ToLowerInvariant()), Path.GetFileName);
+    /// <summary>A tool installed for every user (the shared tool path or npm prefix), which only root changes.</summary>
+    public bool IsShared(Prerequisite p) => p.Kind switch
+    {
+        PrerequisiteKind.DotnetTool => p.ToolPath is { } toolPath && host.DirectoryExists(toolPath),
+        PrerequisiteKind.NpmTool => p.NpmPrefix is { } prefix && host.DirectoryExists(prefix),
+        _ => false,
+    };
+
+    private NuGetVersion? DotnetToolVersion(Prerequisite p)
+    {
+        var tools = IsShared(p) ? p.ToolPath! : Path.Combine(host.HomeDirectory, ".dotnet", "tools");
+        return HighestVersionIn(Path.Combine(tools, ".store", p.Package!.ToLowerInvariant()), Path.GetFileName);
+    }
 
     private NuGetVersion? TemplateVersion(string packageId)
     {

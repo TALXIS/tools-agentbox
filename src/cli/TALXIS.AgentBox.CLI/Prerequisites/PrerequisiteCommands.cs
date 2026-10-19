@@ -108,7 +108,12 @@ public class PrerequisiteUpdateCommand : AgentBoxLeafCommand
         {
             foreach (var r in items.Where(r => r.Action != UpdateAction.NotManaged))
             {
-                var versions = r.Action == UpdateAction.Updated ? $"{r.From ?? "?"} -> {r.To}" : r.From;
+                var versions = r.Action switch
+                {
+                    UpdateAction.Updated => $"{r.From ?? "?"} -> {r.To}",
+                    UpdateAction.Installed => r.To,
+                    _ => r.From,
+                };
                 OutputWriter.WriteLine($"  {OutputFormatter.Label(r.Action),-11} {r.Id,-17} {versions,-26} {r.Detail}".TrimEnd());
             }
         });

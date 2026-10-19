@@ -31,6 +31,56 @@ public class PrerequisiteTests
         return Assert.Single(await AgentBoxServices.Current.Updater(NullLogger.Instance).UpdateAsync([Tool], CancellationToken.None));
     }
 
+    /// <summary>Some.Tool 1.0.0 installed for every user, in its Feature's tool path, following latest.</summary>
+    private static (Prerequisite Shared, FakeProcesses Processes, FakeRegistry Registry) SharedTool(FakeHost host)
+    {
+        var toolPath = Directory.CreateTempSubdirectory("tool-path-").FullName;
+        Directory.CreateDirectory(Path.Combine(toolPath, ".store", "some.tool", "1.0.0"));
+        host.Files.Add(Tool.FollowsLatestMarker!);
+        var processes = new FakeProcesses();
+        processes.OnPath["tool"] = "/usr/local/bin/tool";
+        return (Tool with { ToolPath = toolPath }, processes, new FakeRegistry { Latest = { ["Some.Tool"] = "1.2.0" } });
+    }
+
+    [Fact]
+    public async Task A_tool_installed_for_every_user_is_updated_where_it_is()
+    {
+        var host = new FakeHost { IsRoot = true };
+        var (shared, processes, registry) = SharedTool(host);
+        using var harness = new CommandHarness(host, processes, registry);
+
+        var result = Assert.Single(await AgentBoxServices.Current.Updater(NullLogger.Instance).UpdateAsync([shared], CancellationToken.None));
+
+        Assert.Equal(UpdateAction.Updated, result.Action);
+        Assert.Equal([$"dotnet tool update Some.Tool --tool-path {shared.ToolPath} --version 1.2.0"], processes.Calls);
+    }
+
+    [Fact]
+    public async Task Without_root_or_sudo_a_shared_tool_is_not_updated_somewhere_else()
+    {
+        var host = new FakeHost();
+        var (shared, processes, registry) = SharedTool(host);
+        using var harness = new CommandHarness(host, processes, registry);
+
+        var result = Assert.Single(await AgentBoxServices.Current.Updater(NullLogger.Instance).UpdateAsync([shared], CancellationToken.None));
+
+        Assert.Equal(UpdateAction.Failed, result.Action);
+        Assert.Empty(processes.Calls);
+    }
+
+    [Fact]
+    public async Task A_user_without_the_templates_gets_them()
+    {
+        var processes = new FakeProcesses();
+        processes.OnPath["dotnet"] = "/usr/bin/dotnet";
+        using var harness = new CommandHarness(new FakeHost(), processes, new FakeRegistry { Latest = { ["TALXIS.DevKit.Templates.Dataverse"] = "1.25.0" } });
+
+        var result = Assert.Single(await AgentBoxServices.Current.Updater(NullLogger.Instance).UpdateAsync(PrerequisiteCatalog.Select(["devkit-templates"]), CancellationToken.None));
+
+        Assert.Equal(UpdateAction.Installed, result.Action);
+        Assert.Equal(["dotnet new install TALXIS.DevKit.Templates.Dataverse::1.25.0"], processes.Calls);
+    }
+
     [Fact]
     public async Task Update_leaves_pinned_tools_alone()
     {

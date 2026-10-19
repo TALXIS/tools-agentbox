@@ -35,7 +35,7 @@ passes that through and touches nothing.
 
 | Caller | Covers |
 |---|---|
-| `/etc/profile.d/agentbox-keyring.sh` (login shells) | Codespaces and Dev Containers: VS Code reads the environment from a login shell (`userEnvProbe`) and hands it to every terminal, extension and agent. `pac`/`txc` there run from `~/.dotnet/tools`, not the wrappers. |
+| `/etc/profile.d/agentbox-keyring.sh` (login shells) | Codespaces and Dev Containers: VS Code reads the environment from a login shell (`userEnvProbe`) and hands it to every terminal, extension and agent. |
 | `/etc/bash.bashrc` (interactive shells) | `docker run -it <image> bash` |
 | Wrappers in `/usr/local/bin` (`pa`, plus `pac`/`txc` written by `install-features.sh`) | Non-login shells: Claude Code cloud, the Copilot cloud sandbox, `docker run <image> <cmd>` |
 | `postStartCommand` (this Feature, and repeated in the power-platform template because the pre-built image doesn't carry Feature hooks) | Restarting the daemons after a container restart, before anything asks for them |

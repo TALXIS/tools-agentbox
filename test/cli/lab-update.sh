@@ -9,8 +9,14 @@ previous_nuget() {
 }
 
 step "make the image's tools outdated"
-dotnet tool update --global TALXIS.CLI --version "$(previous_nuget TALXIS.CLI)" --allow-downgrade
-dotnet tool update --global Microsoft.PowerApps.CLI.Tool --version "$(previous_nuget Microsoft.PowerApps.CLI.Tool)" --allow-downgrade
+# Where the image has it: the shared tool path, or (images before it) the user's global tools.
+downgrade_tool() {
+    local package="$1" tool="$2" where=(--global)
+    [ -d "/usr/local/share/${tool}" ] && where=(--tool-path "/usr/local/share/${tool}")
+    dotnet tool update "${package}" "${where[@]}" --version "$(previous_nuget "${package}")" --allow-downgrade
+}
+downgrade_tool TALXIS.CLI txc
+downgrade_tool Microsoft.PowerApps.CLI.Tool pac
 dotnet new install "TALXIS.DevKit.Templates.Dataverse::$(previous_nuget TALXIS.DevKit.Templates.Dataverse)"
 pa_previous="$(npm view @microsoft/power-apps-cli versions --json | jq -r '[.[] | select(test("-") | not)][-2]')"
 npm install --global --prefix /usr/local/lib/power-apps-cli "@microsoft/power-apps-cli@${pa_previous}" >/dev/null
