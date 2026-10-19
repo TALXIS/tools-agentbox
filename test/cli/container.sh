@@ -4,7 +4,8 @@
 source "$(dirname "$0")/common.sh"
 
 step "bootstrap"
-apt-get update -qq && apt-get install -y -qq curl ca-certificates jq >/dev/null
+apt-get update -qq && # libicu: .NET needs it to start.
+apt-get install -y -qq curl ca-certificates jq libicu74 >/dev/null
 bootstrap_dotnet /opt/dotnet-bootstrap
 install_agentbox
 

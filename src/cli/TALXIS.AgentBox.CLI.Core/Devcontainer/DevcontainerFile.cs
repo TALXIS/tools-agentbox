@@ -2,7 +2,7 @@ namespace TALXIS.AgentBox.CLI.Core.Devcontainer;
 
 /// <summary>
 /// The minimal .devcontainer/devcontainer.json for a project. Everything else (tool updates on
-/// start, the keyring, plugin registration, PATH, ports, VS Code extras) comes from the pre-built
+/// start, the keyring, plugin registration, ports, VS Code extras) comes from the pre-built
 /// image's devcontainer.metadata label, so this file never has to change when AgentBox does.
 /// </summary>
 public static class DevcontainerFile

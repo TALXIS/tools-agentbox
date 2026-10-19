@@ -15,14 +15,14 @@ public sealed record AgentBoxState
 
 /// <summary>
 /// agentbox's own state: <c>/var/lib/agentbox</c> for root in a container (shared by the machine),
-/// otherwise <c>~/.agentbox</c>.
+/// otherwise <c>~/.agentbox</c>; <c>AGENTBOX_STATE_DIR</c> overrides both.
 /// </summary>
 public sealed class StateStore(IHostInfo host)
 {
     public string Directory { get; } =
-        host.HostClass == HostClass.Container && host.IsRoot && host.Os == OsKind.Linux
-            ? "/var/lib/agentbox"
-            : Path.Combine(host.HomeDirectory, ".agentbox");
+        host.GetEnvironmentVariable("AGENTBOX_STATE_DIR") is { Length: > 0 } overridden ? overridden
+        : host.HostClass == HostClass.Container && host.IsRoot && host.Os == OsKind.Linux ? "/var/lib/agentbox"
+        : Path.Combine(host.HomeDirectory, ".agentbox");
 
     public string StatePath => Path.Combine(Directory, "state.json");
 

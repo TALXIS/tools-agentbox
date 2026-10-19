@@ -29,8 +29,10 @@ public sealed class ProcessRunner : IProcessRunner
         if (Path.IsPathRooted(command))
             return File.Exists(command) ? command : null;
 
-        var extensions = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-            ? (Environment.GetEnvironmentVariable("PATHEXT") ?? ".EXE;.CMD;.BAT").Split(';', StringSplitOptions.RemoveEmptyEntries).Prepend("").ToArray()
+        // On Windows only PATHEXT files can be started: npm, for example, ships an extensionless
+        // shell script next to npm.cmd.
+        var extensions = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && !Path.HasExtension(command)
+            ? (Environment.GetEnvironmentVariable("PATHEXT") ?? ".EXE;.CMD;.BAT").Split(';', StringSplitOptions.RemoveEmptyEntries)
             : [""];
 
         foreach (var directory in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))

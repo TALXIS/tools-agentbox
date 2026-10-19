@@ -17,7 +17,11 @@ internal sealed class FakeHost : IHostInfo
     public HostClass HostClass { get; init; } = HostClass.Container;
     public bool IsRoot { get; init; } = true;
     public string HomeDirectory { get; init; } = Directory.CreateTempSubdirectory("agentbox-home-").FullName;
-    public Dictionary<string, string> Environment { get; } = new();
+    public Dictionary<string, string> Environment { get; } = new()
+    {
+        // Keeps the state store out of /var/lib/agentbox, which tests may not be able to write.
+        ["AGENTBOX_STATE_DIR"] = Directory.CreateTempSubdirectory("agentbox-state-").FullName,
+    };
     public HashSet<string> Files { get; } = new();
 
     public string? GetEnvironmentVariable(string name) => Environment.GetValueOrDefault(name);
