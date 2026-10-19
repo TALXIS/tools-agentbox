@@ -13,14 +13,18 @@ public interface IPackageRegistryClient
 
 public sealed class PackageRegistryClient(HttpClient http) : IPackageRegistryClient
 {
+    /// <summary>The latest listed stable version. nuget.org's search knows what a publisher unlisted;
+    /// its package index doesn't.</summary>
     public async Task<NuGetVersion?> GetLatestNuGetVersionAsync(string packageId, CancellationToken cancellationToken)
     {
-        var url = $"https://api.nuget.org/v3-flatcontainer/{packageId.ToLowerInvariant()}/index.json";
-        using var document = JsonDocument.Parse(await http.GetStringAsync(url, cancellationToken).ConfigureAwait(false));
-        return document.RootElement.GetProperty("versions").EnumerateArray()
-            .Select(v => NuGetVersion.TryParse(v.GetString(), out var parsed) ? parsed : null)
-            .Where(v => v is not null && !v.IsPrerelease)
-            .Max();
+        var index = await http.GetFromJsonAsync<JsonElement>("https://api.nuget.org/v3/index.json", cancellationToken).ConfigureAwait(false);
+        var search = index.GetProperty("resources").EnumerateArray()
+            .First(r => r.GetProperty("@type").GetString() == "SearchQueryService").GetProperty("@id").GetString();
+        var result = await http.GetFromJsonAsync<JsonElement>(
+            $"{search}?q=packageid:{Uri.EscapeDataString(packageId)}&prerelease=false&semVerLevel=2.0.0&take=1", cancellationToken).ConfigureAwait(false);
+        return result.GetProperty("data").EnumerateArray()
+            .Select(p => NuGetVersion.TryParse(p.GetProperty("version").GetString(), out var version) ? version : null)
+            .FirstOrDefault();
     }
 
     public async Task<NuGetVersion?> GetLatestNpmVersionAsync(string packageName, CancellationToken cancellationToken)

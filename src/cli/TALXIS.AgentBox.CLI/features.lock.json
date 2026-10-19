@@ -1,0 +1,83 @@
+{
+  "features": [
+    {
+      "id": "ghcr.io/devcontainers/features/azure-cli@sha256:d98f1066c077be0fa9d115b718f458bd803e415181b4a96f82a6f5d9f77241ac",
+      "options": {
+        "version": "latest",
+        "extensions": "azure-devops"
+      }
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/copilot-cli@sha256:e10d091ae7ef9b8d2ed5f601d75f5a090bc04acbac1a26d4cd3c0d5edde4ea10",
+      "options": {
+        "version": "latest"
+      }
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/dotnet@sha256:0961cacbf160e67472c610b8a2836151854eca8657f14ee5fde604285829c2e4",
+      "options": {
+        "version": "10.0"
+      }
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/git@sha256:fd75977de13a9979000e0e78baf949adb0ca71d2398995fa22e0a36d7e7e7fe2",
+      "options": {}
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/node@sha256:8c0de46939b61958041700ee89e3493f3b2e4131a06dc46b4d9423427d06e5f6",
+      "options": {
+        "version": "22"
+      }
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/powershell@sha256:df7baa89598c93bfd15808641d9ec9eb03e0ccdf52e5de4cbbce9ab2d9755d18",
+      "options": {
+        "version": "latest"
+      }
+    },
+    {
+      "id": "ghcr.io/jlaundry/devcontainer-features/azure-functions-core-tools@sha256:a8b16ec41e15f0b28e49b831b02361b2519aa000d048e7d4d21e6a3b6486356c",
+      "options": {
+        "version": "latest"
+      }
+    },
+    {
+      "id": "ghcr.io/talxis/tools-agentbox/keyring@sha256:b66cfa0a9b4db2a3ad0deaf86ed95e78609d415d5b8960dcd28eefa59ae9b48b",
+      "options": {}
+    },
+    {
+      "id": "ghcr.io/anthropics/devcontainer-features/claude-code@sha256:cfc2e7d3e9fd3b9b01f8d5cb158508a884c8c0ede2e23ed10f32dea5d4ffe69a",
+      "options": {}
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/github-cli@sha256:bd7ab48a832228f633239277552c30b353867fef2e5b037e064b4e64f0b843f2",
+      "options": {
+        "version": "latest"
+      }
+    },
+    {
+      "id": "ghcr.io/talxis/tools-agentbox/pa-cli@sha256:589128325ec0c7dcad75143a8dca47fbf737402d5ee82bc5c1171a2d49fdf668",
+      "options": {
+        "version": "latest"
+      }
+    },
+    {
+      "id": "ghcr.io/talxis/tools-agentbox/pac-cli@sha256:edaa221969d8de03b4e4ebe6e193eda15e429256e94899132dae41d52a487eb8",
+      "options": {
+        "version": "latest"
+      }
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/terraform@sha256:bc9eaf21aaba050bace59f411c282cb58058535a48232c059e60c19f86caa8f5",
+      "options": {
+        "version": "latest"
+      }
+    },
+    {
+      "id": "ghcr.io/talxis/tools-agentbox/txc-cli@sha256:694cda120cd46eefa6e0fbf966d2e1e649ddaa3e57a28729cbacfb56e98209d1",
+      "options": {
+        "version": "latest"
+      }
+    }
+  ]
+}

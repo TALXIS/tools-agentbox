@@ -34,7 +34,8 @@ internal sealed class FakeProcesses : IProcessRunner
     public string? FindOnPath(string command) => OnPath.GetValueOrDefault(command);
 
     public Task<ProcessResult> RunAsync(string fileName, IReadOnlyList<string> arguments, TimeSpan timeout,
-        IReadOnlyDictionary<string, string?>? environment = null, string? workingDirectory = null, CancellationToken cancellationToken = default)
+        IReadOnlyDictionary<string, string?>? environment = null, string? workingDirectory = null, CancellationToken cancellationToken = default,
+        bool showErrors = false)
     {
         Calls.Add($"{fileName} {string.Join(' ', arguments)}");
         return Task.FromResult(Handler(fileName, arguments));

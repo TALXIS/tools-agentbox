@@ -3,7 +3,6 @@
 set -e
 
 FEATURE_ID="pac-cli"
-FEATURE_PATH="src/container/features/${FEATURE_ID}"
 
 echo "=== Smoke test: ${FEATURE_ID} ==="
 
@@ -16,12 +15,14 @@ docker build \
 FROM mcr.microsoft.com/dotnet/sdk:10.0
 ARG VERSION=latest
 COPY src/container/features/pac-cli/install.sh /tmp/install.sh
-RUN chmod +x /tmp/install.sh && \
-    _REMOTE_USER=root _REMOTE_USER_HOME=/root VERSION=${VERSION} /tmp/install.sh
+RUN chmod +x /tmp/install.sh && VERSION=${VERSION} /tmp/install.sh
 EOF
 
 echo "--- pac runs through its /usr/local/bin wrapper, with no PATH set up ---"
 docker run --rm "devcontainer-feature-test-${FEATURE_ID}" pac help
+
+echo "--- and for a user other than the one it was installed as ---"
+docker run --rm --user app "devcontainer-feature-test-${FEATURE_ID}" pac help
 
 echo "--- Checking auto-update flag file exists ---"
 docker run --rm \

@@ -9,8 +9,8 @@ public interface IHostInfo
 {
     OsKind Os { get; }
 
-    /// <summary>A container or disposable cloud VM: agentbox may install system-wide there.
-    /// Anything else is someone's own machine, where it only installs per user.</summary>
+    /// <summary>A container or disposable cloud VM: agentbox installs and updates there.
+    /// Anything else is someone's own machine, where it only checks.</summary>
     bool IsContainer { get; }
 
     bool IsRoot { get; }

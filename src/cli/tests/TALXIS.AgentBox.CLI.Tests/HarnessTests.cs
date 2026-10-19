@@ -52,6 +52,27 @@ public class HarnessTests
     }
 
     [Fact]
+    public async Task A_broken_Copilot_settings_file_is_a_reported_failure()
+    {
+        var host = new FakeHost();
+        Directory.CreateDirectory(Path.Combine(host.HomeDirectory, ".copilot"));
+        File.WriteAllText(Path.Combine(host.HomeDirectory, ".copilot", "settings.json"), """{ "theme": """);
+        var processes = new FakeProcesses();
+        processes.OnPath["copilot"] = "/usr/bin/copilot";
+
+        var result = await new HarnessService(host, processes, new FakePrompt(), NullLogger.Instance).ConfigureAsync(HarnessKind.Copilot);
+
+        Assert.Equal(ConfigureStatus.Failed, result.Status);
+    }
+
+    [Fact]
+    public async Task Validate_with_no_harness_installed_is_unhealthy()
+    {
+        using var harness = new CommandHarness(new FakeHost());
+        Assert.Equal(3, await new HarnessValidateCommand { Format = "json" }.InvokeAsync());
+    }
+
+    [Fact]
     public void Claude_uses_the_seed_only_where_the_environment_has_one()
     {
         var host = new FakeHost();
@@ -88,6 +109,7 @@ public class McpProbeTests
     [InlineData("""{"jsonrpc":"2.0","id":1,"result":{}}""")] // stops answering after initialize
     [InlineData("""{"jsonrpc":"2.0","id":1,"error":{"message":"boom"}}""")] // answers with an error
     [InlineData("""{"jsonrpc":"2.0","id":1,"result":{}}""", """{"jsonrpc":"2.0","id":2,"result":{"tools":[]}}""")] // offers no tools
+    [InlineData("""{"jsonrpc":"2.0","id":1,"method":"initialize"}""")] // echoes the request back
     public async Task A_server_that_does_not_offer_tools_is_unhealthy(params string[] responses)
     {
         // Servers log and send notifications before answering; both must be skipped.

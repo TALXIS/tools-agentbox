@@ -1,23 +1,26 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using NuGet.Versioning;
+using TALXIS.AgentBox.CLI.Cli;
 using TALXIS.AgentBox.CLI.Host;
 
 namespace TALXIS.AgentBox.CLI.Prerequisites;
 
-public enum UpdateAction { UpToDate, Updated, Failed, Offline, Busy, NotManaged, Missing }
+public enum UpdateAction { UpToDate, Updated, Installed, Failed, Offline, Busy, NotManaged, Missing }
 
 public sealed record UpdateResult(string Id, UpdateAction Action, string? From = null, string? To = null, string? Detail = null);
 
 /// <summary>
 /// Brings prerequisites that follow the latest release up to date, in place, when a newer version is
 /// published. Runs on every container start, so it is quick when there's nothing to do, never touches
-/// pinned tools, treats offline as normal, and lets only one run at a time. Containers only: on a
-/// person's own machine it changes nothing.
+/// pinned tools, treats offline as normal, and lets only one run at a time. Tools installed for every
+/// user are updated as root (through sudo when needed); templates belong to each user, so a user who
+/// lacks them gets them. Containers only: on a person's own machine it changes nothing.
 /// </summary>
 public sealed class PrerequisiteUpdater(IHostInfo host, IProcessRunner processes, PrerequisiteInspector inspector, ILogger logger)
 {
-    private static readonly TimeSpan Deadline = TimeSpan.FromMinutes(2);
+    // Under the start hook's `timeout 120`, so it finishes rather than being killed mid-write.
+    private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(100);
 
     public async Task<IReadOnlyList<UpdateResult>> UpdateAsync(IReadOnlyList<Prerequisite> targets, CancellationToken cancellationToken)
     {
@@ -40,8 +43,32 @@ public sealed class PrerequisiteUpdater(IHostInfo host, IProcessRunner processes
         {
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             deadline.CancelAfter(Deadline);
-            return await Task.WhenAll(targets.Select(t => UpdateOneAsync(t, deadline.Token))).ConfigureAwait(false);
+            var asRoot = host.IsRoot ? [] : targets.Where(inspector.IsShared).ToList();
+            var here = Task.WhenAll(targets.Except(asRoot).Select(t => UpdateOneAsync(t, deadline.Token)));
+            var elevated = asRoot.Count > 0 ? await UpdateAsRootAsync(asRoot, deadline.Token).ConfigureAwait(false) : [];
+            var results = (await here.ConfigureAwait(false)).Concat(elevated).ToList();
+            return targets.Select(t => results.First(r => r.Id == t.Id)).ToList();
         }
+    }
+
+    private async Task<IReadOnlyList<UpdateResult>> UpdateAsRootAsync(IReadOnlyList<Prerequisite> targets, CancellationToken cancellationToken)
+    {
+        if (!await Sudo.IsAvailableAsync(processes).ConfigureAwait(false))
+            return targets.Select(t => new UpdateResult(t.Id, UpdateAction.Failed, Detail: "installed for every user: needs root, and passwordless sudo isn't available")).ToList();
+
+        var run = await Sudo.RunAgentBoxAsync(processes, ["prerequisite", "update", .. targets.Select(t => t.Id), "--format", "json"],
+            Deadline, cancellationToken).ConfigureAwait(false);
+        List<UpdateResult> elevated;
+        try
+        {
+            elevated = JsonSerializer.Deserialize<List<UpdateResult>>(run.StandardOutput, AgentBoxOutputJsonOptions.Default) ?? [];
+        }
+        catch (JsonException)
+        {
+            elevated = [];
+        }
+        var missing = $"the update as root reported nothing ({run.FailureSummary})";
+        return targets.Select(t => elevated.FirstOrDefault(r => r.Id == t.Id) ?? new UpdateResult(t.Id, UpdateAction.Failed, Detail: missing)).ToList();
     }
 
     private async Task<UpdateResult> UpdateOneAsync(Prerequisite p, CancellationToken cancellationToken)
@@ -50,7 +77,7 @@ public sealed class PrerequisiteUpdater(IHostInfo host, IProcessRunner processes
             return new(p.Id, UpdateAction.NotManaged, Detail: p.Kind == PrerequisiteKind.SelfManaged ? "kept current elsewhere" : "comes with the image or OS");
 
         var current = await inspector.InspectAsync(p, checkUpdates: false, cancellationToken).ConfigureAwait(false);
-        if (current.Status is PrerequisiteStatus.Missing or PrerequisiteStatus.NotNeeded)
+        if (current.Status == PrerequisiteStatus.Missing && p.Kind != PrerequisiteKind.DotnetTemplate)
             return new(p.Id, UpdateAction.Missing);
         if (!current.FollowsLatest)
             return new(p.Id, UpdateAction.NotManaged, current.InstalledVersion, Detail: "pinned, or not installed by AgentBox");
@@ -70,16 +97,18 @@ public sealed class PrerequisiteUpdater(IHostInfo host, IProcessRunner processes
         var version = latest.ToNormalizedString();
         var (file, arguments) = p.Kind switch
         {
-            PrerequisiteKind.DotnetTool => ("dotnet", new[] { "tool", "update", "--global", p.Package, "--version", version }),
+            PrerequisiteKind.DotnetTool when inspector.IsShared(p) => ("dotnet", new[] { "tool", "update", p.Package, "--tool-path", p.ToolPath!, "--version", version }),
+            PrerequisiteKind.DotnetTool => ("dotnet", ["tool", "update", "--global", p.Package, "--version", version]),
             PrerequisiteKind.DotnetTemplate => ("dotnet", ["new", "install", $"{p.Package}::{version}"]),
             _ => ("npm", NpmInstall(p, version)),
         };
-        logger.LogInformation("Updating {Id} {From} -> {To}", p.Id, current.InstalledVersion ?? "?", version);
+        var installing = current.Status == PrerequisiteStatus.Missing;
+        logger.LogInformation(installing ? "Installing {Id} {To}" : "Updating {Id} {From} -> {To}", p.Id, current.InstalledVersion ?? "?", version);
         try
         {
             var run = await processes.RunAsync(file, arguments, Deadline, cancellationToken: cancellationToken).ConfigureAwait(false);
             return run.Succeeded
-                ? new(p.Id, UpdateAction.Updated, current.InstalledVersion, version)
+                ? new(p.Id, installing ? UpdateAction.Installed : UpdateAction.Updated, current.InstalledVersion, version)
                 : new(p.Id, UpdateAction.Failed, current.InstalledVersion, version, run.FailureSummary);
         }
         catch (OperationCanceledException)
@@ -90,7 +119,7 @@ public sealed class PrerequisiteUpdater(IHostInfo host, IProcessRunner processes
 
     /// <summary>Keeps a Feature-installed npm tool in the Feature's own prefix.</summary>
     private string[] NpmInstall(Prerequisite p, string version) =>
-        p.NpmPrefix is { } prefix && host.DirectoryExists(prefix)
-            ? ["install", "--global", "--prefix", prefix, $"{p.Package}@{version}"]
+        inspector.IsShared(p)
+            ? ["install", "--global", "--prefix", p.NpmPrefix!, $"{p.Package}@{version}"]
             : ["install", "--global", $"{p.Package}@{version}"];
 }

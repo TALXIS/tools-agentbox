@@ -54,6 +54,10 @@ public sealed record Prerequisite
     /// <summary>Where the Feature installs an npm package, if not npm's global prefix.</summary>
     public string? NpmPrefix { get; init; }
 
+    /// <summary>Where the Feature installs a .NET tool for every user (<c>--tool-path</c>). Installs
+    /// from before that are the user's own global ones, in ~/.dotnet/tools.</summary>
+    public string? ToolPath { get; init; }
+
     /// <summary>Only needed in Linux containers; machines bring their own equivalent.</summary>
     public bool ContainerOnly { get; init; }
 

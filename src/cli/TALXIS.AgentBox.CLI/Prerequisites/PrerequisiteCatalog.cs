@@ -1,3 +1,4 @@
+using TALXIS.AgentBox.CLI.Cli;
 namespace TALXIS.AgentBox.CLI.Prerequisites;
 
 /// <summary>
@@ -88,13 +89,13 @@ public static class PrerequisiteCatalog
         new()
         {
             Id = "pac", Description = "Power Platform CLI", Command = "pac", Kind = PrerequisiteKind.DotnetTool,
-            Package = "Microsoft.PowerApps.CLI.Tool", Feature = "talxis/tools-agentbox/pac-cli",
+            Package = "Microsoft.PowerApps.CLI.Tool", Feature = "talxis/tools-agentbox/pac-cli", ToolPath = "/usr/local/share/pac",
             Manual = ManualInstall.Everywhere("dotnet tool install --global Microsoft.PowerApps.CLI.Tool"),
         },
         new()
         {
             Id = "txc", Description = "TALXIS DevKit CLI", Command = "txc", Kind = PrerequisiteKind.DotnetTool,
-            Package = "TALXIS.CLI", Feature = "talxis/tools-agentbox/txc-cli",
+            Package = "TALXIS.CLI", Feature = "talxis/tools-agentbox/txc-cli", ToolPath = "/usr/local/share/txc",
             Manual = ManualInstall.Everywhere("dotnet tool install --global TALXIS.CLI"),
         },
         new()
@@ -129,7 +130,7 @@ public static class PrerequisiteCatalog
             return All;
         var unknown = ids.Where(id => !All.Any(p => Matches(p, id))).ToList();
         if (unknown.Count > 0)
-            throw new ArgumentException($"Unknown prerequisite(s): {string.Join(", ", unknown)}. See 'agentbox prerequisite list'.");
+            throw new InvalidInputException($"Unknown prerequisite(s): {string.Join(", ", unknown)}. See 'agentbox prerequisite list'.");
         return All.Where(p => ids.Any(id => Matches(p, id))).ToList();
     }
 

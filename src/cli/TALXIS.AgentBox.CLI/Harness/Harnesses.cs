@@ -130,7 +130,7 @@ public sealed class CopilotHarness : IHarness
         foreach (var file in files)
         {
             // Copilot reads settings.json as JSONC; its comments don't survive the rewrite.
-            var settings = File.Exists(file) && JsonNode.Parse(File.ReadAllText(file), documentOptions: Jsonc) is JsonObject existing ? existing : [];
+            var settings = host.FileExists(file) && JsonNode.Parse(File.ReadAllText(file), documentOptions: Jsonc) is JsonObject existing ? existing : [];
             var marketplaces = settings["extraKnownMarketplaces"] as JsonObject ?? [];
             marketplaces["talxis"] = new JsonObject { ["source"] = new JsonObject { ["source"] = "github", ["repo"] = Harnesses.Marketplace } };
             settings["extraKnownMarketplaces"] = marketplaces;
@@ -138,7 +138,9 @@ public sealed class CopilotHarness : IHarness
             enabled[Harnesses.Plugin] = true;
             settings["enabledPlugins"] = enabled;
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-            File.WriteAllText(file, settings.ToJsonString(AgentBoxOutputJsonOptions.Default));
+            // Whole or not at all: Copilot may read it at any moment.
+            File.WriteAllText(file + ".tmp", settings.ToJsonString(AgentBoxOutputJsonOptions.Default));
+            File.Move(file + ".tmp", file, overwrite: true);
         }
     }
 }

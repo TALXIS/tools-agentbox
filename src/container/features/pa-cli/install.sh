@@ -29,13 +29,9 @@ if [ "${node_major}" -lt 22 ]; then
     exit 1
 fi
 
-REMOTE_USER="${_REMOTE_USER:-"$(id -un)"}"
-
 echo "Installing ${PACKAGE}@${CLI_VERSION} into ${PREFIX}"
 mkdir -p "${PREFIX}"
 npm install -g --prefix "${PREFIX}" "${PACKAGE}@${CLI_VERSION}"
-# `agentbox prerequisite update` runs as the remote user, not root.
-chown -R "${REMOTE_USER}" "${PREFIX}" 2>/dev/null || true
 
 cat > /usr/local/bin/pa <<WRAPPER
 #!/bin/bash
