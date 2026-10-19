@@ -45,7 +45,7 @@ jobs:
           # Above any release, so it's the agentbox the container tests install wherever they'd
           # otherwise take nuget.org's.
           version="999.${{ github.run_number }}.${{ github.run_attempt }}"
-          src/cli/build/pack.sh "$version" nupkg
+          AGENTBOX_FEATURES_FROM="$PWD/src/container/features" src/cli/build/pack.sh "$version" nupkg
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: agentbox-nupkg
