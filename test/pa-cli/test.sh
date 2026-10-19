@@ -19,9 +19,11 @@ RUN bash /tmp/keyring/install.sh && \
     _REMOTE_USER=root VERSION=${VERSION} bash /tmp/pa-cli/install.sh
 EOF2
 
-echo "--- pa auth status succeeds with no manual keyring setup ---"
-docker run --rm "devcontainer-feature-test-${FEATURE_ID}" \
-    bash -c 'pa auth status --json | tee /dev/stderr | grep -q "\"success\": true"'
+echo "--- pa auth status succeeds with no manual keyring setup, as root and as another user ---"
+for user in root node; do
+    docker run --rm --user "${user}" "devcontainer-feature-test-${FEATURE_ID}" \
+        bash -c 'pa auth status --json | tee /dev/stderr | grep -q "\"success\": true"'
+done
 
 echo "--- Checking auto-update flag file exists ---"
 docker run --rm "devcontainer-feature-test-${FEATURE_ID}" \

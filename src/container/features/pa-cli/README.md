@@ -1,7 +1,7 @@
 
 # Power Apps CLI (pa) (pa-cli)
 
-Installs the Microsoft Power Apps CLI (pa, npm @microsoft/power-apps-cli). Needs Node.js 22 or newer and a Secret Service keyring, which the keyring Feature provides. When version is 'latest', auto-updates on every container start via postStartCommand.
+Installs the Microsoft Power Apps CLI (pa, npm @microsoft/power-apps-cli). Needs Node.js 22 or newer and a Secret Service keyring, which the keyring Feature provides. With version 'latest', add the agentbox Feature to keep it on the latest release.
 
 ## Example Usage
 
@@ -15,7 +15,7 @@ Installs the Microsoft Power Apps CLI (pa, npm @microsoft/power-apps-cli). Needs
 
 | Options Id | Description | Type | Default Value |
 |-----|-----|-----|-----|
-| version | Version of @microsoft/power-apps-cli to install. Use 'latest' for auto-updates on each start. | string | latest |
+| version | Version of @microsoft/power-apps-cli to install. | string | latest |
 
 ## Credential storage
 
@@ -26,9 +26,9 @@ wrapper that starts the keyring before running the real CLI.
 ## Install location and versions
 
 The npm package installs into `/usr/local/lib/power-apps-cli`, not npm's global prefix, so the
-wrapper is the only `pa` on `PATH`. The default `version` is `latest`, like the other CLIs in the
-image: the Feature then updates `pa` on every container start. Set `version` to an exact release
-(for example `1.3.0`) to pin it; pinning turns off the update.
+wrapper is the only `pa` on `PATH`. The default `version` is `latest`: `agentbox prerequisite update`
+(the agentbox Feature runs it on every start) keeps it current. Set `version` to an exact release
+(for example `1.3.0`) to pin it.
 
 
 ---

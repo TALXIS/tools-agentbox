@@ -1,10 +1,8 @@
 name: "Copilot Code Review Setup"
 
 # Copilot code review falls back to copilot-setup-steps.yml when this file is
-# absent. That file runs install-features.sh under sudo, which leaves root-owned
-# directories under the runner's ~/.cache, so the review CLI then fails with
-# EACCES creating ~/.cache/copilot. A review only reads the diff and does not
-# need the toolchain, so it gets its own minimal setup.
+# absent. A review only reads the diff and doesn't need the AgentBox tools, so it
+# gets its own minimal setup.
 on:
   workflow_dispatch:
 
@@ -14,4 +12,4 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6

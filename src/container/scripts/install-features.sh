@@ -1,198 +1,66 @@
-#!/bin/bash
-# Installs the devcontainer Features (https://containers.dev) listed in
-# src/container/templates/power-platform/.devcontainer/devcontainer.features.json directly onto
-# the host, for environments with no Docker daemon (Claude Code cloud) or no devcontainer.json
-# support (GitHub Copilot cloud sandbox). Also registers the TALXIS/skills plugin (Skills + the
-# `txc` MCP server) with whichever agent harness is calling this script.
+#!/usr/bin/env bash
+# Makes this machine ready for coding agents doing Power Platform work. For Linux machines dedicated
+# to agents: Claude Code cloud environments, the GitHub Copilot cloud agent and the AgentBox image
+# build. It only makes .NET 10 available; `agentbox setup` does the rest and decides the exit code.
 #
-# Claude Code cloud environment: paste the bootstrap command from the README's "Claude Code cloud
-# environment" section into the environment's "Setup script" field at
-# claude.ai/admin-settings/cloud-environments. That environment also requires:
-#   - Environment variables: DOTNET_ROOT=/usr/local/dotnet/current, CLAUDE_CODE_PLUGIN_SEED_DIR=/usr/local/claude-plugin-seed
-#   - Network access: Custom, defaults included, plus `cli.github.com` and `talxis.com` (the
-#     short-link redirector below chains through it to raw.githubusercontent.com)
+#   curl -fsSL https://talxis.com/agentbox-setup | bash
 #
-# GitHub Copilot cloud sandbox: run via .github/workflows/copilot-setup-steps.yml.
-#
-# Also used by src/container/image/power-platform/Dockerfile to build the pre-built image, with
-# AGENTBOX_HARNESS=none — the image build shouldn't register the plugin for either harness itself:
-# Codespaces' own postCreateCommand does that once, at container creation, as the container's real
-# user, by fetching and running src/container/scripts/configure-agent-harness.sh directly — the
-# same script this file delegates to below.
-#
-# AGENTBOX_HARNESS ("claude", "copilot", or "none"), set by the callers above, skips the plugin
-# setup for whichever harness isn't relevant to that caller, so nobody pays for another harness's
-# network call or risks seeing its warnings. Left unset (manual/local runs), both are attempted if
-# installed.
+# --no-harness  skips the harness setup (an image build; the container does it when it's created)
+# --source DIR  also offers the agentbox package in DIR, if there is one (an image build, CI)
 set -uo pipefail
 
-# $HOME may be unset in the invoking environment; every path below depends on it.
-export HOME="${HOME:-$(eval echo "~$(id -un)")}"
-
-FEATURES_MANIFEST_URL="https://talxis.com/agentbox-features"
-
-WORKDIR="$(mktemp -d)"
-trap 'rm -rf "$WORKDIR"' EXIT
-
-export _CONTAINER_USER="$(id -un)"
-export _REMOTE_USER="${_CONTAINER_USER}"
-export _REMOTE_USER_HOME="${HOME}"
-
-# npm/Node aren't present on a bare host (e.g. the Dockerfile's plain ubuntu:24.04 base) — bootstrap
-# just enough to run the devcontainers CLI below. The Feature list's own pinned "node" version (if
-# present) installs afterward in the resolved order and replaces this bootstrap copy.
-if ! command -v npm >/dev/null 2>&1; then
-    echo "--- Bootstrapping Node.js (npm not found) ---"
-    apt-get update && apt-get install -y --no-install-recommends nodejs npm
-fi
-
-npm install -g @devcontainers/cli --silent
-
-# dotnet isn't present on a bare host; install it first, since pac-cli/txc-cli depend on it.
-mkdir -p "${WORKDIR}/.devcontainer"
-curl -fsSL "${FEATURES_MANIFEST_URL}" -o "${WORKDIR}/features-manifest.json"
-jq '{features: (.features + {"ghcr.io/devcontainers/features/dotnet:1": {"version": "10.0"}})}' \
-    "${WORKDIR}/features-manifest.json" > "${WORKDIR}/.devcontainer/devcontainer.json"
-
-echo "Resolving Feature versions and install order..."
-# resolve-dependencies prints a mermaid flowchart before the JSON result; keep only the JSON.
-RESOLVED="$(devcontainer features resolve-dependencies --workspace-folder "${WORKDIR}" | sed -n '/^{/,$p')"
-# Resolution fails as a whole when any listed Feature can't be fetched - e.g. one that was just added
-# to the manifest on master but isn't published to GHCR until the next release. Installing nothing and
-# exiting 0 would hide that (and bake an empty pre-built image), so fail loudly instead.
-if ! jq -e '.installOrder | length > 0' <<<"${RESOLVED}" >/dev/null 2>&1; then
-    echo "ERROR: could not resolve the Feature list (${FEATURES_MANIFEST_URL}); nothing was installed." >&2
-    echo "A Feature in it may not be published to GHCR yet." >&2
-    exit 1
-fi
-
-install_feature() {
-    local entry="$1" n="$2"
-    local id path registry rest digest token manifest layer_digest feat_dir
-    id="$(jq -r '.id' <<<"${entry}")"
-    registry="${id%%/*}"
-    rest="${id#*/}"
-    path="${rest%@*}"
-    digest="${rest##*@}"
-
-    echo "--- Installing ${path} (${digest}) ---"
-
-    # Claude Code cloud environments ship the claude CLI pre-installed, but the Feature's own
-    # install.sh has no such check — it unconditionally `npm install -g`s it. Skip it there so
-    # every setup-script run doesn't redo a pointless reinstall.
-    if [[ "${path}" == */claude-code ]] && command -v claude >/dev/null 2>&1; then
-        echo "claude already present ($(command -v claude)), skipping ${path} install"
-        return
-    fi
-
-    token="$(curl -fsSL "https://${registry}/token?service=${registry}&scope=repository:${path}:pull" | jq -r .token)"
-    manifest="$(curl -fsSL -H "Authorization: Bearer ${token}" \
-        -H "Accept: application/vnd.oci.image.manifest.v1+json" \
-        "https://${registry}/v2/${path}/manifests/${digest}")"
-    layer_digest="$(jq -r '.layers[0].digest' <<<"${manifest}")"
-
-    feat_dir="${WORKDIR}/feat-${n}"
-    mkdir -p "${feat_dir}"
-    curl -fsSL -H "Authorization: Bearer ${token}" "https://${registry}/v2/${path}/blobs/${layer_digest}" \
-        | tar -x -C "${feat_dir}"
-
-    local env_args=()
-    while IFS=$'\t' read -r key value; do
-        [ -z "${key}" ] && continue
-        local var_name
-        var_name="$(tr '[:lower:]' '[:upper:]' <<<"${key}" | sed -E 's/[^A-Z0-9_]/_/g; s/^[0-9_]+/_/')"
-        env_args+=("${var_name}=${value}")
-    done < <(jq -r '.options // {} | to_entries[] | "\(.key)\t\(.value)"' <<<"${entry}")
-
-    ( cd "${feat_dir}" && env "${env_args[@]}" bash install.sh ) \
-        || echo "WARNING: install of ${path} failed, continuing" >&2
-
-    # Apply each Feature's declared containerEnv (e.g. dotnet's DOTNET_ROOT) to this shell, and
-    # persist it to /etc/profile.d for any interactive login shell. Neither Claude Code nor a
-    # GitHub Actions step sources /etc/profile.d, so this alone doesn't reach later invocations —
-    # see link_dotnet_wrapper below.
-    while IFS=$'\t' read -r env_key env_value; do
-        [ -z "${env_key}" ] && continue
-        eval "export ${env_key}=\"${env_value}\""
-        echo "export ${env_key}=\"${env_value}\"" >> /etc/profile.d/agentbox-features.sh
-    done < <(jq -r '.containerEnv // {} | to_entries[] | "\(.key)\t\(.value)"' "${feat_dir}/devcontainer-feature.json" 2>/dev/null)
-
-    if [ -n "${DOTNET_ROOT:-}" ] && [ -x "${DOTNET_ROOT}/dotnet" ]; then
-        link_dotnet_wrapper dotnet "${DOTNET_ROOT}/dotnet"
-    fi
-}
-
-# Writes /usr/local/bin/<name> as a wrapper that exports DOTNET_ROOT before exec'ing real_path.
-# With a third argument "keyring", the wrapper also starts the Secret Service keyring (the keyring
-# Feature) first, so the tool's credential cache uses it instead of a plaintext fallback even from
-# non-login shells, which never source /etc/profile.d. A no-op where that Feature isn't installed.
-link_dotnet_wrapper() {
-    local name="$1" real_path="$2" keyring_line=""
-    [ "${3:-}" = "keyring" ] \
-        && keyring_line='command -v agentbox-keyring-init >/dev/null 2>&1 && eval "$(agentbox-keyring-init)"'
-    cat > "/usr/local/bin/${name}" <<WRAPPER
-#!/bin/bash
-export DOTNET_ROOT="${DOTNET_ROOT:-}"
-${keyring_line}
-exec "${real_path}" "\$@"
-WRAPPER
-    chmod +x "/usr/local/bin/${name}"
-}
-
-n=0
-while IFS= read -r entry; do
-    n=$((n + 1))
-    install_feature "${entry}" "${n}"
-done < <(jq -c '.installOrder[]' <<<"${RESOLVED}")
-
-# dnx ships next to dotnet but isn't on PATH either; the TALXIS/skills plugin starts the txc MCP
-# server with it ("dnx TALXIS.CLI.MCP").
-[ -n "${DOTNET_ROOT:-}" ] && [ -x "${DOTNET_ROOT}/dnx" ] && link_dotnet_wrapper dnx "${DOTNET_ROOT}/dnx"
-
-# dotnet global tools (pac, txc) land in ~/.dotnet/tools and also need DOTNET_ROOT at run time.
-[ -x "${HOME}/.dotnet/tools/pac" ] && link_dotnet_wrapper pac "${HOME}/.dotnet/tools/pac" keyring
-[ -x "${HOME}/.dotnet/tools/txc" ] && link_dotnet_wrapper txc "${HOME}/.dotnet/tools/txc" keyring
-
-# The node Feature installs via nvm, which only reaches PATH through /etc/profile.d or shell rc
-# files sourced by a login shell — neither Claude Code's Bash tool, a GitHub Actions step, nor
-# `docker run ... bash -c` is one, so plain `node`/`npm` would silently resolve to whatever older
-# version (if any) happens to already be on the default PATH. Symlink the active nvm version's
-# binaries into /usr/local/bin, which already takes precedence over /usr/bin in the default PATH —
-# same fix as the dotnet wrapper above, just simpler since node needs no extra env var at run time.
-# claude-code installs into this same nvm-managed npm's global bin dir, so it needs the same
-# treatment — otherwise it's only reachable from within this script's own shell (where the node
-# Feature's containerEnv eval above already put nvm's bin dir on PATH), not from any later shell.
-# Don't add `pa` here: the pa-cli Feature installs it outside nvm's prefix and writes its own
-# /usr/local/bin/pa wrapper (keyring init + exec), which a symlink would overwrite.
-nvm_current="${NVM_DIR:-/usr/local/share/nvm}/current/bin"
-if [ -x "${nvm_current}/node" ]; then
-    for bin in node npm npx corepack claude; do
-        [ -e "${nvm_current}/${bin}" ] && ln -sf "${nvm_current}/${bin}" "/usr/local/bin/${bin}"
+# All in a function, so a download cut short runs nothing.
+main() {
+    local source="" args=()
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --source) source="$(cd "$2" && pwd)" || exit 2; shift ;;
+            *) args+=("$1") ;;
+        esac
+        shift
     done
-fi
 
-dotnet new install TALXIS.DevKit.Templates.Dataverse || true
-
-# Configure whichever harness this surface actually uses (currently: register the TALXIS/skills
-# plugin) — same script a repo's own devcontainer.json postCreateCommand fetches and runs
-# directly, so there's one place this logic lives regardless of caller. AGENTBOX_HARNESS
-# (already exported by this script's caller) narrows it to the relevant harness; unset (manual/
-# local runs) tries both, skipping whichever binary isn't installed.
-curl -fsSL --max-time 20 "https://talxis.com/agentbox-harness" \
-    -o "${WORKDIR}/configure-agent-harness.sh" \
-    && bash "${WORKDIR}/configure-agent-harness.sh"
-
-# install_feature() logs failures but does not stop on them; report final status per tool.
-echo "=== Tool check ==="
-missing=0
-for tool in dotnet dnx az pwsh terraform gh copilot claude func pac txc pa agentbox-keyring-init; do
-    if command -v "${tool}" >/dev/null 2>&1; then
-        echo "OK   ${tool} -> $(command -v "${tool}")"
-    else
-        echo "MISSING ${tool}"
-        missing=1
+    # It installs system-wide. Setup scripts and image builds have no terminal; a person at one confirms.
+    if [ -t 2 ] && [ -r /dev/tty ]; then
+        read -r -p "This installs the AgentBox tools system-wide, for a machine dedicated to coding agents. Continue? [y/N] " answer </dev/tty
+        [[ "${answer}" =~ ^[Yy] ]] || exit 1
     fi
-done
-[ "${missing}" -eq 1 ] && echo "One or more tools are missing — see the install output above for the matching WARNING line."
 
-exit 0
+    export HOME="${HOME:-$(getent passwd "$(id -un)" | cut -d: -f6)}"
+    command -v apt-get >/dev/null || { echo "AgentBox supports Debian and Ubuntu." >&2; exit 1; }
+    local sudo=""
+    [ "$(id -u)" -eq 0 ] || sudo="sudo -n"
+
+    # .NET needs ICU, which bare images lack.
+    if ! compgen -G '/usr/lib/*/libicuuc.so.*' >/dev/null; then
+        ${sudo} apt-get update -qq \
+            && ${sudo} apt-get install -y -qq --no-install-recommends \
+                "$(apt-cache search --names-only '^libicu[0-9]+$' | cut -d' ' -f1 | sort -V | tail -1)" >/dev/null \
+            || exit 1
+    fi
+
+    # Where the dotnet Feature installs it, so agentbox keeps this one instead of installing it again.
+    if ! grep -q '^10\.' <<<"$(dotnet --list-sdks 2>/dev/null)"; then
+        curl -fsSL https://dot.net/v1/dotnet-install.sh \
+            | ${sudo} bash -s -- --channel 10.0 --install-dir /usr/local/dotnet/10.0 >/dev/null \
+            && ${sudo} ln -sfn /usr/local/dotnet/10.0 /usr/local/dotnet/current \
+            || exit 1
+        export PATH="/usr/local/dotnet/current:${PATH}"
+    fi
+    export DOTNET_ROOT="$(dotnet --list-sdks | sed -n 's/^10\..*\[\(.*\)\/sdk\]$/\1/p' | head -1)"
+
+    if [ -n "${source}" ] && ls "${source}"/TALXIS.DevKit.AgentBox.CLI.*.nupkg >/dev/null 2>&1; then
+        # A NuGet source for every user, so agentbox here, under sudo, and the agentbox Feature all
+        # find it. It wins wherever its version is the highest.
+        local nuget_config=/etc/opt/NuGet/Config/agentbox-setup.config
+        ${sudo} mkdir -p "$(dirname "${nuget_config}")"
+        printf '<configuration><packageSources><add key="agentbox-setup" value="%s" /></packageSources></configuration>\n' "${source}" \
+            | ${sudo} tee "${nuget_config}" >/dev/null || exit 1
+        trap "${sudo} rm -f '${nuget_config}'" EXIT
+    fi
+
+    # This machine is dedicated to agents, whether or not agentbox would detect it as a container.
+    AGENTBOX_CONTAINER=true dotnet dnx TALXIS.DevKit.AgentBox.CLI --yes -- setup --format text "${args[@]}"
+}
+
+main "$@"

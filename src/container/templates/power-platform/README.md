@@ -1,45 +1,15 @@
 
 # Power Platform (power-platform)
 
-Full Power Platform / Dataverse development environment.
+Full Power Platform / Dataverse development environment. A minimal devcontainer.json: the pre-built image brings its own tool updates, keyring and agent plugin setup, so the file needs no changes when AgentBox does.
 
 
 
 # Power Platform Dev Container Template
 
-This template provides a complete, ready-to-use development environment for Power Platform / Dataverse engineers. It works in GitHub Codespaces, VS Code Dev Containers, and can also be used to build a Docker image for Azure Container Instances.
-
-## What's included
-
-See [`devcontainer.features.json`](.devcontainer/devcontainer.features.json) for the current
-tool/version list.
-
-## Getting started in Codespaces
-
-1. Click **Use this template** or open the repo in Codespaces
-2. Run `pac auth create` or `txc config profile create --url https://your-env.crm4.dynamics.com/` to connect to an environment
-
-## Pre-built image
-
-For faster Codespace startup, use the pre-built image which has all tools baked in:
-
-```json
-{
-  "image": "ghcr.io/talxis/tools-agentbox/image:latest"
-}
-```
-
-## Auto-update behavior
-
-`pac`, `txc` and `pa` auto-update to the latest version on every container start. This ensures workshop participants always have the latest tooling without manual intervention.
-
-## Credential storage
-
-`txc`, `pac` and `pa` keep sign-in tokens in a gnome-keyring unlocked with an empty password; see the [keyring Feature notes](../../features/keyring/NOTES.md).
-
-## Agent harness setup
-
-On container creation, this template registers the [TALXIS/skills](https://github.com/TALXIS/skills) plugin (Skills + the `txc` MCP server) with whichever of Claude Code or GitHub Copilot is present — for Copilot, that means both Copilot Chat and the `copilot` CLI.
+A ready-to-use Power Platform / Dataverse environment for Codespaces or any devcontainer tool. The
+`devcontainer.json` only names the pre-built image; the image brings its own start-up behaviour, so
+the file never needs to change when AgentBox does. Add your project's own settings on top.
 
 
 ---

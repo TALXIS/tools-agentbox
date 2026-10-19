@@ -1,7 +1,7 @@
 
 # Secret Service keyring (gnome-keyring) (keyring)
 
-Starts a D-Bus session bus and an unlocked gnome-keyring Secret Service, so CLIs that store credentials through libsecret (txc, pac, pa) use the OS credential vault instead of a plaintext fallback. The keyring has an empty password. The pre-built image doesn't run this postStartCommand; its template repeats it.
+Starts a D-Bus session bus and an unlocked gnome-keyring Secret Service, so CLIs that store credentials through libsecret (txc, pac, pa) use the OS credential vault instead of a plaintext fallback. The keyring has an empty password.
 
 ## Example Usage
 
@@ -35,10 +35,10 @@ passes that through and touches nothing.
 
 | Caller | Covers |
 |---|---|
-| `/etc/profile.d/agentbox-keyring.sh` (login shells) | Codespaces and Dev Containers: VS Code reads the environment from a login shell (`userEnvProbe`) and hands it to every terminal, extension and agent. `pac`/`txc` there run from `~/.dotnet/tools`, not the wrappers. |
+| `/etc/profile.d/agentbox-keyring.sh` (login shells) | Codespaces and Dev Containers: VS Code reads the environment from a login shell (`userEnvProbe`) and hands it to every terminal, extension and agent. |
 | `/etc/bash.bashrc` (interactive shells) | `docker run -it <image> bash` |
-| Wrappers in `/usr/local/bin` (`pa`, plus `pac`/`txc` written by `install-features.sh`) | Non-login shells: Claude Code cloud, the Copilot cloud sandbox, `docker run <image> <cmd>` |
-| `postStartCommand` (this Feature, and repeated in the power-platform template because the pre-built image doesn't carry Feature hooks) | Restarting the daemons after a container restart, before anything asks for them |
+| The `pa`, `pac` and `txc` wrappers in `/usr/local/bin` | Non-login shells: Claude Code cloud, the Copilot cloud sandbox, `docker run <image> <cmd>` |
+| `postStartCommand` | Restarting the daemons after a container restart, before anything asks for them |
 
 ## Security trade-off: empty keyring password
 
@@ -51,8 +51,8 @@ or processes on the same machine aren't trusted.
 
 - Secrets survive restarts (they live in the home directory) but not a Codespace rebuild, the same as
   the plaintext fallback.
-- If a repo sets `userEnvProbe: "none"`, VS Code terminals don't get the bus address; `pac`/`txc` then
-  fall back to plaintext as before (`pa` still works through its wrapper).
+- If a repo sets `userEnvProbe: "none"`, VS Code terminals don't get the bus address. `pac`, `txc` and
+  `pa` still use the keyring: their wrappers start it.
 
 ## Troubleshooting
 
@@ -60,7 +60,6 @@ or processes on the same machine aren't trusted.
   different password and can't be unlocked automatically. Delete that directory to start over;
   stored sign-ins are lost.
 - Check by hand: `eval "$(agentbox-keyring-init)" && printf x | secret-tool store --label=t k v && secret-tool lookup k v`
-
 
 ---
 

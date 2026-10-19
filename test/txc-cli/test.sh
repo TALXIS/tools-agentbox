@@ -13,16 +13,15 @@ docker build \
     . << 'EOF'
 FROM mcr.microsoft.com/dotnet/sdk:10.0
 ARG VERSION=latest
-ENV PATH="${PATH}:/root/.dotnet/tools"
 COPY src/container/features/txc-cli/install.sh /tmp/install.sh
-RUN chmod +x /tmp/install.sh && \
-    _REMOTE_USER=root _REMOTE_USER_HOME=/root VERSION=${VERSION} /tmp/install.sh
+RUN chmod +x /tmp/install.sh && VERSION=${VERSION} /tmp/install.sh
 EOF
 
-echo "--- Checking txc command exists ---"
-docker run --rm \
-    "devcontainer-feature-test-${FEATURE_ID}" \
-    bash -c 'PATH="$PATH:/root/.dotnet/tools" txc --version'
+echo "--- txc runs through its /usr/local/bin wrapper, with no PATH set up ---"
+docker run --rm "devcontainer-feature-test-${FEATURE_ID}" txc --version
+
+echo "--- and for a user other than the one it was installed as ---"
+docker run --rm --user app "devcontainer-feature-test-${FEATURE_ID}" txc --version
 
 echo "--- Checking auto-update flag file exists ---"
 docker run --rm \

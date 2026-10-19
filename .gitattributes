@@ -1,0 +1,2 @@
+# Scripts run in Linux containers; a Windows checkout must not give them CRLF line endings.
+* text=auto eol=lf

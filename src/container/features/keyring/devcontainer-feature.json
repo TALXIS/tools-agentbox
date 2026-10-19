@@ -2,7 +2,7 @@
     "id": "keyring",
     "version": "0.0.1",
     "name": "Secret Service keyring (gnome-keyring)",
-    "description": "Starts a D-Bus session bus and an unlocked gnome-keyring Secret Service, so CLIs that store credentials through libsecret (txc, pac, pa) use the OS credential vault instead of a plaintext fallback. The keyring has an empty password. The pre-built image doesn't run this postStartCommand; its template repeats it.",
+    "description": "Starts a D-Bus session bus and an unlocked gnome-keyring Secret Service, so CLIs that store credentials through libsecret (txc, pac, pa) use the OS credential vault instead of a plaintext fallback. The keyring has an empty password.",
     "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/container/features/keyring",
     "licenseURL": "https://github.com/TALXIS/tools-agentbox/blob/master/LICENSE",
     "options": {},

@@ -7,6 +7,6 @@ wrapper that starts the keyring before running the real CLI.
 ## Install location and versions
 
 The npm package installs into `/usr/local/lib/power-apps-cli`, not npm's global prefix, so the
-wrapper is the only `pa` on `PATH`. The default `version` is `latest`, like the other CLIs in the
-image: the Feature then updates `pa` on every container start. Set `version` to an exact release
-(for example `1.3.0`) to pin it; pinning turns off the update.
+wrapper is the only `pa` on `PATH`. The default `version` is `latest`: `agentbox prerequisite update`
+(the agentbox Feature runs it on every start) keeps it current. Set `version` to an exact release
+(for example `1.3.0`) to pin it.

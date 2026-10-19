@@ -1,0 +1,89 @@
+name: "CI - agentbox CLI"
+on:
+  pull_request:
+    paths:
+      - "src/cli/**"
+      - "test/cli/**"
+      - "src/container/scripts/**"
+      - "src/container/features/**"
+      - "src/container/agentbox-features.json"
+      - ".github/workflows/cli.yaml"
+  push:
+    branches: [master]
+    paths:
+      - "src/cli/**"
+      - ".github/workflows/cli.yaml"
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  # Linux is what AgentBox runs on; the unit tests cover the checks a person runs elsewhere.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet test src/cli --configuration Release
+
+  # Pull requests only: a merge to master has already been through them.
+  pack:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: "10.0.x"
+      - id: pack
+        run: |
+          # Above any release, so it's the agentbox the container tests install wherever they'd
+          # otherwise take nuget.org's.
+          version="999.${{ github.run_number }}.${{ github.run_attempt }}"
+          AGENTBOX_FEATURES_FROM="$PWD/src/container/features" src/cli/build/pack.sh "$version" nupkg
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: agentbox-nupkg
+          path: nupkg/*.nupkg
+          if-no-files-found: error
+          retention-days: 3
+
+  # The packed tool in containers, the way it will be used: the setup script in a bare Linux
+  # container as root and in another vendor's devcontainer image as its non-root user (sudo), and
+  # the published AgentBox image with outdated tools (the lab's "update without restarting").
+  container:
+    needs: [pack]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scenario: setup-script
+            image: ubuntu:24.04
+            user: root
+          # Pinned to 24.04 like the AgentBox image: "ubuntu" moves to new releases before
+          # every upstream Feature supports them.
+          - scenario: foreign-image
+            image: mcr.microsoft.com/devcontainers/base:noble
+            user: vscode
+          - scenario: lab-update
+            image: ghcr.io/talxis/tools-agentbox/image:latest
+            user: root
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: agentbox-nupkg
+          path: nupkg
+      - name: ${{ matrix.scenario }}
+        run: |
+          docker run --rm --user "${{ matrix.user }}" \
+            -e AGENTBOX_FEATURES_FROM=/repo/src/container/features \
+            -v "$PWD/nupkg:/nupkg:ro" -v "$PWD:/repo:ro" \
+            "${{ matrix.image }}" bash "/repo/test/cli/${{ matrix.scenario }}.sh"

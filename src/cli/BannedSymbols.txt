@@ -1,0 +1,49 @@
+# Same rules as tools-cli: results go through OutputFormatter, diagnostics through ILogger.
+# The few approved sinks suppress RS0030 where they touch the console.
+
+# Console.Write / Console.WriteLine — use OutputWriter instead
+M:System.Console.Write(System.String);Use OutputWriter.Write() or OutputFormatter for command output
+M:System.Console.Write(System.Boolean);Use OutputWriter.Write() or OutputFormatter for command output
+M:System.Console.Write(System.Char);Use OutputWriter.Write() or OutputFormatter for command output
+M:System.Console.Write(System.Object);Use OutputWriter.Write() or OutputFormatter for command output
+M:System.Console.Write(System.String,System.Object);Use OutputWriter.Write() or OutputFormatter for command output
+M:System.Console.Write(System.String,System.Object[]);Use OutputWriter.Write() or OutputFormatter for command output
+M:System.Console.WriteLine;Use OutputWriter.WriteLine() or OutputFormatter for command output
+M:System.Console.WriteLine(System.String);Use OutputWriter.WriteLine() or OutputFormatter for command output
+M:System.Console.WriteLine(System.Boolean);Use OutputWriter.WriteLine() or OutputFormatter for command output
+M:System.Console.WriteLine(System.Object);Use OutputWriter.WriteLine() or OutputFormatter for command output
+M:System.Console.WriteLine(System.String,System.Object);Use OutputWriter.WriteLine() or OutputFormatter for command output
+M:System.Console.WriteLine(System.String,System.Object[]);Use OutputWriter.WriteLine() or OutputFormatter for command output
+
+# Console.Error / Console.Out — prevent direct stream access outside approved sinks
+P:System.Console.Error;Use ILogger for diagnostics or an approved logging sink
+P:System.Console.Out;Use OutputWriter/OutputFormatter for command output or an approved stdout sink
+
+# Console.ReadKey / Console.ReadLine — interactive I/O forbidden in command code
+M:System.Console.ReadKey;Use IPrompt instead
+M:System.Console.ReadKey(System.Boolean);Use IPrompt instead
+M:System.Console.ReadLine;Use IPrompt instead
+
+# Thread.Sleep — blocks the thread; use Task.Delay() in async code
+M:System.Threading.Thread.Sleep(System.Int32);Use await Task.Delay() instead of Thread.Sleep
+M:System.Threading.Thread.Sleep(System.TimeSpan);Use await Task.Delay() instead of Thread.Sleep
+
+# new HttpClient() — causes socket exhaustion; use IHttpClientFactory or shared static instance
+M:System.Net.Http.HttpClient.#ctor;Use IHttpClientFactory or a shared static HttpClient instance
+M:System.Net.Http.HttpClient.#ctor(System.Net.Http.HttpMessageHandler);Use IHttpClientFactory or a shared static HttpClient instance
+
+# new JsonSerializerOptions() — use AgentBoxOutputJsonOptions.Default
+M:System.Text.Json.JsonSerializerOptions.#ctor;Use AgentBoxOutputJsonOptions.Default
+M:System.Text.Json.JsonSerializerOptions.#ctor(System.Text.Json.JsonSerializerDefaults);Use AgentBoxOutputJsonOptions.Default
+
+# throw new Exception() — use a specific exception type
+M:System.Exception.#ctor(System.String);Use a specific exception type (InvalidOperationException, ArgumentException, etc.)
+
+# Newtonsoft.Json — use System.Text.Json with AgentBoxOutputJsonOptions.Default
+T:Newtonsoft.Json.JsonConvert;Use System.Text.Json with AgentBoxOutputJsonOptions.Default
+
+# Task.Result / .GetAwaiter().GetResult() — deadlock risk in async contexts
+P:System.Threading.Tasks.Task`1.Result;Use await instead of .Result to avoid deadlocks
+M:System.Runtime.CompilerServices.TaskAwaiter.GetResult;Use await instead of .GetAwaiter().GetResult()
+M:System.Runtime.CompilerServices.TaskAwaiter`1.GetResult;Use await instead of .GetAwaiter().GetResult()
+

@@ -1,7 +1,7 @@
 
 # Power Platform CLI (pac) (pac-cli)
 
-Installs the Microsoft Power Platform CLI (pac). When version is 'latest', auto-updates on every container start via postStartCommand.
+Installs the Microsoft Power Platform CLI (pac). With version 'latest', add the agentbox Feature to keep it on the latest release.
 
 ## Example Usage
 
@@ -15,7 +15,7 @@ Installs the Microsoft Power Platform CLI (pac). When version is 'latest', auto-
 
 | Options Id | Description | Type | Default Value |
 |-----|-----|-----|-----|
-| version | Version of the Power Platform CLI to install. Use 'latest' for auto-updates on each start. | string | latest |
+| version | Version of the Power Platform CLI to install. | string | latest |
 
 ## Customizations
 

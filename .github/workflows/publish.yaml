@@ -5,38 +5,42 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Version to publish (for example 1.3.0)
+        description: Version to publish again, from its existing tag (for example 1.3.0)
         required: true
         type: string
 
+# Each job asks for what it needs; nothing else can write packages.
 permissions:
-  packages: write
   contents: read
 
+# One release at a time, never cut short halfway.
 concurrency:
-  group: publish-${{ github.ref }}
-  cancel-in-progress: true
+  group: publish
+  cancel-in-progress: false
 
 env:
   IMAGE: ghcr.io/talxis/tools-agentbox/image
   DOCKERFILE: src/container/image/power-platform/Dockerfile
 
-# Same shape as tools-cli / tools-devkit-templates / platform-metadata: publishing happens because a
-# human cut a GitHub Release (or ran this by hand with a version), and everything this repo ships -
-# the image, every Feature, every Template - is published under that one version. The "version" in
-# each devcontainer-feature.json / devcontainer-template.json is a 0.0.1 placeholder that gets
-# overwritten here, like those repos' <PackageVersion>0.0.1</PackageVersion>.
+# Everything this repo ships (Features, Templates, the agentbox CLI, the image) is published under
+# the release's one version, built from its tag. The "version" in each manifest and the CLI's
+# <Version> are 0.0.1 placeholders that get overwritten here. Order: tests, then the Features (the
+# CLI's lockfile pins them), then the CLI on nuget.org, then the image, which installs that CLI.
 jobs:
   resolve-version:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      ref: ${{ steps.version.outputs.ref }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      latest: ${{ steps.version.outputs.latest }}
     steps:
       - id: version
         env:
           EVENT_NAME: ${{ github.event_name }}
           TAG: ${{ github.event.release.tag_name }}
           INPUT_VERSION: ${{ github.event.inputs.version }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           if [ "$EVENT_NAME" = "release" ]; then
             version="${TAG#v}"
@@ -47,31 +51,54 @@ jobs:
             echo "Invalid version '$version'. Expected a vX.Y.Z / vX.Y.Z-prerelease tag, or X.Y.Z as input." >&2
             exit 1
           fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+          tags="$(git ls-remote --tags --refs "https://github.com/$REPOSITORY" 'v*' | sed 's#.*refs/tags/##')"
+          grep -qx "v$version" <<<"$tags" || { echo "There is no tag v$version to publish." >&2; exit 1; }
+          [[ "$version" == *-* ]] && prerelease=true || prerelease=false
+          # Only the highest stable version moves the image's "latest".
+          highest="$(grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' <<<"$tags" | sort -V | tail -1)"
+          [ "$prerelease" = false ] && [ "v$version" = "$highest" ] && latest=true || latest=false
+          { echo "version=$version"; echo "ref=v$version"; echo "prerelease=$prerelease"; echo "latest=$latest"; } >> "$GITHUB_OUTPUT"
 
-  publish-features-templates:
+  test:
     needs: [resolve-version]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.resolve-version.outputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet test src/cli --configuration Release
+
+  publish-features-templates:
+    needs: [resolve-version, test]
+    # Unlike NuGet, the devcontainer CLI moves a Feature's ":1" and "latest" tags to a prerelease
+    # too, which would hand it to everyone on ":1". A prerelease ships only the CLI; the image
+    # (which needs these) is skipped with them.
+    if: needs.resolve-version.outputs.prerelease == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.resolve-version.outputs.ref }}
+          persist-credentials: false
 
       - name: Set the release version in every Feature and Template
         env:
           VERSION: ${{ needs.resolve-version.outputs.version }}
         run: |
-          # Unlike NuGet, the devcontainer CLI moves a Feature's ":1" and "latest" tags to a
-          # prerelease too, which would hand it to everyone on ":1".
-          if [[ "$VERSION" == *-* ]]; then
-            echo "Prerelease '$VERSION' can't be published as Features/Templates: it would move their ':${VERSION%%.*}' and 'latest' tags." >&2
-            exit 1
-          fi
           for f in src/container/features/*/devcontainer-feature.json src/container/templates/*/devcontainer-template.json; do
             jq --arg v "$VERSION" '.version = $v' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
             echo "$f -> $VERSION"
           done
 
       - name: Publish Features
-        uses: devcontainers/action@v1
+        uses: devcontainers/action@bef2cf2d1a019b00b45e184f83035e01bd1972f3 # v1
         with:
           publish-features: "true"
           base-path-to-features: "./src/container/features"
@@ -82,7 +109,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish Templates
-        uses: devcontainers/action@v1
+        uses: devcontainers/action@bef2cf2d1a019b00b45e184f83035e01bd1972f3 # v1
         with:
           publish-templates: "true"
           base-path-to-templates: "./src/container/templates"
@@ -91,10 +118,55 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  cli-pack:
+    # The lockfile pins the Features this release just published (a prerelease skips them and pins
+    # the current ones).
+    needs: [resolve-version, test, publish-features-templates]
+    if: ${{ !cancelled() && needs.test.result == 'success' && needs.publish-features-templates.result != 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.resolve-version.outputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: src/cli/build/pack.sh "${{ needs.resolve-version.outputs.version }}" nupkg
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: agentbox-nupkg
+          path: nupkg/*.nupkg
+          if-no-files-found: error
+          retention-days: 7
+
+  cli-publish:
+    needs: [cli-pack]
+    if: ${{ !cancelled() && needs.cli-pack.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      # nuget.org trusted publishing: OIDC token for a short-lived API key, no stored secret.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: agentbox-nupkg
+          path: nupkg
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: NuGet login (OIDC -> temp API key)
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER || 'prokop.tomas' }}
+      - run: dotnet nuget push nupkg/*.nupkg --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
   build:
-    # Waits for the Features: install-features.sh resolves them from GHCR, so building first would
-    # race the publish (and fail on any Feature that is new in this release).
-    needs: [resolve-version, publish-features-templates]
+    # Only once the CLI is on nuget.org, so the image never points at a CLI people can't get. It
+    # installs the package cli-pack made, not whatever nuget.org has indexed yet.
+    needs: [resolve-version, cli-publish]
+    if: needs.resolve-version.outputs.prerelease == 'false'
     strategy:
       fail-fast: false
       matrix:
@@ -104,25 +176,34 @@ jobs:
           - platform: linux/arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.resolve-version.outputs.ref }}
+          persist-credentials: false
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: agentbox-nupkg
+          path: ${{ runner.temp }}/agentbox-cli
 
-      - uses: docker/login-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/metadata-action@v5
+      - uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         id: meta
         with:
           images: ${{ env.IMAGE }}
-          # Without this, metadata-action derives org.opencontainers.image.version from the raw
-          # git ref (the release tag, "v1.2.1") and that wins over the Dockerfile's own
-          # ARG IMAGE_VERSION LABEL — leaving the image labeled "v1.2.1" instead of "1.2.1" like
-          # resolve-version's actual output. Override it explicitly to match.
+          # Without this, metadata-action takes the version from the git ref ("v1.2.1") instead of
+          # "1.2.1".
           labels: |
             org.opencontainers.image.version=${{ needs.resolve-version.outputs.version }}
 
@@ -131,20 +212,28 @@ jobs:
         env:
           PLATFORM: ${{ matrix.platform }}
 
-      - uses: docker/build-push-action@v6
+      # The image's own devcontainer config, merged by every devcontainer tool into a consumer's
+      # devcontainer.json - so consumers only need "image". See the script for what goes in it.
+      # build-push-action CSV-parses each "labels" line, which mangles the JSON's quotes, so the
+      # line is CSV-quoted: wrapped in quotes, with inner quotes doubled.
+      - id: devcontainer-metadata
+        run: |
+          npm install -g @devcontainers/cli@0.89.0 --silent
+          line="devcontainer.metadata=$(bash src/container/image/power-platform/devcontainer-metadata.sh)"
+          printf 'label="%s"\n' "${line//\"/\"\"}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: ${{ env.DOCKERFILE }}
           platforms: ${{ matrix.platform }}
-          # Forces the toolchain layer (install-features.sh) to actually re-run every build instead
-          # of silently reusing a stale cached layer — most Feature versions resolve to "latest",
-          # and the cache below is keyed on instruction text, not on what a re-run would fetch.
+          build-contexts: agentbox-cli=${{ runner.temp }}/agentbox-cli
           build-args: |
             CACHEBUST=${{ github.run_id }}-${{ github.run_attempt }}
             IMAGE_VERSION=${{ needs.resolve-version.outputs.version }}
-          cache-from: type=gha,scope=${{ steps.slug.outputs.value }}
-          cache-to: type=gha,scope=${{ steps.slug.outputs.value }},mode=max
-          labels: ${{ steps.meta.outputs.labels }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            ${{ steps.devcontainer-metadata.outputs.label }}
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
         id: build
 
@@ -153,7 +242,7 @@ jobs:
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: digest-${{ steps.slug.outputs.value }}
           path: /tmp/digests/*
@@ -163,27 +252,30 @@ jobs:
   merge:
     needs: [build, resolve-version]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: /tmp/digests
           pattern: digest-*
           merge-multiple: true
 
-      - uses: docker/metadata-action@v5
+      - uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         id: meta
         with:
           images: ${{ env.IMAGE }}
           tags: |
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ needs.resolve-version.outputs.latest == 'true' }}
             type=raw,value=${{ needs.resolve-version.outputs.version }}
 
       - run: |

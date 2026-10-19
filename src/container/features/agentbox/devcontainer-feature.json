@@ -1,0 +1,16 @@
+{
+    "id": "agentbox",
+    "version": "0.0.1",
+    "name": "AgentBox CLI (agentbox)",
+    "description": "Installs the agentbox CLI. It sets up the installed agent harnesses when the container is created and brings the AgentBox tools that follow the latest release up to date on every start.",
+    "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/container/features/agentbox",
+    "licenseURL": "https://github.com/TALXIS/tools-agentbox/blob/master/LICENSE",
+    "options": {},
+    "dependsOn": {
+        "ghcr.io/devcontainers/features/dotnet:1": {
+            "version": "10.0"
+        }
+    },
+    "postCreateCommand": "timeout 120 agentbox harness configure || true",
+    "postStartCommand": "timeout 120 agentbox prerequisite update || true"
+}
