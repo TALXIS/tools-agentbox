@@ -30,15 +30,18 @@ opening a Windows folder: Linux line endings and file modes, and much faster.
 
 - **Setup script:** `curl -fsSL https://talxis.com/agentbox-setup | bash`
 - **Environment variable:** `CLAUDE_CODE_PLUGIN_SEED_DIR=/usr/local/claude-plugin-seed`
-- **Network access:** Custom, with the defaults, plus `cli.github.com` and `talxis.com`
+- **Network access:** Custom, with the defaults, plus `cli.github.com` and `talxis.com`. With a
+  stricter list, setup also needs `ghcr.io`, `pkg-containers.githubusercontent.com`, `api.nuget.org`,
+  `registry.npmjs.org`, `packages.microsoft.com`, `releases.hashicorp.com`, and `dot.net` with
+  `builds.dotnet.microsoft.com` when the machine lacks .NET 10.
+- The setup script fails when a tool didn't make it, so a broken environment shows in its log.
 - **Optional:** to update the tools as sessions start, merge the hook in
   [`session-start-hook.json`](src/container/claude-code/session-start-hook.json) into
   [managed settings](https://claude.ai/admin-settings/claude-code).
 
 ## Keeping current
 
-Tools that follow their latest release update on every container start. Mid-session, or anywhere
-else:
+Tools that follow their latest release update on every container start. Mid-session:
 
 ```bash
 agentbox prerequisite update
@@ -46,4 +49,4 @@ agentbox prerequisite update
 
 The [`agentbox` CLI](src/cli/README.md) also checks a machine (`prerequisite validate`,
 `harness validate`). The [contract](CONTRACT.md) lists what stays stable. The tools are listed in
-[`devcontainer.features.json`](src/container/templates/power-platform/.devcontainer/devcontainer.features.json).
+[`agentbox-features.json`](src/container/agentbox-features.json).

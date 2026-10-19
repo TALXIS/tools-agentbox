@@ -20,6 +20,12 @@ main() {
         shift
     done
 
+    # It installs system-wide. Setup scripts and image builds have no terminal; a person at one confirms.
+    if [ -t 2 ] && [ -r /dev/tty ]; then
+        read -r -p "This installs the AgentBox tools system-wide, for a machine dedicated to coding agents. Continue? [y/N] " answer </dev/tty
+        [[ "${answer}" =~ ^[Yy] ]] || exit 1
+    fi
+
     export HOME="${HOME:-$(getent passwd "$(id -un)" | cut -d: -f6)}"
     command -v apt-get >/dev/null || { echo "AgentBox supports Debian and Ubuntu." >&2; exit 1; }
     local sudo=""
@@ -33,8 +39,8 @@ main() {
             || exit 1
     fi
 
-    # Where and how the dotnet Feature installs it, which then sees it's there.
-    if ! dotnet --list-sdks 2>/dev/null | grep -q '^10\.'; then
+    # Where the dotnet Feature installs it, so agentbox keeps this one instead of installing it again.
+    if ! grep -q '^10\.' <<<"$(dotnet --list-sdks 2>/dev/null)"; then
         curl -fsSL https://dot.net/v1/dotnet-install.sh \
             | ${sudo} bash -s -- --channel 10.0 --install-dir /usr/local/dotnet/10.0 >/dev/null \
             && ${sudo} ln -sfn /usr/local/dotnet/10.0 /usr/local/dotnet/current \
@@ -53,6 +59,7 @@ main() {
         trap "${sudo} rm -f '${nuget_config}'" EXIT
     fi
 
+    # This machine is dedicated to agents, whether or not agentbox would detect it as a container.
     AGENTBOX_CONTAINER=true dotnet dnx TALXIS.AgentBox.CLI --yes -- setup --format text "${args[@]}"
 }
 

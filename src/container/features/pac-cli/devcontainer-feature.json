@@ -2,7 +2,7 @@
     "id": "pac-cli",
     "version": "0.0.1",
     "name": "Power Platform CLI (pac)",
-    "description": "Installs the Microsoft Power Platform CLI (pac). With version 'latest' it follows the latest release (`agentbox prerequisite update` keeps it current).",
+    "description": "Installs the Microsoft Power Platform CLI (pac). With version 'latest', add the agentbox Feature to keep it on the latest release.",
     "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/container/features/pac-cli",
     "licenseURL": "https://github.com/TALXIS/tools-agentbox/blob/master/LICENSE",
     "options": {

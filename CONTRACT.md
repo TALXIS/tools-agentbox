@@ -23,8 +23,10 @@ The CLI's commands, options, exit codes and `--format json` fields are part of i
 - **Nothing above is renamed, removed or changes meaning within a major version.** An unavoidable
   break ships as a new major version, announced in the release notes, with the old one kept working
   until consumers have moved.
-- **`image:latest` and the short links follow the latest release.** `image:<version>` is there to
-  pin.
+- **`image:latest` follows the latest release;** `image:<version>` is there to pin. **The short links
+  serve `master`,** so a fix reaches every new sandbox the moment it merges.
+- **The image works for whichever user the container runs as.** Updating the tools it shares
+  between users needs root or passwordless sudo.
 - **Tools that follow their latest release stay current without a rebuild:** on every container
   start, and on demand with `agentbox prerequisite update`.
 - **AgentBox stays out of the project's and the user's choices:** files to open, ports, editor

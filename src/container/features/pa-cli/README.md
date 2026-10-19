@@ -1,7 +1,7 @@
 
 # Power Apps CLI (pa) (pa-cli)
 
-Installs the Microsoft Power Apps CLI (pa, npm @microsoft/power-apps-cli). Needs Node.js 22 or newer and a Secret Service keyring, which the keyring Feature provides. With version 'latest' it follows the latest release (`agentbox prerequisite update` keeps it current).
+Installs the Microsoft Power Apps CLI (pa, npm @microsoft/power-apps-cli). Needs Node.js 22 or newer and a Secret Service keyring, which the keyring Feature provides. With version 'latest', add the agentbox Feature to keep it on the latest release.
 
 ## Example Usage
 

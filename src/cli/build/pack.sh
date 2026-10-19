@@ -7,7 +7,7 @@ set -euo pipefail
 version="$1"
 out="$2"
 cli="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-manifest="${cli}/../container/templates/power-platform/.devcontainer/devcontainer.features.json"
+manifest="${cli}/../container/agentbox-features.json"
 
 command -v devcontainer >/dev/null 2>&1 || npm install -g @devcontainers/cli@0.89.0 --silent
 

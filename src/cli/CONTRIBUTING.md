@@ -5,7 +5,7 @@ so the two feel like one product: noun groups with verb commands, `--format json
 stdout and logs on stderr, the same exit codes plus 3 for "not ready".
 
 A new prerequisite is a Feature in
-`src/container/templates/power-platform/.devcontainer/devcontainer.features.json` plus an entry in
+`src/container/agentbox-features.json` plus an entry in
 `PrerequisiteCatalog`; a test fails until both exist.
 
 ```bash

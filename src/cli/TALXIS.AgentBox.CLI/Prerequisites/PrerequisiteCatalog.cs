@@ -3,7 +3,7 @@ namespace TALXIS.AgentBox.CLI.Prerequisites;
 
 /// <summary>
 /// Everything AgentBox provides, in install order. Each Feature here is also listed in
-/// src/container/templates/power-platform/.devcontainer/devcontainer.features.json; a test keeps them in step.
+/// src/container/agentbox-features.json; a test keeps them in step.
 /// </summary>
 public static class PrerequisiteCatalog
 {

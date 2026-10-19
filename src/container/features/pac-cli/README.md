@@ -1,7 +1,7 @@
 
 # Power Platform CLI (pac) (pac-cli)
 
-Installs the Microsoft Power Platform CLI (pac). With version 'latest' it follows the latest release (`agentbox prerequisite update` keeps it current).
+Installs the Microsoft Power Platform CLI (pac). With version 'latest', add the agentbox Feature to keep it on the latest release.
 
 ## Example Usage
 

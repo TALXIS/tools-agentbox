@@ -9,7 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # ── Base system dependencies ──────────────────────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl wget git zip unzip jq ca-certificates gnupg lsb-release libicu74 \
-    ripgrep fd-find bat delta fzf tree xdg-utils less file \
+    ripgrep fd-find bat git-delta fzf tree xdg-utils less file \
     apt-transport-https software-properties-common \
     sudo procps \
     && rm -rf /var/lib/apt/lists/*
@@ -23,7 +23,7 @@ ARG CACHEBUST=0
 COPY src/container/scripts/install-features.sh /tmp/install-features.sh
 RUN --mount=type=bind,from=agentbox-cli,target=/tmp/agentbox-cli \
     CACHEBUST=${CACHEBUST} bash /tmp/install-features.sh --no-harness --source /tmp/agentbox-cli \
-    && rm -rf /tmp/install-features.sh /root/.nuget/packages /root/.npm /usr/local/share/nvm/.cache
+    && rm -rf /tmp/install-features.sh /root/.nuget/packages /root/.npm /usr/local/share/nvm/.cache /var/lib/apt/lists/*
 
 ENV DOTNET_ROOT=/usr/local/dotnet/current
 

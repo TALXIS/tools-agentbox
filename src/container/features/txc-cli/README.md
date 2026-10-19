@@ -1,7 +1,7 @@
 
 # TALXIS DevKit CLI (txc) (txc-cli)
 
-Installs the TALXIS DevKit CLI (txc), a code-first toolkit for Power Platform and Dataverse development. With version 'latest' it follows the latest release (`agentbox prerequisite update` keeps it current).
+Installs the TALXIS DevKit CLI (txc), a code-first toolkit for Power Platform and Dataverse development. With version 'latest', add the agentbox Feature to keep it on the latest release.
 
 ## Example Usage
 

@@ -18,6 +18,8 @@ trap cleanup EXIT
 # Above any release, so the image installs this build wherever it would take nuget.org's.
 bash src/cli/build/pack.sh 999.0.0 "${CLI}"
 
+command -v devcontainer >/dev/null 2>&1 || npm install -g @devcontainers/cli@0.89.0 --silent
+
 # Same label publish.yaml attaches (docker build's --label takes the raw JSON; no CSV quoting).
 METADATA="$(bash src/container/image/power-platform/devcontainer-metadata.sh)"
 
@@ -58,7 +60,6 @@ up_consumer() {
     dexec 'agentbox harness validate claude copilot --format text'
 }
 
-command -v devcontainer >/dev/null 2>&1 || npm install -g @devcontainers/cli --silent
 
 # A new project: just the image. The deeper checks run here; the image is the same below.
 up_consumer "minimal devcontainer.json" "{ \"image\": \"${IMAGE}\" }"

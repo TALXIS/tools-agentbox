@@ -17,7 +17,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       # The generator builds each README's usage example (".../<id>:1") from the manifest's major
       # version, and the repo's manifests carry a 0.0.1 placeholder. Use the latest release's version
@@ -34,7 +34,7 @@ jobs:
 
       # Two invocations: devcontainers/action refuses Features and Templates in one.
       - name: Generate Feature documentation
-        uses: devcontainers/action@v1
+        uses: devcontainers/action@bef2cf2d1a019b00b45e184f83035e01bd1972f3 # v1
         with:
           base-path-to-features: "./src/container/features"
           generate-docs: "true"
@@ -42,7 +42,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate Template documentation
-        uses: devcontainers/action@v1
+        uses: devcontainers/action@bef2cf2d1a019b00b45e184f83035e01bd1972f3 # v1
         with:
           base-path-to-templates: "./src/container/templates"
           generate-docs: "true"

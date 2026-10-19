@@ -6,7 +6,7 @@ namespace TALXIS.AgentBox.CLI.Tests;
 
 public class CatalogTests
 {
-    private const string Manifest = "src/container/templates/power-platform/.devcontainer/devcontainer.features.json";
+    private const string Manifest = "src/container/agentbox-features.json";
 
     [Fact]
     public void The_catalog_and_the_Feature_manifest_list_the_same_Features()

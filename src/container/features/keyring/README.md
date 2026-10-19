@@ -51,8 +51,8 @@ or processes on the same machine aren't trusted.
 
 - Secrets survive restarts (they live in the home directory) but not a Codespace rebuild, the same as
   the plaintext fallback.
-- If a repo sets `userEnvProbe: "none"`, VS Code terminals don't get the bus address; `pac`/`txc` then
-  fall back to plaintext as before (`pa` still works through its wrapper).
+- If a repo sets `userEnvProbe: "none"`, VS Code terminals don't get the bus address. `pac`, `txc` and
+  `pa` still use the keyring: their wrappers start it.
 
 ## Troubleshooting
 
