@@ -28,6 +28,10 @@ public sealed partial class FeatureInstaller(IProcessRunner processes, HttpClien
     {
         var results = new List<(LockedFeature, bool, string?)>();
         var workRoot = Directory.CreateTempSubdirectory("agentbox-features-");
+        // CreateTempSubdirectory makes it 0700, but Features run steps as the remote user from their
+        // own directory (su <user> -c ...), which then can't even enter it.
+        File.SetUnixFileMode(workRoot.FullName, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+            | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
         try
         {
             for (var i = 0; i < features.Count; i++)

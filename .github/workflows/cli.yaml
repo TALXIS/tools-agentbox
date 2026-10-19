@@ -94,8 +94,10 @@ jobs:
           - scenario: container
             image: ubuntu:24.04
             user: root
+          # Pinned to 24.04 like the AgentBox image: "ubuntu" moves to new releases before
+          # every upstream Feature supports them.
           - scenario: foreign-image
-            image: mcr.microsoft.com/devcontainers/base:ubuntu
+            image: mcr.microsoft.com/devcontainers/base:noble
             user: vscode
           - scenario: lab-update
             image: ghcr.io/talxis/tools-agentbox/image:latest
