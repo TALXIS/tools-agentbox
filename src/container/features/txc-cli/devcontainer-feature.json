@@ -15,7 +15,7 @@
             "description": "Version of TALXIS.CLI to install. Use 'latest' for auto-updates on each start."
         }
     },
-    "postStartCommand": "[ -f /etc/devcontainer-txc-cli/auto-update ] && dotnet tool update --global TALXIS.CLI 2>/dev/null || true",
+    "postStartCommand": "[ -f /etc/devcontainer-txc-cli/auto-update ] && dotnet tool update TALXIS.CLI --tool-path /usr/local/share/txc >/dev/null 2>&1 || true",
     "customizations": {
         "vscode": {
             "settings": {
