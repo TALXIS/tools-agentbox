@@ -63,13 +63,16 @@ public sealed record Prerequisite
     /// <summary>Only needed in Linux containers; machines bring their own equivalent.</summary>
     public bool ContainerOnly { get; init; }
 
+    /// <summary>AgentBox installs one version and never changes it.</summary>
+    public bool Pinned { get; init; }
+
     public RequiredVersion? RequiredVersion { get; init; }
 
     public ManualInstall Manual { get; init; } = new();
 
     /// <summary>In a container, a present install is kept rather than re-applied from its Feature:
-    /// it's managed elsewhere, or its version was just checked.</summary>
-    public bool KeepWhenPresent => Kind == PrerequisiteKind.SelfManaged || RequiredVersion is not null;
+    /// it's managed elsewhere, pinned, or its version was just checked.</summary>
+    public bool KeepWhenPresent => Kind == PrerequisiteKind.SelfManaged || Pinned || RequiredVersion is not null;
 
     /// <summary>This repo's Features leave this file when they follow the latest release
     /// (version "latest"); a pinned install has none, and agentbox doesn't update it.</summary>

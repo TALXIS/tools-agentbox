@@ -111,15 +111,16 @@ public static class PrerequisiteCatalog
         },
         new()
         {
-            // Playwright's own CLI for agents. AgentBox pins it: each Playwright release launches only
-            // its own browser build.
+            // Playwright's own CLI for agents, pinned: each Playwright release launches only its own
+            // browser build.
             Id = "playwright-cli", Description = "Playwright CLI", Command = "playwright-cli", Kind = PrerequisiteKind.NpmTool,
-            Package = "playwright", NpmPrefix = "/usr/local/lib/playwright-cli",
+            Package = "playwright", Feature = "talxis/tools-agentbox/playwright-cli", NpmPrefix = "/usr/local/lib/playwright-cli", Pinned = true,
             Manual = ManualInstall.Everywhere("npm install --global @playwright/cli@latest"),
         },
         new()
         {
             Id = "browser", Description = "A browser playwright-cli can launch", Command = "playwright-cli", Kind = PrerequisiteKind.PlaywrightBrowser,
+            Feature = "talxis/tools-agentbox/playwright-cli", Pinned = true,
             Manual = ManualInstall.Everywhere("playwright-cli install-browser chrome"),
         },
         new()

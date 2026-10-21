@@ -181,4 +181,24 @@ public class PrerequisiteTests
 
         Assert.Equal(["talxis/tools-agentbox/keyring", "talxis/tools-agentbox/pa-cli"], features.Installed);
     }
+
+    [Theory]
+    [InlineData(true, new string[0])]
+    [InlineData(false, new[] { "talxis/tools-agentbox/playwright-cli" })]
+    public async Task A_pinned_prerequisite_is_installed_only_when_missing(bool browserOpens, string[] expected)
+    {
+        var features = new RecordingFeatureInstaller();
+        var featureLock = new FeatureLock([
+            new("ghcr.io/devcontainers/features/node@sha256:a", null),
+            new("ghcr.io/talxis/tools-agentbox/playwright-cli@sha256:b", null, ["devcontainers/features/node"]),
+        ]);
+        var processes = FakeProcesses.WithEverything();
+        var answer = processes.Handler;
+        processes.Handler = (file, args) => args.Contains("open") && !browserOpens ? new(1, "", "Error: no browser", false) : answer(file, args);
+        var services = new AgentBoxServices(new FakeHost { IsRoot = true }, processes, new FakeRegistry(), new FakePrompt(), features, featureLock);
+
+        await services.Installer(NullLogger.Instance).InstallAsync(PrerequisiteCatalog.Select(["playwright-cli", "browser"]), CancellationToken.None);
+
+        Assert.Equal(expected, features.Installed);
+    }
 }

@@ -15,7 +15,7 @@ public class CatalogTests
         var inManifest = manifest.RootElement.GetProperty("features").EnumerateObject()
             .Select(f => f.Name[(f.Name.IndexOf('/') + 1)..f.Name.LastIndexOf(':')])
             .Order();
-        var inCatalog = PrerequisiteCatalog.All.Where(p => p.Feature is not null).Select(p => p.Feature!).Order();
+        var inCatalog = PrerequisiteCatalog.All.Where(p => p.Feature is not null).Select(p => p.Feature!).Distinct().Order(); // one Feature can give several rows
         Assert.Equal(inManifest, inCatalog);
     }
 

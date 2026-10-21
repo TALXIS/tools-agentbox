@@ -1,0 +1,37 @@
+{
+    "id": "playwright-cli",
+    "version": "0.0.1",
+    "name": "Playwright CLI (playwright-cli)",
+    "description": "Installs Playwright's CLI for coding agents (playwright-cli, from npm playwright) with a browser it can launch, or reuses a Playwright Chromium that's already installed. Pinned: each Playwright release launches only its own browser build. Needs Node.js 22 or newer.",
+    "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/container/features/playwright-cli",
+    "licenseURL": "https://github.com/TALXIS/tools-agentbox/blob/master/LICENSE",
+    "options": {
+        "version": {
+            "type": "string",
+            "proposals": [
+                "1.63.0"
+            ],
+            "default": "1.63.0",
+            "description": "Version of the playwright npm package. Match Microsoft.Playwright in your .NET tests so they find the same browser."
+        }
+    },
+    "containerEnv": {
+        "PLAYWRIGHT_SKIP_BROWSER_GC": "1"
+    },
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "github.copilot.chat.codeGeneration.instructions": [
+                    {
+                        "text": "This dev container includes the Playwright CLI (`playwright-cli`), with a browser, on the `PATH`. Run `playwright-cli --help` for the command reference."
+                    }
+                ]
+            }
+        }
+    },
+    "dependsOn": {
+        "ghcr.io/devcontainers/features/node:1": {
+            "version": "22"
+        }
+    }
+}
