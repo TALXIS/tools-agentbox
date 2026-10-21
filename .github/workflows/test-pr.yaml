@@ -17,6 +17,7 @@ jobs:
             txc-cli: ./**/txc-cli/**
             keyring: ./**/keyring/**
             pa-cli: ./**/pa-cli/**
+            playwright-cli: ./**/playwright-cli/**
             agentbox:
               - ./**/agentbox/**
               - ./src/cli/**

@@ -27,9 +27,9 @@
         }
     },
     "dependsOn": {
+        "ghcr.io/devcontainers/features/node:1": {
+            "version": "22"
+        },
         "ghcr.io/talxis/tools-agentbox/keyring:1": {}
-    },
-    "installsAfter": [
-        "ghcr.io/devcontainers/features/node"
-    ]
+    }
 }

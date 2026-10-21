@@ -167,18 +167,77 @@ public class PrerequisiteTests
         }
     }
 
+    /// <summary>Installs <paramref name="ids"/> as root in a container, recording the Features applied.</summary>
+    private static async Task<List<string>> InstallInContainerAsync(FeatureLock featureLock, FakeProcesses processes, params string[] ids)
+    {
+        var features = new RecordingFeatureInstaller();
+        var services = new AgentBoxServices(new FakeHost { IsRoot = true }, processes, new FakeRegistry(), new FakePrompt(), features, featureLock);
+        await services.Installer(NullLogger.Instance).InstallAsync(PrerequisiteCatalog.Select(ids), CancellationToken.None);
+        return features.Installed;
+    }
+
     [Fact]
     public async Task In_a_container_a_prerequisite_comes_with_what_its_Feature_depends_on()
     {
-        var features = new RecordingFeatureInstaller();
         var featureLock = new FeatureLock([
             new("ghcr.io/talxis/tools-agentbox/keyring@sha256:a", null),
             new("ghcr.io/talxis/tools-agentbox/pa-cli@sha256:b", null, ["talxis/tools-agentbox/keyring"]),
         ]);
-        var services = new AgentBoxServices(new FakeHost { IsRoot = true }, new FakeProcesses(), new FakeRegistry(), new FakePrompt(), features, featureLock);
 
-        await services.Installer(NullLogger.Instance).InstallAsync(PrerequisiteCatalog.Select(["pa"]), CancellationToken.None);
+        Assert.Equal(["talxis/tools-agentbox/keyring", "talxis/tools-agentbox/pa-cli"], await InstallInContainerAsync(featureLock, new FakeProcesses(), "pa"));
+    }
 
-        Assert.Equal(["talxis/tools-agentbox/keyring", "talxis/tools-agentbox/pa-cli"], features.Installed);
+    [Theory]
+    [InlineData(true, new string[0])]
+    [InlineData(false, new[] { "talxis/tools-agentbox/playwright-cli" })]
+    public async Task A_kept_Feature_is_applied_again_only_when_its_check_fails(bool browserOpens, string[] expected)
+    {
+        var featureLock = new FeatureLock([
+            new("ghcr.io/devcontainers/features/node@sha256:a", null),
+            new("ghcr.io/talxis/tools-agentbox/playwright-cli@sha256:b", null, ["devcontainers/features/node"]),
+        ]);
+        var processes = FakeProcesses.WithEverything();
+        var everythingWorks = processes.Handler;
+        processes.Handler = (file, args) => browserOpens || !args.Contains("open") ? everythingWorks(file, args) : new(1, "", "Error: no browser", false);
+
+        Assert.Equal(expected, await InstallInContainerAsync(featureLock, processes, "playwright-cli", "browser"));
+    }
+
+    [Fact]
+    public async Task A_browser_that_does_not_open_is_missing_with_the_reason_and_is_still_closed()
+    {
+        var processes = new FakeProcesses
+        {
+            OnPath = { ["playwright-cli"] = "/usr/local/bin/playwright-cli" },
+            Handler = (_, args) => args.Contains("open")
+                ? new(1, "", "Error: Daemon pid=1: Daemon process exited with code 1\nError: Browser \"chrome\" is not installed\n    at launch (core.js:1:1)\n", false)
+                : new(0, "", "", false),
+        };
+
+        var state = await new PrerequisiteInspector(new FakeHost(), processes, new FakeRegistry())
+            .InspectAsync(PrerequisiteCatalog.Select(["browser"]).Single(), checkUpdates: false, CancellationToken.None);
+
+        Assert.Equal(PrerequisiteStatus.Missing, state.Status);
+        Assert.Equal("Error: Browser \"chrome\" is not installed", state.Detail);
+        Assert.EndsWith(" close", processes.Calls.Last());
+    }
+
+    [Fact]
+    public async Task A_plain_global_npm_install_reports_the_version_of_the_package_it_links_to()
+    {
+        var npm = Directory.CreateTempSubdirectory("npm-global-").FullName;
+        var package = Path.Combine(npm, "lib", "node_modules", "@playwright", "cli");
+        Directory.CreateDirectory(package);
+        File.WriteAllText(Path.Combine(package, "package.json"), """{"name": "@playwright/cli", "version": "0.1.22"}""");
+        File.WriteAllText(Path.Combine(package, "playwright-cli.js"), "");
+        Directory.CreateDirectory(Path.Combine(npm, "bin"));
+        var command = Path.Combine(npm, "bin", "playwright-cli");
+        File.CreateSymbolicLink(command, "../lib/node_modules/@playwright/cli/playwright-cli.js");
+        var processes = new FakeProcesses { OnPath = { ["playwright-cli"] = command } };
+
+        var state = await new PrerequisiteInspector(new FakeHost(), processes, new FakeRegistry())
+            .InspectAsync(PrerequisiteCatalog.Select(["playwright-cli"]).Single(), checkUpdates: false, CancellationToken.None);
+
+        Assert.Equal("0.1.22", state.InstalledVersion);
     }
 }

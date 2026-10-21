@@ -31,6 +31,8 @@ RUN --mount=type=bind,from=agentbox-cli,target=/tmp/agentbox-cli \
     && rm -rf /tmp/install-features.sh /root/.nuget/packages /root/.npm /usr/local/share/nvm/.cache /var/lib/apt/lists/*
 
 ENV DOTNET_ROOT=/usr/local/dotnet/current
+# Where the playwright-cli Feature put the browser, for every Playwright on the same version (.NET tests too).
+ENV PLAYWRIGHT_BROWSERS_PATH=/usr/local/share/pw-browsers
 
 # Set by publish.yaml from the release tag. Last, so a new version doesn't invalidate the layers above.
 ARG IMAGE_VERSION=0.0.0-dev

@@ -111,6 +111,20 @@ public static class PrerequisiteCatalog
         },
         new()
         {
+            // The Feature runs `playwright cli` from the playwright version it pins (its browser build
+            // matches .NET tests); on a person's machine it's usually @playwright/cli, whose version shows.
+            Id = "playwright-cli", Description = "Playwright CLI", Command = "playwright-cli", Kind = PrerequisiteKind.NpmTool,
+            Package = "playwright", Feature = "talxis/tools-agentbox/playwright-cli", NpmPrefix = "/usr/local/lib/playwright-cli", KeepWorkingInstall = true,
+            Manual = ManualInstall.Everywhere("npm install --global @playwright/cli@latest"),
+        },
+        new()
+        {
+            Id = "browser", Description = "A browser playwright-cli can launch", Command = "playwright-cli", Kind = PrerequisiteKind.PlaywrightBrowser,
+            Feature = "talxis/tools-agentbox/playwright-cli", KeepWorkingInstall = true,
+            Manual = ManualInstall.Everywhere("playwright-cli install-browser chrome"),
+        },
+        new()
+        {
             // In a container its hooks run it; elsewhere dnx is enough.
             Id = "agentbox", Description = "AgentBox CLI", Command = "agentbox", Kind = PrerequisiteKind.SelfManaged,
             Feature = "talxis/tools-agentbox/agentbox", ContainerOnly = true,

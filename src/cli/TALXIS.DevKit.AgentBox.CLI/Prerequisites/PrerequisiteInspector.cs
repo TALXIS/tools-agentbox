@@ -29,11 +29,13 @@ public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner process
     {
         if (p.ContainerOnly && !host.IsLinuxContainer)
             return new(p.Id, p.Description, PrerequisiteStatus.NotNeeded);
+        if (p.Kind == PrerequisiteKind.PlaywrightBrowser)
+            return await InspectBrowserAsync(p, cancellationToken).ConfigureAwait(false);
 
         var followsLatest = FollowsLatest(p);
         var missing = new PrerequisiteState(p.Id, p.Description, PrerequisiteStatus.Missing) { FollowsLatest = followsLatest };
         var path = p.Kind == PrerequisiteKind.DotnetTemplate ? null : processes.FindOnPath(p.Command);
-        var version = p.Kind == PrerequisiteKind.DotnetTemplate ? TemplateVersion(p.Package!) : path is null ? null : InstalledVersion(p);
+        var version = p.Kind == PrerequisiteKind.DotnetTemplate ? TemplateVersion(p.Package!) : path is null ? null : InstalledVersion(p, path);
         if (version is null && path is null)
             return missing;
         if (p.RequiredVersion is { } required && !await HasRequiredVersionAsync(p, required, cancellationToken).ConfigureAwait(false))
@@ -72,16 +74,24 @@ public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner process
             ? registry.GetLatestNpmVersionAsync(p.Package!, cancellationToken)
             : registry.GetLatestNuGetVersionAsync(p.Package!, cancellationToken);
 
+    private async Task<PrerequisiteState> InspectBrowserAsync(Prerequisite p, CancellationToken cancellationToken)
+    {
+        if (processes.FindOnPath(p.Command) is null)
+            return new(p.Id, p.Description, PrerequisiteStatus.Missing) { Detail = $"{p.Command} not found" };
+        var failure = await new BrowserProbe(host, processes).FailureAsync(p.Command, cancellationToken).ConfigureAwait(false);
+        return new(p.Id, p.Description, failure is null ? PrerequisiteStatus.Ok : PrerequisiteStatus.Missing) { Detail = failure };
+    }
+
     private async Task<bool> HasRequiredVersionAsync(Prerequisite p, RequiredVersion required, CancellationToken cancellationToken)
     {
         var run = await processes.RunAsync(p.Command, required.Arguments, TimeSpan.FromSeconds(30), cancellationToken: cancellationToken).ConfigureAwait(false);
         return run.Succeeded && Regex.IsMatch(run.StandardOutput, required.OutputPattern, RegexOptions.Multiline);
     }
 
-    private NuGetVersion? InstalledVersion(Prerequisite p) => p.Kind switch
+    private NuGetVersion? InstalledVersion(Prerequisite p, string path) => p.Kind switch
     {
         PrerequisiteKind.DotnetTool => DotnetToolVersion(p),
-        PrerequisiteKind.NpmTool => NpmPackageVersion(p),
+        PrerequisiteKind.NpmTool => NpmPackageVersion(p, path),
         _ => null,
     };
 
@@ -113,13 +123,13 @@ public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner process
                 .Max()
             : null;
 
-    /// <summary>Reads the package's package.json in the Feature's own prefix.</summary>
-    private NuGetVersion? NpmPackageVersion(Prerequisite p)
+    /// <summary>The version in the Feature's own prefix, or else in the package the command links into
+    /// (a plain <c>npm install --global</c>).</summary>
+    private NuGetVersion? NpmPackageVersion(Prerequisite p, string path)
     {
-        if (p.NpmPrefix is null)
-            return null;
-        var manifest = Path.Combine(p.NpmPrefix, "lib", "node_modules", p.Package!, "package.json");
-        if (!host.FileExists(manifest))
+        var inPrefix = p.NpmPrefix is null ? null : Path.Combine(p.NpmPrefix, "lib", "node_modules", p.Package!, "package.json");
+        var manifest = inPrefix is not null && host.FileExists(inPrefix) ? inPrefix : PackageManifestOf(path);
+        if (manifest is null)
             return null;
         try
         {
@@ -130,5 +140,25 @@ public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner process
         {
             return null;
         }
+    }
+
+    /// <summary>The package.json of the npm package <paramref name="command"/> links into, if it's a link.</summary>
+    private static string? PackageManifestOf(string command)
+    {
+        string? target;
+        try
+        {
+            target = File.ResolveLinkTarget(command, returnFinalTarget: true)?.FullName;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        for (var dir = Path.GetDirectoryName(target); dir is not null && Path.GetFileName(dir) != "node_modules"; dir = Path.GetDirectoryName(dir))
+        {
+            if (File.Exists(Path.Combine(dir, "package.json")))
+                return Path.Combine(dir, "package.json");
+        }
+        return null;
     }
 }
