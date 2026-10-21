@@ -15,6 +15,8 @@ public enum PrerequisiteKind
     /// <summary>Kept current by something else (Claude Code and Copilot update themselves; agentbox
     /// comes with the image or dnx): agentbox only makes sure it's there.</summary>
     SelfManaged,
+    /// <summary>A browser <c>playwright-cli</c> can launch, whichever it's configured to use.</summary>
+    PlaywrightBrowser,
 }
 
 /// <summary>How to install a prerequisite by hand, per OS, on a machine agentbox doesn't install on.</summary>
