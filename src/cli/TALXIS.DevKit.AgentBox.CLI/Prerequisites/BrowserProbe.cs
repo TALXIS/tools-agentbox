@@ -3,9 +3,8 @@ using TALXIS.DevKit.AgentBox.CLI.Host;
 namespace TALXIS.DevKit.AgentBox.CLI.Prerequisites;
 
 /// <summary>
-/// Opens a browser through <c>playwright-cli</c> and closes it again. Only a real launch covers
-/// everything it needs: the browser build its Playwright pins, or the channel or executable it's
-/// configured with, the system libraries, and the sandbox when root.
+/// Opens a page through <c>playwright-cli</c> and closes it: only a real launch proves the browser
+/// it's configured with, and the system libraries it needs, are there.
 /// </summary>
 public sealed class BrowserProbe(IHostInfo host, IProcessRunner processes)
 {
@@ -15,7 +14,7 @@ public sealed class BrowserProbe(IHostInfo host, IProcessRunner processes)
     public async Task<string?> FailureAsync(string command, CancellationToken cancellationToken)
     {
         var session = $"-s=agentbox-check-{Environment.ProcessId}";
-        // Runs where it's called from, so a project's .playwright/cli.config.json applies.
+        // Run from the caller's directory, so a project's .playwright/cli.config.json applies.
         var output = Directory.CreateTempSubdirectory("agentbox-browser-").FullName;
         var environment = new Dictionary<string, string?>
         {

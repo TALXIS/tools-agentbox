@@ -123,12 +123,12 @@ public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner process
                 .Max()
             : null;
 
-    /// <summary>Reads the package's package.json in the Feature's own prefix, or else the one above
-    /// what the command links to (a plain <c>npm install --global</c>).</summary>
+    /// <summary>The version in the Feature's own prefix, or else in the package the command links into
+    /// (a plain <c>npm install --global</c>).</summary>
     private NuGetVersion? NpmPackageVersion(Prerequisite p, string path)
     {
         var inPrefix = p.NpmPrefix is null ? null : Path.Combine(p.NpmPrefix, "lib", "node_modules", p.Package!, "package.json");
-        var manifest = inPrefix is not null && host.FileExists(inPrefix) ? inPrefix : ManifestAbove(path);
+        var manifest = inPrefix is not null && host.FileExists(inPrefix) ? inPrefix : PackageManifestOf(path);
         if (manifest is null)
             return null;
         try
@@ -142,8 +142,8 @@ public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner process
         }
     }
 
-    /// <summary>The package.json of the package that <paramref name="command"/> links into, if it's a link.</summary>
-    private static string? ManifestAbove(string command)
+    /// <summary>The package.json of the npm package <paramref name="command"/> links into, if it's a link.</summary>
+    private static string? PackageManifestOf(string command)
     {
         string? target;
         try

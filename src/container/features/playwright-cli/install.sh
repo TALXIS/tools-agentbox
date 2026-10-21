@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
-# Installs Playwright's CLI for coding agents (`playwright cli`, from the playwright npm package)
-# behind /usr/local/bin/playwright-cli, with a browser it can launch.
-#
-# Each Playwright release launches only its own browser build, so the version is pinned; .NET tests
-# on the same Microsoft.Playwright version find the same browser. A Playwright Chromium already in
-# PLAYWRIGHT_BROWSERS_PATH (Claude Code cloud ships one) is used when it launches, instead of
-# downloading another; when it doesn't, this machine is left as it was.
+# Installs Playwright's CLI for agents (`playwright cli`) as /usr/local/bin/playwright-cli, with a
+# browser it can launch. The version is pinned: each Playwright release launches only its own
+# browser build, which .NET tests on the same Microsoft.Playwright version share.
 set -e
 
 PLAYWRIGHT_VERSION="${VERSION:-"1.63.0"}"
@@ -29,17 +25,19 @@ if [ "${node_major}" -lt 22 ]; then
     exit 1
 fi
 
-# What was there before is set aside until the new install launches its browser, and put back if
-# anything fails, so a failed attempt leaves the machine as it was.
+exists() { [ -e "$1" ] || [ -L "$1" ]; } # a link counts, even a broken one
+
+# Set aside what's there now and put it back if anything fails, so a failed attempt changes nothing.
+# Moving the command also means we never write through a link into another package.
 previous="$(mktemp -d "${PREFIX}.previous.XXXXXX")"
-[ ! -e "${PREFIX}" ] || mv "${PREFIX}" "${previous}/prefix"
-[ ! -e "${WRAPPER}" ] && [ ! -L "${WRAPPER}" ] || mv "${WRAPPER}" "${previous}/wrapper" # may be a link into another package
+if exists "${PREFIX}"; then mv "${PREFIX}" "${previous}/prefix"; fi
+if exists "${WRAPPER}"; then mv "${WRAPPER}" "${previous}/wrapper"; fi
 finish() {
     if [ "$1" -ne 0 ]; then
         echo "ERROR: playwright-cli isn't working. Leaving this machine's Playwright as it was."
         rm -rf "${PREFIX}" "${WRAPPER}"
-        [ ! -e "${previous}/prefix" ] || mv "${previous}/prefix" "${PREFIX}"
-        [ ! -e "${previous}/wrapper" ] && [ ! -L "${previous}/wrapper" ] || mv "${previous}/wrapper" "${WRAPPER}"
+        if exists "${previous}/prefix"; then mv "${previous}/prefix" "${PREFIX}"; fi
+        if exists "${previous}/wrapper"; then mv "${previous}/wrapper" "${WRAPPER}"; fi
     fi
     rm -rf "${previous}"
 }
@@ -49,10 +47,12 @@ echo "Installing playwright@${PLAYWRIGHT_VERSION} into ${PREFIX}"
 npm install -g --prefix "${PREFIX}" "playwright@${PLAYWRIGHT_VERSION}"
 playwright() { PLAYWRIGHT_BROWSERS_PATH="${BROWSERS}" PLAYWRIGHT_SKIP_BROWSER_GC=1 "${PREFIX}/bin/playwright" "$@"; }
 
-# $1: the browser executable to use, if not the build this Playwright pins.
+# $1: a browser to use instead of the build this version pins (empty for that build).
 write_wrapper() {
     local executable=""
-    [ -z "$1" ] || executable="export PLAYWRIGHT_MCP_EXECUTABLE_PATH=\"\${PLAYWRIGHT_MCP_EXECUTABLE_PATH:-$1}\""
+    if [ -n "$1" ]; then
+        executable="export PLAYWRIGHT_MCP_EXECUTABLE_PATH=\"\${PLAYWRIGHT_MCP_EXECUTABLE_PATH:-$1}\""
+    fi
     cat > "${WRAPPER}" <<WRAPPER
 #!/bin/bash
 # Installed by the playwright-cli devcontainer Feature (TALXIS/tools-agentbox).
@@ -66,17 +66,18 @@ WRAPPER
     chmod 755 "${WRAPPER}"
 }
 
-# Opens a page and closes it, in a fresh profile (a saved one may be in use), with its snapshot in a
-# scratch directory.
+# Opens a page and closes it, with a fresh profile (a saved one may be in use elsewhere).
 launches() {
     local dir status=0
-    dir="$(mktemp -d)"
+    dir="$(mktemp -d)" # open saves a snapshot in the current directory
     (cd "${dir}" && timeout 120 env -u PLAYWRIGHT_MCP_USER_DATA_DIR "${WRAPPER}" -s=feature-check open about:blank >/dev/null) || status=$?
     (cd "${dir}" && "${WRAPPER}" -s=feature-check close >/dev/null 2>&1) || true
     rm -rf "${dir}"
     return "${status}"
 }
 
+# The browser, in order of preference: the pinned build if it's there; another Playwright Chromium
+# that's there (Claude Code cloud ships one); else download the pinned build.
 pinned="$(playwright install --dry-run chromium | sed -n 's/^ *Install location: *//p' | grep '/chromium-[0-9]*$' | head -1)"
 existing="$(ls -d "${BROWSERS}"/chromium-[0-9]*/chrome-linux*/chrome 2>/dev/null | sort -V | tail -1 || true)"
 
@@ -91,8 +92,8 @@ else
     echo "Installing Chromium and its system libraries into ${BROWSERS}"
     playwright install --with-deps chromium
     rm -rf /var/lib/apt/lists/*
-    # Every user launches it; any user can add the build their own Playwright version needs, and
-    # the sticky bit keeps them from deleting builds they didn't install.
+    # Any user can launch it and add the build their own Playwright needs; the sticky bit stops
+    # them deleting builds they didn't install.
     mkdir -p "${BROWSERS}/.links"
     chmod -R a+rX "${BROWSERS}"
     chmod 1777 "${BROWSERS}" "${BROWSERS}/.links"

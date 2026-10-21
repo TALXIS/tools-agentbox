@@ -111,10 +111,8 @@ public static class PrerequisiteCatalog
         },
         new()
         {
-            // Playwright's own CLI for agents. The Feature runs it from the playwright package it pins
-            // (`playwright cli`): each Playwright release launches only its own browser build, and .NET
-            // tests on the same version share it. On a person's own machine, Playwright's documented
-            // install is the standalone @playwright/cli package, so the version shown is that one's.
+            // The Feature runs `playwright cli` from the playwright version it pins (its browser build
+            // matches .NET tests); on a person's machine it's usually @playwright/cli, whose version shows.
             Id = "playwright-cli", Description = "Playwright CLI", Command = "playwright-cli", Kind = PrerequisiteKind.NpmTool,
             Package = "playwright", Feature = "talxis/tools-agentbox/playwright-cli", NpmPrefix = "/usr/local/lib/playwright-cli", KeepWorkingInstall = true,
             Manual = ManualInstall.Everywhere("npm install --global @playwright/cli@latest"),
