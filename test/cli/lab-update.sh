@@ -33,8 +33,8 @@ printf '<configuration><packageSources><add key="ci" value="/nupkg" /></packageS
     > /etc/opt/NuGet/Config/ci.config
 agentbox() { dotnet dnx TALXIS.DevKit.AgentBox.CLI --yes -- "$@"; }
 
-step "install agentbox itself, which images before it came with lack"
-agentbox prerequisite install agentbox --format text
+step "install what images before it came without: agentbox itself, Playwright"
+agentbox prerequisite install agentbox playwright-cli browser --format text
 
 step "validate --check-updates reports them"
 agentbox prerequisite validate --check-updates --format json | jq -e '[.[] | select(.status == "outdated")] | length >= 4' >/dev/null
