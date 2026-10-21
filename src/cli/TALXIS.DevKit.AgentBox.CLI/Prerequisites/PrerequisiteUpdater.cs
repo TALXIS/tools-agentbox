@@ -76,7 +76,12 @@ public sealed class PrerequisiteUpdater(IHostInfo host, IProcessRunner processes
     private async Task<UpdateResult> UpdateOneAsync(Prerequisite p, CancellationToken cancellationToken)
     {
         if (p.Package is null)
-            return new(p.Id, UpdateAction.NotManaged, Detail: p.Kind == PrerequisiteKind.SelfManaged ? "kept current elsewhere" : "comes with the image or OS");
+            return new(p.Id, UpdateAction.NotManaged, Detail: p.Kind switch
+            {
+                PrerequisiteKind.SelfManaged => "kept current elsewhere",
+                PrerequisiteKind.PlaywrightBrowser => "comes with playwright-cli",
+                _ => "comes with the image or OS",
+            });
 
         var current = await inspector.InspectAsync(p, checkUpdates: false, cancellationToken).ConfigureAwait(false);
         if (current.Status == PrerequisiteStatus.Missing && p.Kind != PrerequisiteKind.DotnetTemplate)

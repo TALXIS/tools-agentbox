@@ -70,11 +70,6 @@ if [ -f "${pinned}/INSTALLATION_COMPLETE" ]; then
 elif [ -n "${existing}" ]; then
     echo "Using the Playwright Chromium already at ${existing}"
     write_wrapper "${existing}"
-    if ! launches; then
-        echo "ERROR: playwright-cli can't launch ${existing}. Leaving this machine's Playwright as it was."
-        rm -rf "${PREFIX}" "${WRAPPER}"
-        exit 1
-    fi
 else
     echo "Installing Chromium and its system libraries into ${BROWSERS}"
     playwright install --with-deps chromium
@@ -87,6 +82,14 @@ else
     write_wrapper ""
 fi
 
-launches || { echo "ERROR: playwright-cli can't launch its browser."; exit 1; }
+if ! launches; then
+    if [ -n "${existing}" ] && [ ! -f "${pinned}/INSTALLATION_COMPLETE" ]; then
+        echo "ERROR: playwright-cli can't launch ${existing}. Leaving this machine's Playwright as it was."
+        rm -rf "${PREFIX}" "${WRAPPER}"
+    else
+        echo "ERROR: playwright-cli can't launch its browser."
+    fi
+    exit 1
+fi
 echo "Playwright CLI installed: playwright ${PLAYWRIGHT_VERSION}, browsers in ${BROWSERS}"
 echo "Done!"

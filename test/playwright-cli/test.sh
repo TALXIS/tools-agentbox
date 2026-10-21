@@ -17,35 +17,32 @@ check_cli() {
     echo "playwright-cli as $2: OK"
 }
 
-echo "--- Fresh install ---"
+echo "--- Fresh install (the install itself launches the browser as root) ---"
 docker build --file - --tag "${IMAGE}" . << 'EOF2'
 FROM node:22-bookworm
 COPY src/container/features/playwright-cli/ /tmp/playwright-cli/
 RUN bash /tmp/playwright-cli/install.sh
 EOF2
-for user in root node; do
-    check_cli "${IMAGE}" "${user}"
-done
+check_cli "${IMAGE}" node
 
-echo "--- Another user adds the build their Playwright version needs, and can't remove ours ---"
+echo "--- Another user can add a browser build to the shared folder, not remove ours ---"
 docker run --rm --user node "${IMAGE}" bash -ec '
-    export PLAYWRIGHT_BROWSERS_PATH=/usr/local/share/pw-browsers PLAYWRIGHT_SKIP_BROWSER_GC=1
-    npx -y playwright-core@1.61.0 install --only-shell chromium >/dev/null
-    test -f "$PLAYWRIGHT_BROWSERS_PATH"/chromium_headless_shell-1228/INSTALLATION_COMPLETE
-    rm -rf "$PLAYWRIGHT_BROWSERS_PATH"/chromium-[0-9]* 2>/dev/null || true
-    ls "$PLAYWRIGHT_BROWSERS_PATH"/chromium-[0-9]*/INSTALLATION_COMPLETE >/dev/null'
+    cd /usr/local/share/pw-browsers
+    mkdir chromium_headless_shell-0 && touch .links/node
+    rm -rf chromium-[0-9]* 2>/dev/null || true
+    ls chromium-[0-9]*/INSTALLATION_COMPLETE >/dev/null'
 echo "shared browsers folder: OK"
 
 echo "--- An existing Playwright Chromium is used, not downloaded again ---"
-docker build --file - --tag "${IMAGE}-existing" . << 'EOF2'
-FROM node:22-bookworm
+docker build --file - --tag "${IMAGE}-existing" . << EOF2
+FROM ${IMAGE}
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
-RUN npx -y playwright@1.56.1 install --with-deps chromium && rm -rf /var/lib/apt/lists/*
+RUN npx -y playwright@1.56.1 install chromium
 COPY src/container/features/playwright-cli/ /tmp/playwright-cli/
-RUN bash /tmp/playwright-cli/install.sh && ls /opt/pw-browsers
+RUN bash /tmp/playwright-cli/install.sh
 EOF2
 check_cli "${IMAGE}-existing" root
-docker run --rm "${IMAGE}-existing" bash -c 'ls /opt/pw-browsers; test "$(ls -d /opt/pw-browsers/chromium-[0-9]*)" = /opt/pw-browsers/chromium-1194'
+docker run --rm "${IMAGE}-existing" bash -c 'test "$(ls -d /opt/pw-browsers/chromium-[0-9]*)" = /opt/pw-browsers/chromium-1194'
 echo "reused chromium-1194: OK"
 
 echo "=== ${FEATURE_ID} smoke test PASSED ==="
