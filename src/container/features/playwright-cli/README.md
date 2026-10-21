@@ -21,15 +21,18 @@ Installs Playwright's CLI for coding agents (playwright-cli, from npm playwright
 Each Playwright release launches only its own browser build. The Feature installs, in order of
 preference:
 
-1. Nothing, when the build for this version is already in `PLAYWRIGHT_BROWSERS_PATH`.
+1. Only what's missing of the headless shell and ffmpeg, when the build for this version is already
+   in `PLAYWRIGHT_BROWSERS_PATH`.
 2. Nothing, when another Playwright Chromium is there (Claude Code cloud ships one) and
-   `playwright-cli` launches it. The wrapper points the CLI at it. If it doesn't launch, the Feature
-   fails and removes what it installed.
+   `playwright-cli` launches it. The wrapper points the CLI at it.
 3. Chromium, its headless shell and the system libraries, into `PLAYWRIGHT_BROWSERS_PATH` (default
    `/usr/local/share/pw-browsers`). Every user can launch them and add the build another Playwright
    version needs (for example `pwsh bin/Debug/<tfm>/playwright.ps1 install chromium` in a .NET test
    project); the sticky bit keeps users from deleting builds they didn't install.
    `PLAYWRIGHT_SKIP_BROWSER_GC=1` stops one install from removing another's browser.
+
+Whenever the browser doesn't launch, the Feature fails and puts back the `playwright-cli` and install
+folder that were there before.
 
 ## Versions
 

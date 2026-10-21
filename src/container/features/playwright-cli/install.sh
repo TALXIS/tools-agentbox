@@ -29,8 +29,23 @@ if [ "${node_major}" -lt 22 ]; then
     exit 1
 fi
 
+# What was there before is set aside until the new install launches its browser, and put back if
+# anything fails, so a failed attempt leaves the machine as it was.
+previous="$(mktemp -d "${PREFIX}.previous.XXXXXX")"
+[ ! -e "${PREFIX}" ] || mv "${PREFIX}" "${previous}/prefix"
+[ ! -e "${WRAPPER}" ] && [ ! -L "${WRAPPER}" ] || mv "${WRAPPER}" "${previous}/wrapper" # may be a link into another package
+finish() {
+    if [ "$1" -ne 0 ]; then
+        echo "ERROR: playwright-cli isn't working. Leaving this machine's Playwright as it was."
+        rm -rf "${PREFIX}" "${WRAPPER}"
+        [ ! -e "${previous}/prefix" ] || mv "${previous}/prefix" "${PREFIX}"
+        [ ! -e "${previous}/wrapper" ] && [ ! -L "${previous}/wrapper" ] || mv "${previous}/wrapper" "${WRAPPER}"
+    fi
+    rm -rf "${previous}"
+}
+trap 'finish $?' EXIT
+
 echo "Installing playwright@${PLAYWRIGHT_VERSION} into ${PREFIX}"
-mkdir -p "${PREFIX}"
 npm install -g --prefix "${PREFIX}" "playwright@${PLAYWRIGHT_VERSION}"
 playwright() { PLAYWRIGHT_BROWSERS_PATH="${BROWSERS}" PLAYWRIGHT_SKIP_BROWSER_GC=1 "${PREFIX}/bin/playwright" "$@"; }
 
@@ -51,11 +66,12 @@ WRAPPER
     chmod 755 "${WRAPPER}"
 }
 
-# Opens a page and closes it, from a scratch directory (open saves a snapshot there).
+# Opens a page and closes it, in a fresh profile (a saved one may be in use), with its snapshot in a
+# scratch directory.
 launches() {
     local dir status=0
     dir="$(mktemp -d)"
-    (cd "${dir}" && timeout 120 "${WRAPPER}" -s=feature-check open about:blank >/dev/null) || status=$?
+    (cd "${dir}" && timeout 120 env -u PLAYWRIGHT_MCP_USER_DATA_DIR "${WRAPPER}" -s=feature-check open about:blank >/dev/null) || status=$?
     (cd "${dir}" && "${WRAPPER}" -s=feature-check close >/dev/null 2>&1) || true
     rm -rf "${dir}"
     return "${status}"
@@ -66,6 +82,7 @@ existing="$(ls -d "${BROWSERS}"/chromium-[0-9]*/chrome-linux*/chrome 2>/dev/null
 
 if [ -f "${pinned}/INSTALLATION_COMPLETE" ]; then
     echo "The browser for playwright ${PLAYWRIGHT_VERSION} is already in ${BROWSERS}"
+    playwright install chromium # adds the headless shell and ffmpeg if they're missing
     write_wrapper ""
 elif [ -n "${existing}" ]; then
     echo "Using the Playwright Chromium already at ${existing}"
@@ -82,14 +99,6 @@ else
     write_wrapper ""
 fi
 
-if ! launches; then
-    if [ -n "${existing}" ] && [ ! -f "${pinned}/INSTALLATION_COMPLETE" ]; then
-        echo "ERROR: playwright-cli can't launch ${existing}. Leaving this machine's Playwright as it was."
-        rm -rf "${PREFIX}" "${WRAPPER}"
-    else
-        echo "ERROR: playwright-cli can't launch its browser."
-    fi
-    exit 1
-fi
+launches
 echo "Playwright CLI installed: playwright ${PLAYWRIGHT_VERSION}, browsers in ${BROWSERS}"
 echo "Done!"

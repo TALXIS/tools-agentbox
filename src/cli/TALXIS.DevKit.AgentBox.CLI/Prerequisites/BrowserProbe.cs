@@ -15,22 +15,25 @@ public sealed class BrowserProbe(IHostInfo host, IProcessRunner processes)
     public async Task<string?> FailureAsync(string command, CancellationToken cancellationToken)
     {
         var session = $"-s=agentbox-check-{Environment.ProcessId}";
+        // Runs where it's called from, so a project's .playwright/cli.config.json applies.
+        var output = Directory.CreateTempSubdirectory("agentbox-browser-").FullName;
         var environment = new Dictionary<string, string?>
         {
             // It keys its sockets on USER, which shells like docker exec leave unset.
             ["USER"] = host.GetEnvironmentVariable("USER") ?? Environment.UserName,
             ["NO_UPDATE_NOTIFIER"] = "1",
+            ["PLAYWRIGHT_MCP_OUTPUT_DIR"] = output, // open saves a snapshot
+            ["PLAYWRIGHT_MCP_USER_DATA_DIR"] = null, // a saved profile can be in use by another session
         };
-        var workingDirectory = Directory.CreateTempSubdirectory("agentbox-browser-").FullName; // open saves a snapshot here
         try
         {
-            var open = await processes.RunAsync(command, [session, "open", "about:blank"], Timeout, environment, workingDirectory, cancellationToken).ConfigureAwait(false);
+            var open = await processes.RunAsync(command, [session, "open", "about:blank"], Timeout, environment, cancellationToken: cancellationToken).ConfigureAwait(false);
             return open.Succeeded ? null : open.FailureSummary;
         }
         finally
         {
-            await processes.RunAsync(command, [session, "close"], Timeout, environment, workingDirectory, CancellationToken.None).ConfigureAwait(false);
-            Directory.Delete(workingDirectory, recursive: true);
+            await processes.RunAsync(command, [session, "close"], Timeout, environment, cancellationToken: CancellationToken.None).ConfigureAwait(false);
+            Directory.Delete(output, recursive: true);
         }
     }
 }
