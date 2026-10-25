@@ -1,7 +1,7 @@
 
 # AgentBox CLI (agentbox) (agentbox)
 
-Installs the agentbox CLI. It sets up the installed agent harnesses when the container is created and brings the AgentBox tools that follow the latest release up to date on every start.
+Installs the agentbox CLI. It sets up the installed agent harnesses when the container is created and, on every start, brings the AgentBox tools that follow the latest release and the TALXIS/skills plugin in the harnesses up to date.
 
 ## Example Usage
 
@@ -21,8 +21,9 @@ Installs the agentbox CLI. It sets up the installed agent harnesses when the con
 
 When the container is created, `agentbox harness configure` sets up every installed agent harness
 (Claude Code, GitHub Copilot). On every start, `agentbox prerequisite update` brings the AgentBox
-tools that follow the latest release up to date, so a long-lived container stays current without a
-rebuild. Run either by hand at any time; `agentbox --help` lists the rest.
+tools that follow the latest release up to date, and `agentbox harness update` does the same for the
+TALXIS/skills plugin, so a long-lived container stays current without a rebuild. Run any of them by
+hand at any time; `agentbox --help` lists the rest.
 
 
 ---
