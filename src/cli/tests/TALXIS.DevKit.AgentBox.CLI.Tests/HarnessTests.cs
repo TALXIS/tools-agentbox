@@ -100,7 +100,29 @@ public class HarnessTests
     }
 
     [Fact]
-    public async Task Deep_validation_fails_when_the_plugin_declares_no_MCP_server()
+    public async Task Deep_validation_passes_when_the_plugin_declares_no_MCP_server()
+    {
+        var (service, _) = ServiceWithPlugin();
+
+        Assert.True((await service.ValidateAsync(HarnessKind.Claude, deep: false)).Healthy);
+        var deep = await service.ValidateAsync(HarnessKind.Claude, deep: true);
+        Assert.True(deep.Healthy);
+        Assert.Empty(deep.McpServers);
+    }
+
+    [Fact]
+    public async Task Deep_validation_fails_when_a_declared_MCP_server_does_not_answer()
+    {
+        var (service, plugin) = ServiceWithPlugin();
+        File.WriteAllText(Path.Combine(plugin, ".mcp.json"), """{"mcpServers":{"txc":{"command":"agentbox-no-such-server"}}}""");
+
+        var deep = await service.ValidateAsync(HarnessKind.Claude, deep: true);
+        Assert.False(deep.Healthy);
+        Assert.Single(deep.McpServers);
+        Assert.True((await service.ValidateAsync(HarnessKind.Claude, deep: false)).Healthy);
+    }
+
+    private static (HarnessService Service, string Plugin) ServiceWithPlugin()
     {
         var plugin = Directory.CreateTempSubdirectory("plugin-").FullName;
         Directory.CreateDirectory(Path.Combine(plugin, "skills", "a-skill"));
@@ -109,10 +131,7 @@ public class HarnessTests
             Handler = (_, _) => new(0, $$"""[{"id":"implement@talxis","enabled":true,"installPath":{{JsonSerializer.Serialize(plugin)}}}]""", "", false),
         };
         processes.OnPath["claude"] = "/usr/bin/claude";
-        var service = new HarnessService(new FakeHost(), processes, new FakePrompt(), NullLogger.Instance);
-
-        Assert.True((await service.ValidateAsync(HarnessKind.Claude, deep: false)).Healthy);
-        Assert.False((await service.ValidateAsync(HarnessKind.Claude, deep: true)).Healthy);
+        return (new HarnessService(new FakeHost(), processes, new FakePrompt(), NullLogger.Instance), plugin);
     }
 }
 

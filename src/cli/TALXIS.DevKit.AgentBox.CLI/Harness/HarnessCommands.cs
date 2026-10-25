@@ -63,7 +63,7 @@ public class HarnessConfigureCommand : AgentBoxLeafCommand
     }
 }
 
-[CliCommand(Name = "validate", Description = "Check the harnesses are ready: plugin installed and enabled with its skills. --deep also starts its MCP servers. Exits with 3 when one isn't ready.")]
+[CliCommand(Name = "validate", Description = "Check the harnesses are ready: plugin installed and enabled with its skills. --deep also starts the MCP servers it declares, if any. Exits with 3 when one isn't ready.")]
 public class HarnessValidateCommand : AgentBoxLeafCommand
 {
     protected override ILogger Logger { get; } = AgentBoxLoggerFactory.CreateLogger("harness validate");
@@ -71,7 +71,7 @@ public class HarnessValidateCommand : AgentBoxLeafCommand
     [CliArgument(Description = "Harnesses to check: claude, copilot (default: the installed ones).", Required = false)]
     public string[]? Names { get; set; }
 
-    [CliOption(Name = "--deep", Description = "Also start each MCP server the plugin declares and check it answers with tools.", Required = false)]
+    [CliOption(Name = "--deep", Description = "Also start each MCP server the plugin declares (if any) and check it answers with tools.", Required = false)]
     public bool Deep { get; set; }
 
     protected override async Task<int> ExecuteAsync()
