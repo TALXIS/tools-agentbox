@@ -87,9 +87,12 @@ public sealed class HarnessService(IHostInfo host, IProcessRunner processes, IPr
 
         var servers = McpServer.DeclaredIn(plugin.Directory!);
         var probes = new List<McpProbeResult>();
+        // A declaration that names no command is a broken server, not an absent one.
+        foreach (var name in McpServer.UnstartableIn(plugin.Directory!))
+            probes.Add(new McpProbeResult(name, false, 0, "declares no command"));
         foreach (var server in servers)
             probes.Add(await McpProbe.ProbeAsync(server, processes.FindOnPath(server.Command)).ConfigureAwait(false));
-        return new(kind, probes.All(p => p.Healthy), skills, probes, servers.Count == 0 ? "plugin declares no MCP servers" : null);
+        return new(kind, probes.All(p => p.Healthy), skills, probes, probes.Count == 0 ? "plugin declares no MCP servers" : null);
     }
 
     private async Task<PluginState?> PluginAsync(HarnessKind kind)

@@ -122,6 +122,17 @@ public class HarnessTests
         Assert.True((await service.ValidateAsync(HarnessKind.Claude, deep: false)).Healthy);
     }
 
+    [Fact]
+    public async Task Deep_validation_fails_when_a_declared_MCP_server_names_no_command()
+    {
+        var (service, plugin) = ServiceWithPlugin();
+        File.WriteAllText(Path.Combine(plugin, ".mcp.json"), """{"mcpServers":{"txc":{"args":[]}}}""");
+
+        var deep = await service.ValidateAsync(HarnessKind.Claude, deep: true);
+        Assert.False(deep.Healthy);
+        Assert.Equal("txc", Assert.Single(deep.McpServers).Server);
+    }
+
     private static (HarnessService Service, string Plugin) ServiceWithPlugin()
     {
         var plugin = Directory.CreateTempSubdirectory("plugin-").FullName;
