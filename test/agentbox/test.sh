@@ -19,7 +19,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0
 COPY --from=cli /nupkg/ /nupkg/
 COPY src/container/features/agentbox/ /tmp/feature/
 RUN dotnet nuget add source /nupkg --name local && bash /tmp/feature/install.sh
-# A stand-in Copilot CLI that accepts any plugin command, so the create hook has a harness to set up.
+# A stand-in Copilot CLI that accepts any plugin command, so the hooks have a harness to set up and update.
 RUN printf '#!/bin/sh\necho "[]"\n' > /usr/local/bin/copilot && chmod 755 /usr/local/bin/copilot
 EOF2
 
@@ -29,7 +29,7 @@ docker run --rm --user app "devcontainer-feature-test-${FEATURE_ID}" \
     agentbox prerequisite list --format text
 
 echo "--- The Feature's hooks run, without the '|| true' that keeps a container starting ---"
-hooks="$(jq -r '.postCreateCommand, .postStartCommand' "src/container/features/${FEATURE_ID}/devcontainer-feature.json" | sed 's/ || true$//')"
+hooks="$(jq -r '.postCreateCommand, .postStartCommand' "src/container/features/${FEATURE_ID}/devcontainer-feature.json" | sed 's/ || true//g')"
 echo "${hooks}"
 docker run --rm "devcontainer-feature-test-${FEATURE_ID}" bash -ec "${hooks}
 grep -q implement@talxis ~/.copilot/settings.json && echo 'the create hook set up the harness: OK'"

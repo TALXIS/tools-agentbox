@@ -2,5 +2,6 @@
 
 When the container is created, `agentbox harness configure` sets up every installed agent harness
 (Claude Code, GitHub Copilot). On every start, `agentbox prerequisite update` brings the AgentBox
-tools that follow the latest release up to date, so a long-lived container stays current without a
-rebuild. Run either by hand at any time; `agentbox --help` lists the rest.
+tools that follow the latest release up to date, and `agentbox harness update` does the same for the
+TALXIS/skills plugin, so a long-lived container stays current without a rebuild. Run any of them by
+hand at any time; `agentbox --help` lists the rest.
