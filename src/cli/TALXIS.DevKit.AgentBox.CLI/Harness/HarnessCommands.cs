@@ -74,8 +74,10 @@ public class HarnessUpdateCommand : AgentBoxLeafCommand
     protected override async Task<int> ExecuteAsync()
     {
         var service = AgentBoxServices.Current.Harness(Logger);
+        // Every installed harness, never asked which: that is for setting up, on a person's own machine.
+        var harnesses = Names is { Length: > 0 } ? HarnessService.Parse(Names) : Enum.GetValues<HarnessKind>().Where(service.IsInstalled).ToList();
         var results = new List<UpdateResult>();
-        foreach (var harness in service.Select(Names))
+        foreach (var harness in harnesses)
             results.Add(await service.UpdateAsync(harness).ConfigureAwait(false));
         OutputFormatter.Write(results, items =>
         {

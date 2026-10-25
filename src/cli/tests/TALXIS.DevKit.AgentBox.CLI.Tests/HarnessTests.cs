@@ -92,13 +92,15 @@ public class HarnessTests
         $$"""[{"name":"implement","marketplace":"talxis","version":"{{version}}","enabled":true},{"name":"browser-use","marketplace":"","version":"0.0.4","enabled":false}]""";
 
     /// <summary>A harness whose plugin list shows <paramref name="listed"/> until its update command runs, then <paramref name="updated"/>.</summary>
-    private static (HarnessService Service, FakeProcesses Processes) ServiceWhere(string command, Func<string, string> list, string? listed, string? updated, int updateExit = 0, FakeHost? host = null)
+    private static (HarnessService Service, FakeProcesses Processes) ServiceWhere(string command, Func<string, string> list, string? listed, string? updated, int updateExit = 0, FakeHost? host = null,
+        bool listFailsBefore = false, bool listFailsAfter = false)
     {
         var done = false;
         var processes = new FakeProcesses();
         processes.OnPath[command] = "/usr/bin/" + command;
         processes.Handler = (_, args) => string.Join(' ', args) switch
         {
+            "plugin list --json" when (done ? listFailsAfter : listFailsBefore) => new(1, "", "list broke", false),
             "plugin list --json" => new(0, listed is null ? "[]" : list(done ? updated! : listed), "", false),
             "plugin update implement@talxis" => (done = updateExit == 0) ? new(0, "", "", false) : new(updateExit, "", "boom", false),
             _ => new(0, "", "", false),
@@ -151,6 +153,29 @@ public class HarnessTests
     }
 
     [Fact]
+    public async Task Update_does_not_take_a_failing_plugin_list_for_a_missing_plugin()
+    {
+        var (service, processes) = ServiceWhere("claude", ClaudeList, "0.4.2", "0.4.10", listFailsBefore: true);
+
+        var result = await service.UpdateAsync(HarnessKind.Claude);
+
+        Assert.Equal(UpdateStatus.Failed, result.Status);
+        Assert.Contains("list broke", result.Detail);
+        Assert.DoesNotContain(processes.Calls, c => c.Contains("plugin update"));
+    }
+
+    [Fact]
+    public async Task Update_that_cannot_read_the_version_afterwards_is_not_current()
+    {
+        var (afterListFails, _) = ServiceWhere("copilot", CopilotList, "0.4.10", "0.4.10", listFailsAfter: true);
+        Assert.Equal(UpdateStatus.Failed, (await afterListFails.UpdateAsync(HarnessKind.Copilot)).Status);
+
+        // The same when the harness lists the plugin without a version.
+        var (noVersion, _) = ServiceWhere("copilot", _ => """[{"name":"implement","marketplace":"talxis","enabled":true}]""", "x", "y");
+        Assert.Equal(UpdateStatus.Failed, (await noVersion.UpdateAsync(HarnessKind.Copilot)).Status);
+    }
+
+    [Fact]
     public async Task Update_of_a_harness_that_is_not_installed_does_nothing()
     {
         var service = new HarnessService(new FakeHost(), new FakeProcesses(), new FakePrompt(), NullLogger.Instance);
@@ -169,6 +194,24 @@ public class HarnessTests
 
         var update = processes.Calls.IndexOf("claude plugin update implement@talxis");
         Assert.Equal("/seed", processes.Environments[update]!["CLAUDE_CODE_PLUGIN_CACHE_DIR"]);
+    }
+
+    [Fact]
+    public async Task Update_without_names_covers_every_installed_harness_and_never_asks_which()
+    {
+        var processes = new FakeProcesses();
+        processes.OnPath["claude"] = "/usr/bin/claude";
+        processes.OnPath["copilot"] = "/usr/bin/copilot";
+        processes.Handler = (file, args) => string.Join(' ', args) == "plugin list --json"
+            ? new(0, file == "claude" ? ClaudeList("0.4.10") : CopilotList("0.4.10"), "", false)
+            : new(0, "", "", false);
+        // A person at their own machine with both installed: 'configure' would ask, and this answer would pick one.
+        using var harness = new CommandHarness(new FakeHost { IsContainer = false, IsInteractive = true }, processes, prompt: new FakePrompt("copilot"));
+
+        Assert.Equal(0, await new HarnessUpdateCommand { Format = "json" }.InvokeAsync());
+
+        Assert.Contains("claude plugin update implement@talxis", processes.Calls);
+        Assert.Contains("copilot plugin update implement@talxis", processes.Calls);
     }
 
     [Fact]
