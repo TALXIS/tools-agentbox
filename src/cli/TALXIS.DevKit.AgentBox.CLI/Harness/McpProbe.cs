@@ -8,12 +8,8 @@ namespace TALXIS.DevKit.AgentBox.CLI.Harness;
 public sealed record McpServer(string Name, string Command, IReadOnlyList<string> Args, IReadOnlyDictionary<string, string> Env)
 {
     /// <summary>The stdio servers declared in a plugin directory's <c>mcp.json</c> (or <c>.mcp.json</c>).</summary>
-    public static IReadOnlyList<McpServer> DeclaredIn(string pluginDirectory)
-    {
-        var file = new[] { "mcp.json", ".mcp.json" }.Select(f => Path.Combine(pluginDirectory, f)).FirstOrDefault(File.Exists);
-        if (file is null || JsonNode.Parse(File.ReadAllText(file))?["mcpServers"] is not JsonObject servers)
-            return [];
-        return servers
+    public static IReadOnlyList<McpServer> DeclaredIn(string pluginDirectory) =>
+        Declarations(pluginDirectory)
             .Where(s => s.Value?["command"] is not null)
             .Select(s => new McpServer(
                 s.Key,
@@ -21,6 +17,15 @@ public sealed record McpServer(string Name, string Command, IReadOnlyList<string
                 s.Value["args"]?.AsArray().Select(a => a!.GetValue<string>()).ToList() ?? [],
                 s.Value["env"]?.AsObject().ToDictionary(e => e.Key, e => e.Value!.GetValue<string>()) ?? []))
             .ToList();
+
+    /// <summary>Entries of the same file that cannot be started because they name no command.</summary>
+    public static IReadOnlyList<string> UnstartableIn(string pluginDirectory) =>
+        Declarations(pluginDirectory).Where(s => s.Value?["command"] is null).Select(s => s.Key).ToList();
+
+    private static IEnumerable<KeyValuePair<string, JsonNode?>> Declarations(string pluginDirectory)
+    {
+        var file = new[] { "mcp.json", ".mcp.json" }.Select(f => Path.Combine(pluginDirectory, f)).FirstOrDefault(File.Exists);
+        return file is not null && JsonNode.Parse(File.ReadAllText(file))?["mcpServers"] is JsonObject servers ? servers : [];
     }
 }
 
