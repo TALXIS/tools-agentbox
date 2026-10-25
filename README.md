@@ -41,10 +41,12 @@ opening a Windows folder: Linux line endings and file modes, and much faster.
 
 ## Keeping current
 
-Tools that follow their latest release update on every container start. Mid-session:
+Tools that follow their latest release, and the TALXIS/skills plugin in the agent harnesses, update
+on every container start. Mid-session:
 
 ```bash
-agentbox prerequisite update
+agentbox prerequisite update   # the tools
+agentbox harness update        # the plugin (a new agent session picks it up)
 ```
 
 The [`agentbox` CLI](src/cli/README.md) also checks a machine (`prerequisite validate`,

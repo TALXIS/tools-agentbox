@@ -29,6 +29,8 @@ internal sealed class FakeProcesses : IProcessRunner
 {
     public Dictionary<string, string> OnPath { get; } = new();
     public List<string> Calls { get; } = new();
+    /// <summary>The environment each call was given, in the order of <see cref="Calls"/>.</summary>
+    public List<IReadOnlyDictionary<string, string?>?> Environments { get; } = new();
     public Func<string, IReadOnlyList<string>, ProcessResult> Handler { get; set; } = (_, _) => new(0, "", "", false);
 
     public string? FindOnPath(string command) => OnPath.GetValueOrDefault(command);
@@ -38,6 +40,7 @@ internal sealed class FakeProcesses : IProcessRunner
         bool showErrors = false)
     {
         Calls.Add($"{fileName} {string.Join(' ', arguments)}");
+        Environments.Add(environment);
         return Task.FromResult(Handler(fileName, arguments));
     }
 

@@ -7,7 +7,7 @@ namespace TALXIS.DevKit.AgentBox.CLI.Harness;
 [CliCommand(
     Name = "harness",
     Description = "The coding-agent harnesses (Claude Code, GitHub Copilot): set them up with the TALXIS/skills plugin and check them.",
-    Children = new[] { typeof(HarnessListCommand), typeof(HarnessConfigureCommand), typeof(HarnessValidateCommand) },
+    Children = new[] { typeof(HarnessListCommand), typeof(HarnessConfigureCommand), typeof(HarnessUpdateCommand), typeof(HarnessValidateCommand) },
     ShortFormAutoGenerate = CliNameAutoGenerate.None
 )]
 public class HarnessCliCommand
@@ -60,6 +60,31 @@ public class HarnessConfigureCommand : AgentBoxLeafCommand
     {
         foreach (var r in results)
             OutputWriter.WriteLine($"  {OutputFormatter.Label(r.Status),-14} {HarnessService.Id(r.Harness),-10} {r.Detail}".TrimEnd());
+    }
+}
+
+[CliCommand(Name = "update", Description = "Bring the TALXIS/skills plugin in the harnesses to its latest version. A harness without the plugin is left alone ('configure' sets it up). Without names: every installed harness.")]
+public class HarnessUpdateCommand : AgentBoxLeafCommand
+{
+    protected override ILogger Logger { get; } = AgentBoxLoggerFactory.CreateLogger("harness update");
+
+    [CliArgument(Description = "Harnesses to update: claude, copilot.", Required = false)]
+    public string[]? Names { get; set; }
+
+    protected override async Task<int> ExecuteAsync()
+    {
+        var service = AgentBoxServices.Current.Harness(Logger);
+        var results = new List<UpdateResult>();
+        foreach (var harness in service.Select(Names))
+            results.Add(await service.UpdateAsync(harness).ConfigureAwait(false));
+        OutputFormatter.Write(results, items =>
+        {
+            foreach (var r in items)
+                OutputWriter.WriteLine($"  {OutputFormatter.Label(r.Status),-14} {HarnessService.Id(r.Harness),-10} {r.Detail}".TrimEnd());
+        });
+        // As for 'configure': a harness someone named that isn't there is a failure; unnamed ones are skipped.
+        var named = Names is { Length: > 0 };
+        return results.Any(r => r.Status == UpdateStatus.Failed || (named && r.Status == UpdateStatus.NotInstalled)) ? ExitError : ExitSuccess;
     }
 }
 

@@ -11,6 +11,10 @@ public enum ConfigureStatus { Configured, NotInstalled, Failed }
 
 public sealed record ConfigureResult(HarnessKind Harness, ConfigureStatus Status, string? Detail = null);
 
+public enum UpdateStatus { Updated, Current, NotSetUp, NotInstalled, Failed }
+
+public sealed record UpdateResult(HarnessKind Harness, UpdateStatus Status, string? Detail = null);
+
 public sealed record HarnessHealth(HarnessKind Harness, bool Healthy, int Skills, IReadOnlyList<McpProbeResult> McpServers, string? Detail = null);
 
 /// <summary>Detects coding-agent harnesses, registers the TALXIS/skills plugin with them, and checks the result.</summary>
@@ -43,6 +47,28 @@ public sealed class HarnessService(IHostInfo host, IProcessRunner processes, IPr
             return new(kind, false, false, 0);
         var plugin = await PluginAsync(kind).ConfigureAwait(false);
         return new(kind, true, plugin?.Enabled == true, SkillCount(plugin));
+    }
+
+    /// <summary>
+    /// Brings the plugin to the latest version of its marketplace. Installing again changes nothing, so
+    /// a harness set up earlier (a container created before a release) would keep the old skills. A
+    /// harness without the plugin is left alone: <see cref="ConfigureAsync"/> sets it up.
+    /// </summary>
+    public async Task<UpdateResult> UpdateAsync(HarnessKind kind)
+    {
+        if (!IsInstalled(kind))
+            return new(kind, UpdateStatus.NotInstalled);
+        var before = await PluginAsync(kind).ConfigureAwait(false);
+        if (before is null)
+            return new(kind, UpdateStatus.NotSetUp, "plugin not installed; run 'harness configure'");
+        var harness = Harnesses.Get(kind);
+        var run = await processes.RunAsync(harness.Command, harness.UpdateStep, CommandTimeout, harness.Environment(host)).ConfigureAwait(false);
+        if (!run.Succeeded)
+            return new(kind, UpdateStatus.Failed, run.FailureSummary);
+        var after = await PluginAsync(kind).ConfigureAwait(false);
+        return after?.Version is { } version && version != before.Version
+            ? new(kind, UpdateStatus.Updated, $"{before.Version ?? "?"} -> {version}; new sessions use it")
+            : new(kind, UpdateStatus.Current, before.Version);
     }
 
     public async Task<ConfigureResult> ConfigureAsync(HarnessKind kind)
