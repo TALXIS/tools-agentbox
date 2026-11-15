@@ -24,6 +24,7 @@ public static class OutputContext
 public static class OutputWriter
 {
     private static readonly AsyncLocal<TextWriter?> _writer = new();
+    private static readonly AsyncLocal<TextWriter?> _errorWriter = new();
 
 #pragma warning disable RS0030 // The approved stdout sink
     private static TextWriter Current => _writer.Value ?? Console.Out;
@@ -31,12 +32,29 @@ public static class OutputWriter
 
     public static void WriteLine(string line) => Current.WriteLine(line);
 
+    public static void WriteErrorLine(string line) => (_errorWriter.Value ?? StandardError).WriteLine(line);
+
     /// <summary>Redirects output for the current async flow (tests).</summary>
     public static IDisposable RedirectTo(TextWriter writer)
     {
         var previous = _writer.Value;
         _writer.Value = writer;
         return new Restore(() => _writer.Value = previous);
+    }
+
+    /// <summary>Redirects error output for the current async flow (tests).</summary>
+    public static IDisposable RedirectErrorTo(TextWriter writer)
+    {
+        var previous = _errorWriter.Value;
+        _errorWriter.Value = writer;
+        return new Restore(() => _errorWriter.Value = previous);
+    }
+
+    private static TextWriter StandardError
+    {
+#pragma warning disable RS0030 // The approved stderr sink
+        get => Console.Error;
+#pragma warning restore RS0030
     }
 
     private sealed class Restore(Action restore) : IDisposable

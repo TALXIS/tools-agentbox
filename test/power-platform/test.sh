@@ -22,6 +22,9 @@ command -v devcontainer >/dev/null 2>&1 || npm install -g @devcontainers/cli@0.8
 
 # Same label publish.yaml attaches (docker build's --label takes the raw JSON; no CSV quoting).
 METADATA="$(bash src/container/image/power-platform/devcontainer-metadata.sh)"
+jq -e '.[0].containerEnv.MSI_ENDPOINT == "http://localhost:50343/metadata/identity/oauth2/token"
+    and .[0].postAttachCommand.agentbox == "agentbox auth sidecar start"' <<<"${METADATA}" >/dev/null \
+    || { echo "image metadata lacks MSI_ENDPOINT or the AgentBox attach command" >&2; exit 1; }
 
 # CI's buildx builder (setup-buildx-action) runs in its own container and can't see local images,
 # which the consumer builds below start from; the Docker daemon's own builder can.
@@ -63,9 +66,15 @@ up_consumer() {
     printf '%s\n' "${config}" > "${WS}/.devcontainer/devcontainer.json"
 
     devcontainer read-configuration --workspace-folder "${WS}" --include-merged-configuration \
-        | jq -e '[.mergedConfiguration.postStartCommands[] | objects | keys[]] | index("agentbox") != null' >/dev/null \
-        || { echo "merged config lacks the image's postStartCommand" >&2; exit 1; }
+        | jq -e '.mergedConfiguration.containerEnv.MSI_ENDPOINT == "http://localhost:50343/metadata/identity/oauth2/token"
+            and ([.mergedConfiguration.postStartCommands[] | objects | keys[]] | index("agentbox") != null)
+            and ([.mergedConfiguration.postAttachCommands[] | objects | keys[]] | index("agentbox") != null)' >/dev/null \
+        || { echo "merged config lacks the image environment or lifecycle hooks" >&2; exit 1; }
     devcontainer up --workspace-folder "${WS}" >/dev/null
+    dexec 'agentbox auth sidecar start --format json | jq -e ".status == \"started\" or .status == \"already-running\"" >/dev/null'
+    dexec 'curl -sS -o /tmp/agentbox-token-response.json -w "%{http_code}" "http://localhost:50343/metadata/identity/oauth2/token?resource=https%3A%2F%2Fmanagement.azure.com%2F" -H "Metadata: true" | grep -q 401 \
+        && jq -e ".error == \"not_authenticated\"" /tmp/agentbox-token-response.json >/dev/null \
+        && echo "sidecar endpoint: OK"'
     dexec 'agentbox prerequisite validate --format text'
     dexec 'agentbox harness validate claude copilot --format text'
 }
