@@ -13,8 +13,12 @@ public class AuthTests
     [InlineData("https://management.azure.com/", "https://management.azure.com//.default")]
     [InlineData("https://graph.microsoft.com", "https://graph.microsoft.com/.default")]
     [InlineData("api://contoso/resource/", "api://contoso/resource//.default")]
-    public void Resource_to_scope_preserves_the_resource_identifier(string resource, string expected) =>
+    [InlineData("00000003-0000-0000-C000-000000000000", "00000003-0000-0000-C000-000000000000/.default")]
+    public void Resource_to_scope_preserves_the_resource_identifier(string resource, string expected)
+    {
         Assert.Equal(expected, AadAuth.ResourceToScope(resource));
+        Assert.Equal(expected, AadAuth.ScopeForLogin(resource));
+    }
 
     [Fact]
     public void Default_login_requests_the_ARM_default_scope() =>
@@ -23,6 +27,7 @@ public class AuthTests
     [Theory]
     [InlineData("")]
     [InlineData("not a URI")]
+    [InlineData("00000003-0000-0000-c000-00000000000z")]
     [InlineData("https://graph.microsoft.com/.default")]
     public void Invalid_resources_are_rejected(string resource) =>
         Assert.Throws<InvalidInputException>(() => AadAuth.ResourceToScope(resource));
@@ -51,17 +56,43 @@ public class AuthTests
     }
 
     [Fact]
-    public async Task Token_endpoint_requires_metadata_and_resource()
+    public async Task Token_endpoint_requires_a_supported_header_and_resource()
     {
         var provider = new FakeTokenProvider();
         var handler = new TokenRequestHandler(provider, NullLogger.Instance);
 
         var missingHeader = await handler.HandleAsync(Request(null), CancellationToken.None);
         var missingResource = await handler.HandleAsync(Request("true"), CancellationToken.None);
+        var missingResourceWithSecret = await handler.HandleAsync(Request(null, secret: "anything"), CancellationToken.None);
 
         AssertError(missingHeader, 400, "missing_metadata_header");
         AssertError(missingResource, 400, "missing_resource");
+        AssertError(missingResourceWithSecret, 400, "missing_resource");
         Assert.Equal(0, provider.Calls);
+    }
+
+    [Theory]
+    [InlineData("true", null, true)]
+    [InlineData("TRUE", null, true)]
+    [InlineData(null, "anything", true)]
+    [InlineData(null, "another value", true)]
+    [InlineData("false", "anything", true)]
+    [InlineData("true", "", true)]
+    [InlineData(null, null, false)]
+    [InlineData(null, "", false)]
+    [InlineData("false", "  ", false)]
+    [InlineData("false", null, false)]
+    public async Task Token_endpoint_accepts_metadata_true_or_any_nonempty_secret(string? metadata, string? secret, bool accepted)
+    {
+        var provider = new FakeTokenProvider();
+        var result = await new TokenRequestHandler(provider, NullLogger.Instance)
+            .HandleAsync(Request(metadata, "https://management.azure.com/", secret), CancellationToken.None);
+
+        if (accepted)
+            Assert.Equal(200, result.StatusCode);
+        else
+            AssertError(result, 400, "missing_metadata_header");
+        Assert.Equal(accepted ? 1 : 0, provider.Calls);
     }
 
     [Theory]
@@ -71,7 +102,7 @@ public class AuthTests
     [InlineData("principal_id")]
     [InlineData("msi_res_id")]
     [InlineData("mi_res_id")]
-    public async Task Token_endpoint_rejects_identity_selectors_instead_of_substituting_the_user(string selector)
+    public async Task Token_endpoint_ignores_identity_selectors_and_uses_the_signed_in_user(string selector)
     {
         var provider = new FakeTokenProvider();
         var request = new TokenRequest("true",
@@ -80,8 +111,23 @@ public class AuthTests
 
         var result = await new TokenRequestHandler(provider, NullLogger.Instance).HandleAsync(request, CancellationToken.None);
 
-        AssertError(result, 400, "unsupported_identity_selector");
-        Assert.Equal(0, provider.Calls);
+        Assert.Equal(200, result.StatusCode);
+        Assert.Equal(1, provider.Calls);
+    }
+
+    [Fact]
+    public async Task Token_endpoint_ignores_client_id_when_using_secret_header()
+    {
+        var provider = new FakeTokenProvider();
+        var request = new TokenRequest(null,
+            new Dictionary<string, string?> { ["resource"] = "https://management.azure.com/", ["client_id"] = "someone-else" },
+            new Dictionary<string, string?>(),
+            "anything");
+
+        var result = await new TokenRequestHandler(provider, NullLogger.Instance).HandleAsync(request, CancellationToken.None);
+
+        Assert.Equal(200, result.StatusCode);
+        Assert.Equal(1, provider.Calls);
     }
 
     [Fact]
@@ -105,6 +151,35 @@ public class AuthTests
         Assert.Equal("Bearer", body.TokenType);
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(body));
         Assert.False(json.RootElement.TryGetProperty("not_before", out _));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Token_endpoint_passes_guid_resource_through_unchanged(bool inForm)
+    {
+        const string resource = "00000003-0000-0000-C000-000000000000";
+        var values = new Dictionary<string, string?> { ["resource"] = resource };
+        var empty = new Dictionary<string, string?>();
+        var request = new TokenRequest("true", inForm ? empty : values, inForm ? values : empty);
+        var provider = new FakeTokenProvider();
+
+        var result = await new TokenRequestHandler(provider, NullLogger.Instance).HandleAsync(request, CancellationToken.None);
+
+        Assert.Equal(200, result.StatusCode);
+        Assert.Equal(resource, Assert.IsType<TokenResponse>(result.Body).Resource);
+        Assert.Equal(1, provider.Calls);
+    }
+
+    [Fact]
+    public async Task Token_endpoint_rejects_malformed_guid_resource()
+    {
+        var provider = new FakeTokenProvider();
+        var result = await new TokenRequestHandler(provider, NullLogger.Instance)
+            .HandleAsync(Request("true", "00000003-0000-0000-c000-00000000000z"), CancellationToken.None);
+
+        AssertError(result, 400, "invalid_resource");
+        Assert.Equal(0, provider.Calls);
     }
 
     [Fact]
@@ -135,7 +210,7 @@ public class AuthTests
         Assert.Equal("interaction_required", error.Error);
         Assert.Equal("interaction_required", error.ErrorCode);
         Assert.Equal(
-            "Consent required for this resource access_token=[redacted] Bearer [redacted] Reauthenticate with: agentbox auth aad login --resource <resource-uri>",
+            "Consent required for this resource access_token=[redacted] Bearer [redacted] Reauthenticate with: agentbox auth aad login --resource <resource>",
             error.ErrorDescription);
     }
 
@@ -168,10 +243,11 @@ public class AuthTests
         Assert.False(File.Exists(SidecarFiles.PidPath(home)));
     }
 
-    private static TokenRequest Request(string? metadata, string? resource = null) =>
+    private static TokenRequest Request(string? metadata, string? resource = null, string? secret = null) =>
         new(metadata,
             resource is null ? new Dictionary<string, string?>() : new Dictionary<string, string?> { ["resource"] = resource },
-            new Dictionary<string, string?>());
+            new Dictionary<string, string?>(),
+            secret);
 
     private static void AssertError(TokenHttpResult result, int statusCode, string error)
     {

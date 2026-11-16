@@ -10,9 +10,29 @@ A new prerequisite is a Feature in
 
 ```bash
 dotnet test src/cli
-src/cli/build/pack.sh 0.0.0-local out    # pins the Features and packs, as releases do
+# Pins the Features and packs, as releases do, in the image Dockerfile's agentbox-cli stage (no
+# local jq/npm needed). The nupkg lands in out/.
+docker buildx build --file src/container/image/power-platform/Dockerfile --target agentbox-cli \
+    --build-arg AGENTBOX_VERSION=0.0.0-local --output type=local,dest=out .
 ```
 
-CI sets `AGENTBOX_FEATURES_FROM` to `src/container/features`, for `pack.sh` and agentbox, so this
-repo's Features come from the checkout instead of the pinned, published ones. A pull request's
-Feature changes, and new Features, are then what its tests install.
+To build the full image with the CLI from this checkout and this checkout's Features:
+
+```bash
+docker build --file src/container/image/power-platform/Dockerfile \
+    --build-context agentbox-features=src/container/features \
+    --build-arg AGENTBOX_FEATURES_FROM=/tmp/agentbox-features \
+    --tag agentbox-local .
+```
+
+The Dockerfile packs the CLI from this checkout as `999.0.0` by default. That version is higher
+than the published CLI, so the image installs the local package. If you override
+`AGENTBOX_VERSION`, keep it higher than the published version or NuGet may install the published
+package instead.
+
+CI sets `AGENTBOX_FEATURES_FROM` (with `--build-context agentbox-features=src/container/features`
+and `AGENTBOX_FEATURES_FROM=/tmp/agentbox-features` for the Docker build, and `src/container/features`
+for agentbox), so this repo's Features come from the checkout instead of the pinned, published ones.
+A pull request's Feature changes, and new Features, are then what its tests install.
+
+After build, you can run locally with: `docker run --rm -it -e MSI_ENDPOINT=http://localhost:50343/metadata/identity/oauth2/token -e MSI_SECRET=agentbox -e DEFAULT_IDENTITY_CLIENT_ID=04b07795-8ddb-461a-bbee-02f9e1bf7b46 agentbox-local bash`

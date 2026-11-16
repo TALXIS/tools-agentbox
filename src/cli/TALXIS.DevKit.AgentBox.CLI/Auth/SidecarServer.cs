@@ -111,7 +111,8 @@ internal sealed class SidecarServer(IHostInfo host, ITokenProvider tokenProvider
             var request = new TokenRequest(
                 context.Request.Headers["Metadata"].FirstOrDefault(),
                 query,
-                form);
+                form,
+                context.Request.Headers["Secret"].FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)));
             var result = await handler.HandleAsync(request, cancellationToken).ConfigureAwait(false);
             context.Response.StatusCode = result.StatusCode;
             await context.Response.WriteAsJsonAsync(result.Body, cancellationToken).ConfigureAwait(false);

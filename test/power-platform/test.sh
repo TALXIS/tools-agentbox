@@ -5,33 +5,30 @@ set -e
 echo "=== Smoke test: power-platform template / pre-built image ==="
 
 IMAGE="devcontainer-template-test-power-platform"
-CLI="$(mktemp -d)"
 WORKSPACES=()
 cleanup() {
     for ws in "${WORKSPACES[@]}"; do
         docker rm -f $(docker ps -aq --filter "label=devcontainer.local_folder=${ws}") >/dev/null 2>&1 || true
     done
-    rm -rf "${CLI}"
 }
 trap cleanup EXIT
-
-# Above any release, so the image installs this build wherever it would take nuget.org's.
-AGENTBOX_FEATURES_FROM="${PWD}/src/container/features" bash src/cli/build/pack.sh 999.0.0 "${CLI}"
 
 command -v devcontainer >/dev/null 2>&1 || npm install -g @devcontainers/cli@0.89.0 --silent
 
 # Same label publish.yaml attaches (docker build's --label takes the raw JSON; no CSV quoting).
 METADATA="$(bash src/container/image/power-platform/devcontainer-metadata.sh)"
 jq -e '.[0].containerEnv.MSI_ENDPOINT == "http://localhost:50343/metadata/identity/oauth2/token"
+    and (.[0].containerEnv.MSI_SECRET | type == "string" and length > 0)
+    and .[0].containerEnv.DEFAULT_IDENTITY_CLIENT_ID == "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
     and .[0].postAttachCommand.agentbox == "agentbox auth sidecar start"' <<<"${METADATA}" >/dev/null \
-    || { echo "image metadata lacks MSI_ENDPOINT or the AgentBox attach command" >&2; exit 1; }
+    || { echo "image metadata lacks the AgentBox environment or attach command" >&2; exit 1; }
 
 # CI's buildx builder (setup-buildx-action) runs in its own container and can't see local images,
-# which the consumer builds below start from; the Docker daemon's own builder can.
+# which the consumer builds below start from; the Docker daemon's own builder can. The Dockerfile
+# packs this checkout's agentbox (as 999.0.0, above any release) with this checkout's Features.
 docker buildx use default
 docker build \
     --file src/container/image/power-platform/Dockerfile \
-    --build-context agentbox-cli="${CLI}" \
     --build-context agentbox-features=src/container/features \
     --build-arg AGENTBOX_FEATURES_FROM=/tmp/agentbox-features \
     --label "devcontainer.metadata=${METADATA}" \
@@ -67,12 +64,20 @@ up_consumer() {
 
     devcontainer read-configuration --workspace-folder "${WS}" --include-merged-configuration \
         | jq -e '.mergedConfiguration.containerEnv.MSI_ENDPOINT == "http://localhost:50343/metadata/identity/oauth2/token"
+            and (.mergedConfiguration.containerEnv.MSI_SECRET | type == "string" and length > 0)
+            and .mergedConfiguration.containerEnv.DEFAULT_IDENTITY_CLIENT_ID == "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
             and ([.mergedConfiguration.postStartCommands[] | objects | keys[]] | index("agentbox") != null)
             and ([.mergedConfiguration.postAttachCommands[] | objects | keys[]] | index("agentbox") != null)' >/dev/null \
         || { echo "merged config lacks the image environment or lifecycle hooks" >&2; exit 1; }
     devcontainer up --workspace-folder "${WS}" >/dev/null
     dexec 'agentbox auth sidecar start --format json | jq -e ".status == \"started\" or .status == \"already-running\"" >/dev/null'
-    dexec 'curl -sS -o /tmp/agentbox-token-response.json -w "%{http_code}" "http://localhost:50343/metadata/identity/oauth2/token?resource=https%3A%2F%2Fmanagement.azure.com%2F" -H "Metadata: true" | grep -q 401 \
+    dexec 'test -n "${MSI_SECRET:-}" \
+        && test "${DEFAULT_IDENTITY_CLIENT_ID:-}" = "04b07795-8ddb-461a-bbee-02f9e1bf7b46" \
+        && curl -sS -o /tmp/agentbox-token-response.json -w "%{http_code}" "http://localhost:50343/metadata/identity/oauth2/token?resource=https%3A%2F%2Fmanagement.azure.com%2F" -H "Metadata: true" | grep -q 401 \
+        && jq -e ".error == \"not_authenticated\"" /tmp/agentbox-token-response.json >/dev/null \
+        && curl -sS -o /tmp/agentbox-token-response.json -w "%{http_code}" -X POST "${MSI_ENDPOINT}" -H "sEcReT: ${MSI_SECRET}" -d "resource=https%3A%2F%2Fmanagement.azure.com%2F" | grep -q 401 \
+        && jq -e ".error == \"not_authenticated\"" /tmp/agentbox-token-response.json >/dev/null \
+        && curl -sS -o /tmp/agentbox-token-response.json -w "%{http_code}" "${MSI_ENDPOINT}?resource=00000003-0000-0000-c000-000000000000" -H "Metadata: true" | grep -q 401 \
         && jq -e ".error == \"not_authenticated\"" /tmp/agentbox-token-response.json >/dev/null \
         && echo "sidecar endpoint: OK"'
     dexec 'agentbox prerequisite validate --format text'

@@ -32,25 +32,18 @@ public sealed record TokenErrorResponse(
 public sealed record TokenRequest(
     string? MetadataHeader,
     IReadOnlyDictionary<string, string?> Query,
-    IReadOnlyDictionary<string, string?> Form);
+    IReadOnlyDictionary<string, string?> Form,
+    string? SecretHeader = null);
 
 public sealed record TokenHttpResult(int StatusCode, object Body);
 
 public sealed class TokenRequestHandler(ITokenProvider tokenProvider, ILogger logger)
 {
-    private static readonly HashSet<string> IdentitySelectors = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "client_id", "clientid", "object_id", "objectid", "principal_id", "principalid",
-        "resource_id", "resourceid", "msi_res_id", "mi_res_id",
-    };
-
     public async Task<TokenHttpResult> HandleAsync(TokenRequest request, CancellationToken cancellationToken)
     {
-        if (!string.Equals(request.MetadataHeader, "true", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(request.MetadataHeader, "true", StringComparison.OrdinalIgnoreCase)
+            && string.IsNullOrWhiteSpace(request.SecretHeader))
             return Error(StatusCodes.Status400BadRequest, "missing_metadata_header");
-
-        if (ContainsIdentitySelector(request.Query) || ContainsIdentitySelector(request.Form))
-            return Error(StatusCodes.Status400BadRequest, "unsupported_identity_selector");
 
         var resource = Value(request.Form, "resource") ?? Value(request.Query, "resource");
         if (string.IsNullOrWhiteSpace(resource))
@@ -91,7 +84,7 @@ public sealed class TokenRequestHandler(ITokenProvider tokenProvider, ILogger lo
                 StatusCodes.Status401Unauthorized,
                 "interaction_required",
                 ex.ErrorCode,
-                SafeDescription($"{ex.Message} Reauthenticate with: agentbox auth aad login --resource <resource-uri>"),
+                SafeDescription($"{ex.Message} Reauthenticate with: agentbox auth aad login --resource <resource>"),
                 ex.CorrelationId?.ToString());
         }
         catch (MsalException ex)
@@ -110,9 +103,6 @@ public sealed class TokenRequestHandler(ITokenProvider tokenProvider, ILogger lo
             return Error(StatusCodes.Status500InternalServerError, "token_acquisition_failed");
         }
     }
-
-    private static bool ContainsIdentitySelector(IReadOnlyDictionary<string, string?> values) =>
-        values.Keys.Any(IdentitySelectors.Contains);
 
     private static string? Value(IReadOnlyDictionary<string, string?> values, string key) =>
         values.FirstOrDefault(pair => string.Equals(pair.Key, key, StringComparison.OrdinalIgnoreCase)).Value;

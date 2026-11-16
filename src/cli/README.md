@@ -51,6 +51,12 @@ curl 'http://localhost:50343/metadata/identity/oauth2/token?resource=https%3A%2F
   -H 'Metadata: true'
 ```
 
+As an alternative to `Metadata: true`, clients can send a nonempty `Secret` header with any value.
+The value is not checked and does not authenticate the caller.
+
+The `resource` can be an absolute URI or an application ID GUID. Its value is preserved in the
+response; MSAL requests the corresponding `<resource>/.default` scope.
+
 It also accepts the Cloud Shell-style POST form used by Azure Identity SDKs:
 
 ```bash
@@ -59,15 +65,18 @@ curl -X POST 'http://localhost:50343/metadata/identity/oauth2/token' \
   -d 'resource=https%3A%2F%2Fmanagement.azure.com%2F'
 ```
 
-The AgentBox devcontainer Feature sets `MSI_ENDPOINT` and starts the sidecar when a development
-tool attaches. Outside that environment, set it for the client process:
+The AgentBox devcontainer Feature sets `MSI_ENDPOINT`, the compatibility placeholder
+`MSI_SECRET=agentbox`, and `DEFAULT_IDENTITY_CLIENT_ID=04b07795-8ddb-461a-bbee-02f9e1bf7b46`,
+and starts the sidecar when a development tool attaches. Outside that environment, set them for
+the client process:
 
 ```bash
-MSI_ENDPOINT=http://localhost:50343/metadata/identity/oauth2/token your-application
+MSI_ENDPOINT=http://localhost:50343/metadata/identity/oauth2/token MSI_SECRET=agentbox DEFAULT_IDENTITY_CLIENT_ID=04b07795-8ddb-461a-bbee-02f9e1bf7b46 your-application
 ```
 
 This endpoint returns delegated **user** tokens from the active AgentBox account; they are not
-Managed Identity service-principal tokens. The current supported protocol target is Azure Identity
+Managed Identity service-principal tokens. Identity selectors in requests are ignored, including
+the client ID. The current supported protocol target is Azure Identity
 SDKs that honor `MSI_ENDPOINT`. Azure CLI `az login --identity` does not use `MSI_ENDPOINT`; the
 current Azure CLI/MSAL Python managed-identity path can instead be directed to the sidecar with:
 

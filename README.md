@@ -66,9 +66,10 @@ docker build -f .\src\container\image\power-platform\Dockerfile -t agentbox-loca
 Run the image in an interactive shell:
 
 ```powershell
-docker run --rm -it -e MSI_ENDPOINT=http://localhost:50343/metadata/identity/oauth2/token agentbox-local bash
+docker run --rm -it -e MSI_ENDPOINT=http://localhost:50343/metadata/identity/oauth2/token -e MSI_SECRET=agentbox -e DEFAULT_IDENTITY_CLIENT_ID=04b07795-8ddb-461a-bbee-02f9e1bf7b46 agentbox-local bash
 ```
 
 `docker run` does not run devcontainer lifecycle hooks. Start the sidecar manually with
 `agentbox auth sidecar start`; authentication state is discarded when this `--rm` container exits.
-This build uses the published AgentBox CLI package, not uncommitted CLI changes in the checkout.
+By default, the image packs the CLI from this checkout and uses it when its local version is higher
+than the published version.

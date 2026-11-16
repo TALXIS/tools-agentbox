@@ -33,7 +33,7 @@ public sealed class AadLoginCommand : AgentBoxLeafCommand
     [CliOption(Name = "--tenantId", Aliases = ["--tenant-id"], Description = "Tenant ID or domain (default: organizations).", Required = false)]
     public string? TenantId { get; set; }
 
-    [CliOption(Name = "--resource", Description = "Resource URI to consent to (default: Azure Resource Manager).", Required = false)]
+    [CliOption(Name = "--resource", Description = "Resource URI or GUID to consent to (default: Azure Resource Manager).", Required = false)]
     public string? Resource { get; set; }
 
     protected override async Task<int> ExecuteAsync()

@@ -7,6 +7,8 @@ on:
       - "src/container/scripts/**"
       - "src/container/features/**"
       - "src/container/agentbox-features.json"
+      - "src/container/image/power-platform/Dockerfile"
+      - ".dockerignore"
       - ".github/workflows/cli.yaml"
   push:
     branches: [master]
@@ -38,15 +40,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
-        with:
-          dotnet-version: "10.0.x"
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      # The image's agentbox-cli stage, which packs it with everything it needs. The version is
+      # above any release, so it's the agentbox the container tests install wherever they'd
+      # otherwise take nuget.org's.
       - id: pack
         run: |
-          # Above any release, so it's the agentbox the container tests install wherever they'd
-          # otherwise take nuget.org's.
-          version="999.${{ github.run_number }}.${{ github.run_attempt }}"
-          AGENTBOX_FEATURES_FROM="$PWD/src/container/features" src/cli/build/pack.sh "$version" nupkg
+          docker buildx build --file src/container/image/power-platform/Dockerfile --target agentbox-cli \
+            --build-context agentbox-features=src/container/features \
+            --build-arg AGENTBOX_FEATURES_FROM=/tmp/agentbox-features \
+            --build-arg AGENTBOX_VERSION="999.${{ github.run_number }}.${{ github.run_attempt }}" \
+            --build-arg CACHEBUST="${{ github.run_id }}-${{ github.run_attempt }}" \
+            --output type=local,dest=nupkg .
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: agentbox-nupkg

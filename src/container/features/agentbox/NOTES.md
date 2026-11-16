@@ -7,9 +7,11 @@ TALXIS/skills plugin, so a long-lived container stays current without a rebuild.
 hand at any time; `agentbox --help` lists the rest.
 
 When a development tool attaches, the Feature starts the AgentBox authentication sidecar on
-`127.0.0.1:50343` and sets `MSI_ENDPOINT` for Azure Identity SDKs that implement the Cloud Shell
-protocol. Sign in with `agentbox auth aad login` before requesting tokens. The sidecar returns
-delegated user tokens from the selected account; it is not an Azure Managed Identity. Azure CLI
+`127.0.0.1:50343` and sets `MSI_ENDPOINT`, `MSI_SECRET=agentbox`, and
+`DEFAULT_IDENTITY_CLIENT_ID=04b07795-8ddb-461a-bbee-02f9e1bf7b46`.
+The `MSI_SECRET` value is a compatibility placeholder, not a credential. Sign in with
+`agentbox auth aad login` before requesting tokens. The sidecar returns delegated user tokens from
+the selected account, ignoring identity selectors; it is not an Azure Managed Identity. Azure CLI
 does not use `MSI_ENDPOINT`; its current implementation can be pointed at the sidecar by setting
 `AZURE_POD_IDENTITY_AUTHORITY_HOST=http://127.0.0.1:50343` for `az login --identity`. This is an
 opt-in, best-effort integration, not a stable AgentBox contract; routing was checked with a

@@ -24,10 +24,11 @@ internal static class AadAuth
 
     public static string ResourceToScope(string resource)
     {
-        if (string.IsNullOrWhiteSpace(resource) || !Uri.TryCreate(resource, UriKind.Absolute, out _))
-            throw new InvalidInputException("Resource must be an absolute URI.");
+        if (string.IsNullOrWhiteSpace(resource)
+            || (!Guid.TryParse(resource, out _) && !Uri.TryCreate(resource, UriKind.Absolute, out _)))
+            throw new InvalidInputException("Resource must be an absolute URI or a GUID.");
         if (resource.EndsWith("/.default", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidInputException("Provide a resource URI, not an MSAL scope.");
+            throw new InvalidInputException("Provide a resource URI or GUID, not an MSAL scope.");
         return $"{resource}/.default";
     }
 

@@ -12,7 +12,9 @@
         }
     },
     "containerEnv": {
-        "MSI_ENDPOINT": "http://localhost:50343/metadata/identity/oauth2/token"
+        "MSI_ENDPOINT": "http://localhost:50343/metadata/identity/oauth2/token",
+        "MSI_SECRET": "agentbox",
+        "DEFAULT_IDENTITY_CLIENT_ID": "04b07795-8ddb-461a-bbee-02f9e1bf7b46"
     },
     "postCreateCommand": "timeout 120 agentbox harness configure || true",
     "postStartCommand": "timeout 120 agentbox prerequisite update || true; timeout 120 agentbox harness update || true",
