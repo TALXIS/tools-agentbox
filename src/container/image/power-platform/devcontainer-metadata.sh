@@ -31,7 +31,9 @@ hooks() {
 }
 
 container_env() {
-    jq -cs 'map(.containerEnv // {}) | add // {}' <<<"${metadata}"
+    # A value referencing another variable (node's PATH=...:${PATH}) only expands as a Dockerfile ENV;
+    # from the label it reaches `docker run -e` verbatim and breaks the variable, so leave those out.
+    jq -cs 'map(.containerEnv // {}) | add // {} | with_entries(select(.value | contains("${") | not))' <<<"${metadata}"
 }
 
 jq -nc --argjson env "$(container_env)" \
