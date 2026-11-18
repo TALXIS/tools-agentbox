@@ -4,7 +4,7 @@ namespace TALXIS.DevKit.AgentBox.CLI;
 
 [CliCommand(
     Description = "Makes this machine or container ready for coding agents working on Power Platform / Dataverse.",
-    Children = new[] { typeof(SetupCommand), typeof(Prerequisites.PrerequisiteCliCommand), typeof(Harness.HarnessCliCommand) },
+    Children = new[] { typeof(SetupCommand), typeof(Prerequisites.PrerequisiteCliCommand), typeof(Harness.HarnessCliCommand), typeof(Auth.AuthCliCommand) },
     ShortFormAutoGenerate = CliNameAutoGenerate.None
 )]
 public class AgentBoxCliCommand

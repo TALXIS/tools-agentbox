@@ -52,3 +52,27 @@ agentbox harness update        # the plugin (a new agent session picks it up)
 The [`agentbox` CLI](src/cli/README.md) also checks a machine (`prerequisite validate`,
 `harness validate`). The [contract](CONTRACT.md) lists what stays stable. The tools are listed in
 [`agentbox-features.json`](src/container/agentbox-features.json).
+
+## Developing
+
+Build the Power Platform image from the repository root. The final `.` is the Docker build context;
+running this command from `src/container/image` will not make the repository's `src/container`
+files available to `COPY`:
+
+```powershell
+$cacheBust = [guid]::NewGuid().ToString()
+docker build -f .\src\container\image\power-platform\Dockerfile `
+    --build-arg "CACHEBUST=$cacheBust" `
+    -t agentbox-local .
+```
+
+Run the image in an interactive shell:
+
+```powershell
+docker run --rm -it -e MSI_ENDPOINT=http://localhost:50343/metadata/identity/oauth2/token -e MSI_SECRET=agentbox -e DEFAULT_IDENTITY_CLIENT_ID=04b07795-8ddb-461a-bbee-02f9e1bf7b46 agentbox-local bash
+```
+
+`docker run` does not run devcontainer lifecycle hooks. Start the sidecar manually with
+`agentbox auth sidecar start`; authentication state is discarded when this `--rm` container exits.
+By default, the image packs the CLI from this checkout and uses it when its local version is higher
+than the published version.

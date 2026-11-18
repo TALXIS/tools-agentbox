@@ -26,6 +26,12 @@ public static class AgentBoxLoggerFactory
 
         builder.ClearProviders();
         builder.SetMinimumLevel(level);
+        var logFile = Environment.GetEnvironmentVariable("AGENTBOX_LOG_FILE");
+        if (!string.IsNullOrWhiteSpace(logFile))
+        {
+            builder.AddProvider(new AgentBoxFileLoggerProvider(logFile));
+            return;
+        }
         if (json)
         {
             builder.AddProvider(new JsonStderrLoggerProvider());
@@ -38,6 +44,47 @@ public static class AgentBoxLoggerFactory
             options.LogToStandardErrorThreshold = LogLevel.Trace;
         });
         builder.AddConsoleFormatter<AgentBoxConsoleFormatter, AgentBoxConsoleFormatterOptions>(o => o.Verbose = level <= LogLevel.Debug);
+    }
+}
+
+internal sealed class AgentBoxFileLoggerProvider : ILoggerProvider
+{
+    private readonly object _gate = new();
+    private readonly StreamWriter _writer;
+
+    public AgentBoxFileLoggerProvider(string path)
+    {
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(directory))
+            Directory.CreateDirectory(directory);
+        var options = new FileStreamOptions { Mode = FileMode.Append, Access = FileAccess.Write, Share = FileShare.ReadWrite };
+        if (!OperatingSystem.IsWindows())
+            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        _writer = new StreamWriter(new FileStream(path, options)) { AutoFlush = true };
+    }
+
+    public ILogger CreateLogger(string categoryName) => new FileLogger(categoryName, _writer, _gate);
+
+    public void Dispose() => _writer.Dispose();
+
+    private sealed class FileLogger(string category, StreamWriter writer, object gate) : ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            if (!IsEnabled(logLevel))
+                return;
+            var message = formatter(state, null);
+            lock (gate)
+                writer.WriteLine($"{DateTimeOffset.UtcNow:O} [{logLevel}] {category}: {message}");
+        }
     }
 }
 

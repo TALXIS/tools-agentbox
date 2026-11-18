@@ -1,0 +1,36 @@
+{
+    "id": "git-credential-manager",
+    "version": "0.0.1",
+    "name": "Git Credential Manager",
+    "description": "Installs Git Credential Manager (GCM) as a .NET tool and configures it as Git's credential helper for every user, storing credentials in the Secret Service keyring, which the keyring Feature provides. It is installed once; agentbox doesn't update it.",
+    "documentationURL": "https://github.com/TALXIS/tools-agentbox/tree/master/src/container/features/git-credential-manager",
+    "licenseURL": "https://github.com/TALXIS/tools-agentbox/blob/master/LICENSE",
+    "options": {
+        "version": {
+            "type": "string",
+            "proposals": [
+                "latest"
+            ],
+            "default": "latest",
+            "description": "Version of git-credential-manager to install."
+        }
+    },
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "github.copilot.chat.codeGeneration.instructions": [
+                    {
+                        "text": "This dev container includes Git Credential Manager (`git-credential-manager`), configured as Git's credential helper with the Secret Service keyring as its store. Git prompts for sign-in on first use of a remote and reuses the stored credentials afterwards."
+                    }
+                ]
+            }
+        }
+    },
+    "dependsOn": {
+        "ghcr.io/talxis/tools-agentbox/keyring:1": {}
+    },
+    "installsAfter": [
+        "ghcr.io/devcontainers/features/git",
+        "ghcr.io/devcontainers/features/dotnet"
+    ]
+}

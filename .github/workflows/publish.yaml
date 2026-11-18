@@ -129,10 +129,15 @@ jobs:
         with:
           ref: ${{ needs.resolve-version.outputs.ref }}
           persist-credentials: false
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
-        with:
-          dotnet-version: "10.0.x"
-      - run: src/cli/build/pack.sh "${{ needs.resolve-version.outputs.version }}" nupkg
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      # The image's agentbox-cli stage, which packs it with everything it needs.
+      - env:
+          VERSION: ${{ needs.resolve-version.outputs.version }}
+        run: |
+          docker buildx build --file "$DOCKERFILE" --target agentbox-cli \
+            --build-arg AGENTBOX_VERSION="$VERSION" \
+            --build-arg CACHEBUST="${{ github.run_id }}-${{ github.run_attempt }}" \
+            --output type=local,dest=nupkg .
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: agentbox-nupkg
@@ -164,7 +169,8 @@ jobs:
 
   build:
     # Only once the CLI is on nuget.org, so the image never points at a CLI people can't get. It
-    # installs the package cli-pack made, not whatever nuget.org has indexed yet.
+    # installs the package cli-pack made (in place of the Dockerfile's own pack), not whatever
+    # nuget.org has indexed yet.
     needs: [resolve-version, cli-publish]
     if: needs.resolve-version.outputs.prerelease == 'false'
     strategy:

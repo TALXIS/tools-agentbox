@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using TALXIS.DevKit.AgentBox.CLI.Cli;
+using TALXIS.DevKit.AgentBox.CLI.Auth;
 using TALXIS.DevKit.AgentBox.CLI.Features;
 using TALXIS.DevKit.AgentBox.CLI.Harness;
 using TALXIS.DevKit.AgentBox.CLI.Host;
@@ -31,4 +32,6 @@ public sealed class AgentBoxServices(IHostInfo host, IProcessRunner processes, I
     public PrerequisiteUpdater Updater(ILogger logger) => new(host, processes, Inspector(), logger);
 
     public HarnessService Harness(ILogger logger) => new(host, processes, prompt, logger);
+
+    internal AuthService Auth(ILogger logger) => new(host, processes, logger);
 }

@@ -23,7 +23,7 @@ downgrade_tool() {
 }
 downgrade_tool TALXIS.CLI txc
 downgrade_tool Microsoft.PowerApps.CLI.Tool pac
-dotnet new install "TALXIS.DevKit.Templates.Dataverse::$(previous_nuget TALXIS.DevKit.Templates.Dataverse)"
+dotnet new install "TALXIS.DevKit.Templates.Dataverse@$(previous_nuget TALXIS.DevKit.Templates.Dataverse)" --force
 pa_previous="$(npm view @microsoft/power-apps-cli versions --json | jq -r '[.[] | select(test("-") | not)][-2]')"
 npm install --global --prefix /usr/local/lib/power-apps-cli "@microsoft/power-apps-cli@${pa_previous}" >/dev/null
 
@@ -33,8 +33,8 @@ printf '<configuration><packageSources><add key="ci" value="/nupkg" /></packageS
     > /etc/opt/NuGet/Config/ci.config
 agentbox() { dotnet dnx TALXIS.DevKit.AgentBox.CLI --yes -- "$@"; }
 
-step "install what images before it came without: agentbox itself, Playwright"
-agentbox prerequisite install agentbox playwright-cli browser --format text
+step "install what images before it came without: agentbox itself, Playwright, Git Credential Manager"
+agentbox prerequisite install agentbox playwright-cli browser gcm --format text
 
 step "validate --check-updates reports them"
 agentbox prerequisite validate --check-updates --format json | jq -e '[.[] | select(.status == "outdated")] | length >= 4' >/dev/null

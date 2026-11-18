@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Packs the agentbox tool: pins the AgentBox Feature list (versions to digests, install order, and
 # what each Feature depends on) into the embedded lockfile, then packs. Usage: pack.sh <version> <output dir>
+# Runs in the power-platform Dockerfile's agentbox-cli stage (see src/cli/CONTRIBUTING.md), which
+# has its dependencies: the .NET SDK, jq and npm (for the devcontainer CLI, used only here, never at
+# run time).
 # With AGENTBOX_FEATURES_FROM (CI), this repo's Features come from that directory, unpinned, so a
 # pull request can add or change one before it's published.
-# Needs jq and npm (for the devcontainer CLI, used only here, never at run time).
 set -euo pipefail
 
 version="$1"

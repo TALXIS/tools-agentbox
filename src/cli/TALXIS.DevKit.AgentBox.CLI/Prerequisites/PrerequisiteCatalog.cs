@@ -105,6 +105,12 @@ public static class PrerequisiteCatalog
         },
         new()
         {
+            Id = "gcm", Description = "Git Credential Manager", Command = "git-credential-manager", Kind = PrerequisiteKind.DotnetTool,
+            Package = "git-credential-manager", Feature = "talxis/tools-agentbox/git-credential-manager", ToolPath = "/usr/local/share/git-credential-manager",
+            Manual = ManualInstall.Everywhere("dotnet tool install --global git-credential-manager && git-credential-manager configure"),
+        },
+        new()
+        {
             Id = "pa", Description = "Power Apps CLI", Command = "pa", Kind = PrerequisiteKind.NpmTool,
             Package = "@microsoft/power-apps-cli", Feature = "talxis/tools-agentbox/pa-cli", NpmPrefix = "/usr/local/lib/power-apps-cli",
             Manual = ManualInstall.Everywhere("npm install --global @microsoft/power-apps-cli"),
