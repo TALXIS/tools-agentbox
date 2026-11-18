@@ -36,3 +36,13 @@ for agentbox), so this repo's Features come from the checkout instead of the pin
 A pull request's Feature changes, and new Features, are then what its tests install.
 
 After build, you can run locally with: `docker run --rm -it -e MSI_ENDPOINT=http://localhost:50343/metadata/identity/oauth2/token -e MSI_SECRET=agentbox -e DEFAULT_IDENTITY_CLIENT_ID=04b07795-8ddb-461a-bbee-02f9e1bf7b46 agentbox-local bash`
+
+To test with locally built TXC, you can use (or something similar to match the current version):
+```powershell
+docker run --rm -it `
+   -e MSI_ENDPOINT=http://localhost:50343/metadata/identity/oauth2/token `
+   -e MSI_SECRET=agentbox `
+   -e DEFAULT_IDENTITY_CLIENT_ID=04b07795-8ddb-461a-bbee-02f9e1bf7b46 `
+   -v "C:\Users\<user>\Source\repos\TALXIS\tools-cli\src\TALXIS.CLI\bin\Release\net10.0:/usr/local/share/txc/.store/talxis.cli/1.22.2/talxis.cli/1.22.2/tools/net10.0/any" `
+   agentbox-local bash
+```
