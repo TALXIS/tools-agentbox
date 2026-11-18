@@ -31,6 +31,7 @@ docker build \
     --file src/container/image/power-platform/Dockerfile \
     --build-context agentbox-features=src/container/features \
     --build-arg AGENTBOX_FEATURES_FROM=/tmp/agentbox-features \
+    --build-arg "CACHEBUST=$(date +%s)-${RANDOM}" \
     --label "devcontainer.metadata=${METADATA}" \
     --tag "${IMAGE}" \
     .

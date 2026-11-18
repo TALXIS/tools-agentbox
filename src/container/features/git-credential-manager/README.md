@@ -1,7 +1,7 @@
 
 # Git Credential Manager (git-credential-manager)
 
-Installs Git Credential Manager (GCM) as a .NET tool and configures it as Git's credential helper for every user, storing credentials in the Secret Service keyring, which the keyring Feature provides. With version 'latest', add the agentbox Feature to keep it on the latest release.
+Installs Git Credential Manager (GCM) as a .NET tool and configures it as Git's credential helper for every user, storing credentials in the Secret Service keyring, which the keyring Feature provides. It is installed once; agentbox doesn't update it.
 
 ## Example Usage
 
@@ -43,6 +43,16 @@ password. See the keyring Feature's notes.
 - Check the store: `git credential-manager diagnose`
 - A user's own `~/.gitconfig` `credential.helper` or `credential.credentialStore` overrides the
   system values.
+
+## .NET patch pin
+
+GCM's package pins the exact .NET patch it was built with (e.g. `10.0.14`), so it won't start on an image with an older patch of the same major. The Feature relaxes that pin to `<major>.<minor>.0`; patch releases are compatible.
+
+## Updates
+
+GCM is installed once, when the Feature runs. `agentbox prerequisite update` does not update it,
+so a newer GCM release can't break credential access in a running container. To upgrade, rebuild
+the image, or run the Feature's install again.
 
 
 ---

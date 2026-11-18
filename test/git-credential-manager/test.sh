@@ -41,10 +41,10 @@ echo "$out" | grep -qx password=secret
 printf "protocol=https\nhost=example.com\nusername=agentbox\n\n" | git credential reject'
 run --user app
 
-echo "--- Checking auto-update flag file exists ---"
+echo "--- Checking there is no auto-update flag file ---"
 docker run --rm \
     "devcontainer-feature-test-${FEATURE_ID}" \
-    test -f /etc/devcontainer-git-credential-manager/auto-update
+    test ! -e /etc/devcontainer-git-credential-manager/auto-update
 
 echo "=== ${FEATURE_ID} smoke test PASSED ==="
 docker image rm "devcontainer-feature-test-${FEATURE_ID}" 2>/dev/null || true

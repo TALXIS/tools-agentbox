@@ -22,13 +22,15 @@ To build the full image with the CLI from this checkout and this checkout's Feat
 docker build --file src/container/image/power-platform/Dockerfile \
     --build-context agentbox-features=src/container/features \
     --build-arg AGENTBOX_FEATURES_FROM=/tmp/agentbox-features \
+    --build-arg "CACHEBUST=$(date +%s)-${RANDOM}" \
     --tag agentbox-local .
 ```
 
 The Dockerfile packs the CLI from this checkout as `999.0.0` by default. That version is higher
 than the published CLI, so the image installs the local package. If you override
 `AGENTBOX_VERSION`, keep it higher than the published version or NuGet may install the published
-package instead.
+package instead. Use a fresh `CACHEBUST` value for each build because mounted Feature contents
+don't otherwise invalidate Docker's cache.
 
 CI sets `AGENTBOX_FEATURES_FROM` (with `--build-context agentbox-features=src/container/features`
 and `AGENTBOX_FEATURES_FROM=/tmp/agentbox-features` for the Docker build, and `src/container/features`

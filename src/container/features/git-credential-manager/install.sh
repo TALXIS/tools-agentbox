@@ -33,9 +33,8 @@ else
     dotnet tool update "${PACKAGE}" --tool-path "${TOOL_PATH}" --version "${CLI_VERSION}" --allow-downgrade
 fi
 
-# GCM pins the exact .NET patch it was built with (e.g. 10.0.14), which an image with an older patch
-# of the same major can't start; patches are compatible, so ask only for <major>.<minor>.0.
-find "${TOOL_PATH}/.store" -name 'git-credential-manager.runtimeconfig.json' -exec \
+# GCM pins the exact .NET patch it was built with; relax it to <major>.<minor>.0. See NOTES.md.
+find "${TOOL_PATH}/.store" -type f -name 'git-credential-manager.runtimeconfig.json' -exec \
     sed -i -E 's/("version": *"[0-9]+\.[0-9]+)\.[0-9]+"/\1.0"/' {} +
 
 # Roll forward so it still starts where only a newer .NET major than GCM targets is installed.
@@ -55,13 +54,8 @@ chmod 755 "${WRAPPER}"
 git config --system --replace-all credential.helper "${WRAPPER}" "${TOOL_PATH}"
 git config --system credential.credentialStore secretservice
 
-# Marks it as following the latest release, for `agentbox prerequisite update`. A pin removes it.
-if [ "${CLI_VERSION}" = "latest" ]; then
-    mkdir -p /etc/devcontainer-git-credential-manager
-    touch /etc/devcontainer-git-credential-manager/auto-update
-else
-    rm -f /etc/devcontainer-git-credential-manager/auto-update
-fi
+# No auto-update marker: `agentbox prerequisite update` leaves GCM at the version installed here.
+rm -f /etc/devcontainer-git-credential-manager/auto-update
 
 dotnet tool list --tool-path "${TOOL_PATH}"
 git config --system --get-regexp '^credential\.'

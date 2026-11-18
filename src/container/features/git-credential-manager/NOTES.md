@@ -27,4 +27,10 @@ password. See the keyring Feature's notes.
 
 ## .NET patch pin
 
-GCM's package pins the exact .NET patch it was built with (e.g. `10.0.14`), so it won't start on an image with an older patch of the same major. The install relaxes that pin to `<major>.<minor>.0`; patch releases are compatible. An update through `dotnet tool update` (as `agentbox prerequisite update` does) restores the package's pin.
+GCM's package pins the exact .NET patch it was built with (e.g. `10.0.14`), so it won't start on an image with an older patch of the same major. The Feature relaxes that pin to `<major>.<minor>.0`; patch releases are compatible.
+
+## Updates
+
+GCM is installed once, when the Feature runs. `agentbox prerequisite update` does not update it,
+so a newer GCM release can't break credential access in a running container. To upgrade, rebuild
+the image, or run the Feature's install again.

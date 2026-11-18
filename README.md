@@ -60,7 +60,10 @@ running this command from `src/container/image` will not make the repository's `
 files available to `COPY`:
 
 ```powershell
-docker build -f .\src\container\image\power-platform\Dockerfile -t agentbox-local .
+$cacheBust = [guid]::NewGuid().ToString()
+docker build -f .\src\container\image\power-platform\Dockerfile `
+    --build-arg "CACHEBUST=$cacheBust" `
+    -t agentbox-local .
 ```
 
 Run the image in an interactive shell:

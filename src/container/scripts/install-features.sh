@@ -49,18 +49,38 @@ main() {
     fi
     export DOTNET_ROOT="$(dotnet --list-sdks | sed -n 's/^10\..*\[\(.*\)\/sdk\]$/\1/p' | head -1)"
 
+    local local_package=""
     if [ -n "${source}" ] && ls "${source}"/TALXIS.DevKit.AgentBox.CLI.*.nupkg >/dev/null 2>&1; then
-        # A NuGet source for every user, so agentbox here, under sudo, and the agentbox Feature all
-        # find it. It wins wherever its version is the highest.
+        local_package="$(find "${source}" -maxdepth 1 -type f -name 'TALXIS.DevKit.AgentBox.CLI.*.nupkg' -print -quit)"
+        # Source mapping makes this exact package ID come only from the build artifact. Other tool
+        # dependencies still restore from nuget.org.
         local nuget_config=/etc/opt/NuGet/Config/agentbox-setup.config
         ${sudo} mkdir -p "$(dirname "${nuget_config}")"
-        printf '<configuration><packageSources><add key="agentbox-setup" value="%s" /></packageSources></configuration>\n' "${source}" \
+        printf '<configuration><packageSources><clear /><add key="agentbox-setup" value="%s" /><add key="nuget.org" value="https://api.nuget.org/v3/index.json" /></packageSources><packageSourceMapping><clear /><packageSource key="agentbox-setup"><package pattern="TALXIS.DevKit.AgentBox.CLI" /></packageSource><packageSource key="nuget.org"><package pattern="*" /></packageSource></packageSourceMapping></configuration>\n' "${source}" \
             | ${sudo} tee "${nuget_config}" >/dev/null || exit 1
         trap "${sudo} rm -f '${nuget_config}'" EXIT
     fi
 
     # This machine is dedicated to agents, whether or not agentbox would detect it as a container.
     AGENTBOX_CONTAINER=true dotnet dnx TALXIS.DevKit.AgentBox.CLI --yes -- setup --format text "${args[@]}"
+
+    if [ -n "${local_package}" ]; then
+        local expected_version installed_version assembly expected_hash installed_hash
+        expected_version="$(basename "${local_package}" .nupkg | sed 's/^TALXIS\.DevKit\.AgentBox\.CLI\.//')"
+        installed_version="$(dotnet tool list --tool-path /usr/local/share/agentbox \
+            | awk 'tolower($1) == "talxis.devkit.agentbox.cli" { print $2; exit }')"
+        assembly="/usr/local/share/agentbox/.store/talxis.devkit.agentbox.cli/${expected_version}/talxis.devkit.agentbox.cli/${expected_version}/tools/net10.0/any/TALXIS.DevKit.AgentBox.CLI.dll"
+        if [ "${installed_version}" != "${expected_version}" ] || [ ! -f "${assembly}" ] || ! command -v unzip >/dev/null 2>&1; then
+            echo "AgentBox CLI ${expected_version} from ${local_package} was not installed from the local artifact" >&2
+            exit 1
+        fi
+        expected_hash="$(unzip -p "${local_package}" tools/net10.0/any/TALXIS.DevKit.AgentBox.CLI.dll | sha256sum | awk '{print $1}')"
+        installed_hash="$(sha256sum "${assembly}" | awk '{print $1}')"
+        if [ -z "${expected_hash}" ] || [ "${installed_hash}" != "${expected_hash}" ]; then
+            echo "Installed AgentBox CLI does not match ${local_package}" >&2
+            exit 1
+        fi
+    fi
 }
 
 main "$@"
