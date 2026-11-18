@@ -33,6 +33,11 @@ else
     dotnet tool update "${PACKAGE}" --tool-path "${TOOL_PATH}" --version "${CLI_VERSION}" --allow-downgrade
 fi
 
+# GCM pins the exact .NET patch it was built with (e.g. 10.0.14), which an image with an older patch
+# of the same major can't start; patches are compatible, so ask only for <major>.<minor>.0.
+find "${TOOL_PATH}/.store" -name 'git-credential-manager.runtimeconfig.json' -exec \
+    sed -i -E 's/("version": *"[0-9]+\.[0-9]+)\.[0-9]+"/\1.0"/' {} +
+
 # Roll forward so it still starts where only a newer .NET major than GCM targets is installed.
 dotnet_root="${DOTNET_ROOT:-$(dotnet --list-sdks | sed -n '1s/.*\[\(.*\)\/sdk\]$/\1/p')}"
 cat > "${WRAPPER}" <<WRAPPER
