@@ -23,7 +23,7 @@ downgrade_tool() {
 }
 downgrade_tool TALXIS.CLI txc
 downgrade_tool Microsoft.PowerApps.CLI.Tool pac
-dotnet new install "TALXIS.DevKit.Templates.Dataverse::$(previous_nuget TALXIS.DevKit.Templates.Dataverse)"
+dotnet new install "TALXIS.DevKit.Templates.Dataverse@$(previous_nuget TALXIS.DevKit.Templates.Dataverse)" --force
 pa_previous="$(npm view @microsoft/power-apps-cli versions --json | jq -r '[.[] | select(test("-") | not)][-2]')"
 npm install --global --prefix /usr/local/lib/power-apps-cli "@microsoft/power-apps-cli@${pa_previous}" >/dev/null
 
