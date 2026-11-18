@@ -103,12 +103,12 @@ public static class PrerequisiteCatalog
             Id = "keyring", Description = "Secret Service keyring", Command = "agentbox-keyring-init", Kind = PrerequisiteKind.System,
             Feature = "talxis/tools-agentbox/keyring", ContainerOnly = true,
         },
-        // new()
-        // {
-        //     Id = "gcm", Description = "Git Credential Manager", Command = "git-credential-manager", Kind = PrerequisiteKind.DotnetTool,
-        //     Package = "git-credential-manager", Feature = "talxis/tools-agentbox/git-credential-manager", ToolPath = "/usr/local/share/git-credential-manager",
-        //     Manual = ManualInstall.Everywhere("dotnet tool install --global git-credential-manager && git-credential-manager configure"),
-        // },
+        new()
+        {
+            Id = "gcm", Description = "Git Credential Manager", Command = "git-credential-manager", Kind = PrerequisiteKind.DotnetTool,
+            Package = "git-credential-manager", Feature = "talxis/tools-agentbox/git-credential-manager", ToolPath = "/usr/local/share/git-credential-manager",
+            Manual = ManualInstall.Everywhere("dotnet tool install --global git-credential-manager && git-credential-manager configure"),
+        },
         new()
         {
             Id = "pa", Description = "Power Apps CLI", Command = "pa", Kind = PrerequisiteKind.NpmTool,
