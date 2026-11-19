@@ -19,7 +19,21 @@ Composing your own instead? Each tool is a [Feature](src/container/features); ad
 them current. On Windows, use *Dev Containers: Clone Repository in Container Volume* rather than
 opening a Windows folder: Linux line endings and file modes, and much faster.
 
-**GitHub Copilot cloud agent.** Add a step to your `.github/workflows/copilot-setup-steps.yml`:
+**GitHub Copilot cloud sessions (the Cloud environment, the default).** Add one file to the
+repository, `.github/hooks/agentbox.json`, on its default branch:
+
+```json
+{ "version": 1, "hooks": { "sessionStart": [ { "type": "command", "timeoutSec": 30,
+  "bash": "curl -fsSL https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/container/scripts/copilot-session-start.sh | bash" } ] } }
+```
+
+Every session then gets the TALXIS skills at once and the tools within about a minute, in the
+background: [`copilot-session-start.sh`](src/container/scripts/copilot-session-start.sh) restores
+the published image's layers from ghcr.io on Ubuntu 24.04 x64, and runs the setup script anywhere
+else. It needs only hosts on Copilot's recommended firewall allowlist.
+
+**GitHub Copilot on Actions.** Sessions you run on Actions (and issues assigned to Copilot) use
+`.github/workflows/copilot-setup-steps.yml` instead:
 
 ```yaml
       - name: Set up AgentBox

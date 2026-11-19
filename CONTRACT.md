@@ -10,7 +10,8 @@ is internal and can change at any release.
 |---|---|---|
 | Pre-built image | Codespaces, any devcontainer tool | `"image": "ghcr.io/talxis/tools-agentbox/image:latest"` |
 | Features | Their own devcontainer composition | `ghcr.io/talxis/tools-agentbox/<feature>:1` |
-| Setup script | Machines dedicated to agents: Claude Code cloud, the Copilot cloud agent, VMs, containers | `curl -fsSL https://talxis.com/agentbox-setup \| bash` |
+| Setup script | Machines dedicated to agents: Claude Code cloud, the Copilot cloud agent on Actions, VMs, containers | `curl -fsSL https://talxis.com/agentbox-setup \| bash` |
+| Copilot session-start script | GitHub Copilot cloud sandboxes, from a repository's `sessionStart` hook | `curl -fsSL https://raw.githubusercontent.com/TALXIS/tools-agentbox/master/src/container/scripts/copilot-session-start.sh \| bash` |
 | `agentbox` CLI | Anyone, any OS | `dnx TALXIS.DevKit.AgentBox.CLI --yes <command>`, or `agentbox` where the image or Feature installed it |
 
 The CLI's commands, options, exit codes and `--format json` fields are part of it.
