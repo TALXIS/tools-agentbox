@@ -24,6 +24,8 @@
   <ItemGroup>
     <None Include="../README.md" Pack="true" PackagePath="" />
     <InternalsVisibleTo Include="TALXIS.DevKit.AgentBox.CLI.Tests" />
+    <!-- The tool list and versions (ToolManifest), in every build. -->
+    <EmbeddedResource Include="../../container/agentbox-features.json" LogicalName="agentbox-features.json" />
     <!-- build/pack.sh passes the lockfile it resolves; dev builds have none. -->
     <EmbeddedResource Include="$(AgentBoxFeatureLock)" Condition="'$(AgentBoxFeatureLock)' != ''" LogicalName="features.lock.json" />
   </ItemGroup>

@@ -25,7 +25,7 @@ public sealed class AgentBoxServices(IHostInfo host, IProcessRunner processes, I
 
     public IHostInfo Host => host;
 
-    public PrerequisiteInspector Inspector() => new(host, processes, registry);
+    public PrerequisiteInspector Inspector() => new(host, processes, registry, ToolManifest.Embedded);
 
     public PrerequisiteInstaller Installer(ILogger logger) => new(host, processes, Inspector(), features, featureLock, logger);
 

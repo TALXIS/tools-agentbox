@@ -20,6 +20,12 @@ public class CatalogTests
     }
 
     [Fact]
+    public void Every_version_the_manifest_asks_for_can_be_checked() =>
+        Assert.All(PrerequisiteCatalog.All.Where(p => p.Kind != PrerequisiteKind.PlaywrightBrowser && !ToolManifest.Embedded.SpecFor(p).IsAny), p =>
+            Assert.True(p.Kind is PrerequisiteKind.DotnetTool or PrerequisiteKind.NpmTool || p.VersionProbe is not null,
+                $"{p.Id}: the manifest asks for {ToolManifest.Embedded.SpecFor(p)}, but the catalog has no way to read its installed version"));
+
+    [Fact]
     public void On_a_workstation_everything_has_a_manual_command() =>
         Assert.All(Enum.GetValues<OsKind>(), os =>
             Assert.All(PrerequisiteCatalog.All.Where(p => !p.ContainerOnly), p => Assert.NotNull(p.Manual.For(os))));

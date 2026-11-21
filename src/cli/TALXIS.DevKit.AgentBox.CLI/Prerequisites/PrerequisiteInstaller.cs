@@ -13,8 +13,8 @@ public sealed record InstallResult(string Id, InstallAction Action, string? Deta
 
 /// <summary>
 /// Makes prerequisites present in a Linux container: it applies the pinned AgentBox Features (as
-/// root, through passwordless sudo if needed), so every container ends up with the same tool set
-/// whatever the base image brought, keeping only installs that are managed elsewhere or verified.
+/// root, through passwordless sudo if needed) for what's missing or at a version the manifest
+/// doesn't allow, and keeps what's already there, whatever brought it.
 /// On a person's own machine it changes nothing and reports the command for what's missing.
 /// </summary>
 public sealed class PrerequisiteInstaller(
@@ -39,10 +39,12 @@ public sealed class PrerequisiteInstaller(
             var status = (await inspector.InspectAsync(p, checkUpdates: false, cancellationToken).ConfigureAwait(false)).Status;
             if (status == PrerequisiteStatus.NotNeeded)
                 results[p.Id] = new(p.Id, InstallAction.NotNeeded);
-            else if (host.IsLinuxContainer && p.Feature is not null && !(p.KeepWhenPresent && status == PrerequisiteStatus.Ok))
-                viaFeatures.Add(p);
+            // Present at a version the manifest allows: kept, like a package manager keeps an installed
+            // package that satisfies its spec. Keeping tools current is prerequisite update's job.
             else if (status == PrerequisiteStatus.Ok)
                 results[p.Id] = new(p.Id, InstallAction.Present);
+            else if (host.IsLinuxContainer && p.Feature is not null)
+                viaFeatures.Add(p);
             else if (host.IsLinuxContainer && p.Kind == PrerequisiteKind.DotnetTemplate)
                 templates.Add(p);
             else

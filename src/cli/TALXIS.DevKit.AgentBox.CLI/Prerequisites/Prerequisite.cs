@@ -32,8 +32,10 @@ public sealed record ManualInstall(string? Linux = null, string? Windows = null,
     };
 }
 
-/// <summary>An SDK version the machine must have, checked by running <see cref="Arguments"/>.</summary>
-public sealed record RequiredVersion(IReadOnlyList<string> Arguments, string OutputPattern);
+/// <summary>How to read the installed version(s) of a tool whose version isn't on disk where agentbox
+/// can find it: run <see cref="Arguments"/>, and every match of <see cref="OutputPattern"/>'s first
+/// group is an installed version (an SDK can have several).</summary>
+public sealed record VersionProbe(IReadOnlyList<string> Arguments, string OutputPattern);
 
 public sealed record Prerequisite
 {
@@ -63,17 +65,11 @@ public sealed record Prerequisite
     /// <summary>Only needed in Linux containers; machines bring their own equivalent.</summary>
     public bool ContainerOnly { get; init; }
 
-    /// <summary>In a container, a working install is kept rather than re-applied from its Feature:
-    /// the Feature's version is fixed, and applying it again is slow.</summary>
-    public bool KeepWorkingInstall { get; init; }
-
-    public RequiredVersion? RequiredVersion { get; init; }
+    /// <summary>For a System tool, how to read its version, so a manifest version other than
+    /// "latest" can be checked. .NET and npm tools are read from disk instead.</summary>
+    public VersionProbe? VersionProbe { get; init; }
 
     public ManualInstall Manual { get; init; } = new();
-
-    /// <summary>In a container, a present install is kept rather than re-applied from its Feature:
-    /// it's managed elsewhere, its version was just checked, or it asks to be kept.</summary>
-    public bool KeepWhenPresent => Kind == PrerequisiteKind.SelfManaged || RequiredVersion is not null || KeepWorkingInstall;
 
     /// <summary>This repo's Features leave this file when they follow the latest release
     /// (version "latest"); a pinned install has none, and agentbox doesn't update it.</summary>
