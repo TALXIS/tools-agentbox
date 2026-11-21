@@ -34,6 +34,9 @@ public class VersionSpecTests
     [InlineData("2.16.1", "2.16.1", true)]
     [InlineData("2.16.1", "2.16.2", false)]
     [InlineData("1.0.0-beta.2", "1.0.0-beta.2", true)]
+    [InlineData("2.16.1", "2.16.1-rc.1", false)]
+    [InlineData("1.0.0-beta.2", "1.0.0-beta.1", false)]
+    [InlineData("1.0.0-beta.2", "1.0.0", false)]
     public void A_partial_version_floats_and_a_full_one_pins(string spec, string installed, bool satisfied) =>
         Assert.Equal(satisfied, VersionSpec.Parse(spec).IsSatisfiedBy(NuGetVersion.Parse(installed)));
 

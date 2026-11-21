@@ -45,7 +45,7 @@ public sealed record VersionSpec
         if (_version is null)
             return true;
         if (IsExact)
-            return VersionComparer.Version.Equals(installed, _version);
+            return VersionComparer.VersionRelease.Equals(installed, _version); // 2.16.1 isn't 2.16.1-rc.1
         // A partial version is a floating one: the stable releases it starts.
         return !installed.IsPrerelease
             && installed.Major == _version.Major

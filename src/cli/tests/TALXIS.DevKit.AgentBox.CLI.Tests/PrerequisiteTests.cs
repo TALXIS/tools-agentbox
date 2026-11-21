@@ -220,6 +220,23 @@ public class PrerequisiteTests
     }
 
     [Fact]
+    public async Task A_present_tool_is_installed_again_when_a_Feature_it_depends_on_is()
+    {
+        var featureLock = new FeatureLock([
+            new("ghcr.io/devcontainers/features/node@sha256:a", null),
+            new("ghcr.io/talxis/tools-agentbox/pa-cli@sha256:b", null, ["devcontainers/features/node"]),
+            new("ghcr.io/devcontainers/features/azure-cli@sha256:c", null),
+        ]);
+        var processes = FakeProcesses.WithEverything();
+        var everythingWorks = processes.Handler;
+        // Node 24 (the manifest asks for 22): its Feature switches nvm to 22, which takes along a pa
+        // installed under 24, so pa must be installed again; az doesn't depend on node and stays.
+        processes.Handler = (file, args) => file == "node" ? new(0, "v24.1.0\n", "", false) : everythingWorks(file, args);
+
+        Assert.Equal(["devcontainers/features/node", "talxis/tools-agentbox/pa-cli"], await InstallInContainerAsync(featureLock, processes, "node", "pa", "az"));
+    }
+
+    [Fact]
     public async Task Any_installed_SDK_that_matches_the_manifest_is_enough()
     {
         var processes = FakeProcesses.WithEverything();

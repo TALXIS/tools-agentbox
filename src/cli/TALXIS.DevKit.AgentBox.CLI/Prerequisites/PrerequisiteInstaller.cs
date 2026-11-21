@@ -51,6 +51,7 @@ public sealed class PrerequisiteInstaller(
                 results[p.Id] = new(p.Id, InstallAction.Manual, p.Manual.For(host.Os));
         }
 
+        KeepNothingOnTopOfWhatChanges(targets, results, viaFeatures);
         if (viaFeatures.Count > 0)
         {
             foreach (var result in await InstallViaFeaturesAsync(viaFeatures, cancellationToken).ConfigureAwait(false))
@@ -60,6 +61,29 @@ public sealed class PrerequisiteInstaller(
             results[p.Id] = await InstallTemplateAsync(p, cancellationToken).ConfigureAwait(false);
 
         return targets.Select(t => results[t.Id]).ToList();
+    }
+
+    /// <summary>Applying a Feature can take along what was installed on top of it (the node Feature
+    /// switches nvm's current version, and a global npm tool under the old one goes with it), so a
+    /// present tool whose Feature depends on one being applied is applied again too.</summary>
+    private void KeepNothingOnTopOfWhatChanges(IReadOnlyList<Prerequisite> targets, Dictionary<string, InstallResult> results, List<Prerequisite> viaFeatures)
+    {
+        if (featureLock is null)
+            return;
+        for (var grew = true; grew;)
+        {
+            grew = false;
+            var applied = viaFeatures.Select(v => v.Feature).ToHashSet();
+            foreach (var p in targets.Where(t => t.Feature is not null && results.GetValueOrDefault(t.Id)?.Action == InstallAction.Present))
+            {
+                var dependsOn = featureLock.Features.FirstOrDefault(f => f.Path == p.Feature)?.DependsOn ?? [];
+                if (!dependsOn.Any(applied.Contains))
+                    continue;
+                results.Remove(p.Id);
+                viaFeatures.Add(p);
+                grew = true;
+            }
+        }
     }
 
     /// <summary>In a container, a prerequisite comes with what its Feature depends on (pa needs the keyring).</summary>
