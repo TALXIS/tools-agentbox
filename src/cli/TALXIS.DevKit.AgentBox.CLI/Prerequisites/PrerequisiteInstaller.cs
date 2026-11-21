@@ -84,6 +84,8 @@ public sealed class PrerequisiteInstaller(
 
         var outcomes = await features.InstallAsync(
             featureLock.Features.Where(f => targets.Any(t => t.Feature == f.Path)).ToList(), cancellationToken).ConfigureAwait(false);
+        foreach (var p in targets.Where(t => t.Kind == PrerequisiteKind.DotnetTool && t.ToolPath is not null))
+            DotnetToolStore.Prune(p.ToolPath!, logger);
         return targets.Select(p => outcomes.FirstOrDefault(o => o.Feature.Path == p.Feature) switch
         {
             null => new InstallResult(p.Id, InstallAction.Failed, "not in this release's Feature lockfile"),

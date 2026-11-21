@@ -13,4 +13,10 @@ check_ready() {
     agentbox prerequisite validate --format text
     step "validate both harnesses (MCP handshake for any declared server)"
     agentbox harness validate claude copilot --deep --format text
+    # agentbox installs itself (it is self-managed), so its own store is left as dotnet tool made it.
+    step "the shared .NET tool stores keep no package copies or Windows libraries"
+    local leftovers
+    leftovers="$(find /usr/local/share/*/.store \( -name '*.nupkg' -o -type d -path '*/runtimes/win*' \) 2>/dev/null \
+        | grep -v '^/usr/local/share/agentbox/' || true)"
+    [ -z "${leftovers}" ] || { echo "${leftovers}" >&2; exit 1; }
 }
