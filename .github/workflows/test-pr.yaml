@@ -2,6 +2,11 @@ name: "CI - Test Features & Templates"
 on:
   pull_request:
 
+# A new push to a pull request makes its running checks moot; on master every run completes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
