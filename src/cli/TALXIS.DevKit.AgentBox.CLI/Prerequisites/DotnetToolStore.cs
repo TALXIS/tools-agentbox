@@ -48,14 +48,16 @@ internal static class DotnetToolStore
             logger.LogDebug("Removed {Megabytes} MB the tools in {Store} don't use", freed / (1024 * 1024), store);
     }
 
-    /// <summary>The runtimes/ folders .NET can load from on this machine (its RID and the ones it
-    /// falls back to); null where that isn't known, so nothing there is removed.</summary>
+    /// <summary>The runtimes/ folders .NET can load from on this machine: the host's list for its RID
+    /// (linux-x64: linux-x64, linux, unix-x64, unix, any; see
+    /// https://learn.microsoft.com/dotnet/core/compatibility/deployment/8.0/rid-asset-list). A
+    /// non-portable RID (a distro's own .NET build) or another OS returns null: nothing is removed.</summary>
     internal static IReadOnlySet<string>? Kept(string runtimeIdentifier)
     {
         var parts = runtimeIdentifier.Split('-');
         if (parts is not ["linux", .., var architecture])
             return null;
-        HashSet<string> kept = [runtimeIdentifier, $"linux-{architecture}", "linux", "unix", "any"];
+        HashSet<string> kept = [runtimeIdentifier, $"linux-{architecture}", "linux", $"unix-{architecture}", "unix", "any"];
         if (parts is ["linux", "musl", _])
             kept.Add("linux-musl");
         return kept;

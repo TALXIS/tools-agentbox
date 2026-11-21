@@ -19,6 +19,8 @@ public class DotnetToolStoreTests
             "tools/net10.0/any/runtimes/linux-musl-x64/native/libthing.so",
             "tools/net10.0/any/runtimes/linux/lib/net10.0/Thing.dll",
             "tools/net10.0/any/runtimes/unix/lib/net10.0/Other.dll",
+            "tools/net10.0/any/runtimes/unix-x64/native/libother.so",
+            "tools/net10.0/any/runtimes/unix-arm64/native/libother.so",
             "tools/net10.0/any/runtimes/win/lib/net10.0/Other.dll",
             "tools/net10.0/any/runtimes/win-x64/native/thing.dll",
             "tools/net10.0/any/runtimes/osx-arm64/native/libthing.dylib",
@@ -48,9 +50,9 @@ public class DotnetToolStoreTests
     }
 
     [Theory]
-    [InlineData("linux-x64", new[] { "linux", "linux-x64", "unix" })]
-    [InlineData("linux-arm64", new[] { "linux", "linux-arm64", "unix" })]
-    [InlineData("linux-musl-x64", new[] { "linux", "linux-musl-x64", "linux-x64", "unix" })]
+    [InlineData("linux-x64", new[] { "linux", "linux-x64", "unix", "unix-x64" })]
+    [InlineData("linux-arm64", new[] { "linux", "linux-arm64", "unix", "unix-arm64" })]
+    [InlineData("linux-musl-x64", new[] { "linux", "linux-musl-x64", "linux-x64", "unix", "unix-x64" })]
     public void Keeps_only_the_platform_folders_this_machine_loads_from(string runtimeIdentifier, string[] expected)
     {
         var (toolPath, package) = ToolPathWithOneTool();
@@ -63,6 +65,7 @@ public class DotnetToolStoreTests
     [Theory]
     [InlineData("win-x64")]
     [InlineData("osx-arm64")]
+    [InlineData("ubuntu.24.04-x64")] // a distro's own .NET build checks its own RID first
     [InlineData("unknown")]
     public void Leaves_platform_folders_alone_where_it_doesnt_know_the_fallbacks(string runtimeIdentifier)
     {
@@ -70,7 +73,7 @@ public class DotnetToolStoreTests
 
         DotnetToolStore.Prune(toolPath, runtimeIdentifier, NullLogger.Instance);
 
-        Assert.Equal(8, Platforms(package).Count());
+        Assert.Equal(10, Platforms(package).Count());
     }
 
     [Fact]
