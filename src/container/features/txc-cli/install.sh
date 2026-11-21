@@ -26,6 +26,10 @@ else
     dotnet tool update "${PACKAGE}" --tool-path "${TOOL_PATH}" --version "${CLI_VERSION}" --allow-downgrade
 fi
 
+# The tool store keeps two copies of the package (pac ~106 MB, GCM ~131 MB each) that nothing reads
+# once it's installed: dotnet tool list, update and uninstall go by .nupkg.metadata, which stays.
+find "${TOOL_PATH}/.store" -type f -name '*.nupkg' -delete
+
 dotnet_root="${DOTNET_ROOT:-$(dotnet --list-sdks | sed -n '1s/.*\[\(.*\)\/sdk\]$/\1/p')}"
 cat > /usr/local/bin/txc <<WRAPPER
 #!/bin/bash

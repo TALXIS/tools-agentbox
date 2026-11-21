@@ -28,5 +28,10 @@ docker run --rm \
     "devcontainer-feature-test-${FEATURE_ID}" \
     test -f /etc/devcontainer-txc-cli/auto-update
 
+echo "--- The tool store keeps no package copies ---"
+docker run --rm \
+    "devcontainer-feature-test-${FEATURE_ID}" \
+    bash -c 'test -z "$(find /usr/local/share/txc/.store -name "*.nupkg")"'
+
 echo "=== ${FEATURE_ID} smoke test PASSED ==="
 docker image rm "devcontainer-feature-test-${FEATURE_ID}" 2>/dev/null || true

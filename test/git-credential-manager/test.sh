@@ -46,5 +46,10 @@ docker run --rm \
     "devcontainer-feature-test-${FEATURE_ID}" \
     test ! -e /etc/devcontainer-git-credential-manager/auto-update
 
+echo "--- The tool store keeps no package copies ---"
+docker run --rm \
+    "devcontainer-feature-test-${FEATURE_ID}" \
+    bash -c 'test -z "$(find /usr/local/share/git-credential-manager/.store -name "*.nupkg")"'
+
 echo "=== ${FEATURE_ID} smoke test PASSED ==="
 docker image rm "devcontainer-feature-test-${FEATURE_ID}" 2>/dev/null || true
