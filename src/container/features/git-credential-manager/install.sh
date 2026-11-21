@@ -33,10 +33,6 @@ else
     dotnet tool update "${PACKAGE}" --tool-path "${TOOL_PATH}" --version "${CLI_VERSION}" --allow-downgrade
 fi
 
-# The tool store keeps two copies of the package (pac ~106 MB, GCM ~131 MB each) that nothing reads
-# once it's installed: dotnet tool list, update and uninstall go by .nupkg.metadata, which stays.
-find "${TOOL_PATH}/.store" -type f -name '*.nupkg' -delete
-
 # GCM pins the exact .NET patch it was built with; relax it to <major>.<minor>.0. See NOTES.md.
 find "${TOOL_PATH}/.store" -type f -name 'git-credential-manager.runtimeconfig.json' -exec \
     sed -i -E 's/("version": *"[0-9]+\.[0-9]+)\.[0-9]+"/\1.0"/' {} +

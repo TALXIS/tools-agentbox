@@ -29,10 +29,5 @@ docker run --rm \
     "devcontainer-feature-test-${FEATURE_ID}" \
     test -f /etc/devcontainer-pac-cli/auto-update
 
-echo "--- The tool store keeps no package copies ---"
-docker run --rm \
-    "devcontainer-feature-test-${FEATURE_ID}" \
-    bash -c 'test -z "$(find /usr/local/share/pac/.store -name "*.nupkg")"'
-
 echo "=== ${FEATURE_ID} smoke test PASSED ==="
 docker image rm "devcontainer-feature-test-${FEATURE_ID}" 2>/dev/null || true
