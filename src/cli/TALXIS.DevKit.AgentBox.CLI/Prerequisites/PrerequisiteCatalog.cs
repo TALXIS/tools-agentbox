@@ -2,8 +2,9 @@ using TALXIS.DevKit.AgentBox.CLI.Cli;
 namespace TALXIS.DevKit.AgentBox.CLI.Prerequisites;
 
 /// <summary>
-/// Everything AgentBox provides, in install order. Each Feature here is also listed in
-/// src/container/agentbox-features.json; a test keeps them in step.
+/// Everything AgentBox provides, in install order, and how to find and check each one. Which version
+/// each must have comes from src/container/agentbox-features.json (<see cref="ToolManifest"/>),
+/// where each Feature here is also listed; a test keeps them in step.
 /// </summary>
 public static class PrerequisiteCatalog
 {
@@ -19,7 +20,7 @@ public static class PrerequisiteCatalog
         {
             Id = "dotnet", Description = ".NET SDK 10", Command = "dotnet", Kind = PrerequisiteKind.System,
             Feature = "devcontainers/features/dotnet",
-            RequiredVersion = new(["--list-sdks"], @"^10\."),
+            VersionProbe = new(["--list-sdks"], @"^(\S+) \["),
             Manual = new(
                 "curl -fsSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 10.0",
                 "winget install --id Microsoft.DotNet.SDK.10 -e",
@@ -29,7 +30,7 @@ public static class PrerequisiteCatalog
         {
             Id = "node", Description = "Node.js 22", Command = "node", Kind = PrerequisiteKind.System,
             Feature = "devcontainers/features/node",
-            RequiredVersion = new(["--version"], @"^v(2[2-9]|[3-9]\d)\."),
+            VersionProbe = new(["--version"], @"^v(\S+)"),
             Manual = new(
                 "curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash - && sudo apt-get install -y nodejs",
                 "winget install --id OpenJS.NodeJS.22 -e",
@@ -120,13 +121,13 @@ public static class PrerequisiteCatalog
             // The Feature runs `playwright cli` from the playwright version it pins (its browser build
             // matches .NET tests); on a person's machine it's usually @playwright/cli, whose version shows.
             Id = "playwright-cli", Description = "Playwright CLI", Command = "playwright-cli", Kind = PrerequisiteKind.NpmTool,
-            Package = "playwright", Feature = "talxis/tools-agentbox/playwright-cli", NpmPrefix = "/usr/local/lib/playwright-cli", KeepWorkingInstall = true,
+            Package = "playwright", Feature = "talxis/tools-agentbox/playwright-cli", NpmPrefix = "/usr/local/lib/playwright-cli",
             Manual = ManualInstall.Everywhere("npm install --global @playwright/cli@latest"),
         },
         new()
         {
             Id = "browser", Description = "A browser playwright-cli can launch", Command = "playwright-cli", Kind = PrerequisiteKind.PlaywrightBrowser,
-            Feature = "talxis/tools-agentbox/playwright-cli", KeepWorkingInstall = true,
+            Feature = "talxis/tools-agentbox/playwright-cli",
             Manual = ManualInstall.Everywhere("playwright-cli install-browser chrome"),
         },
         new()

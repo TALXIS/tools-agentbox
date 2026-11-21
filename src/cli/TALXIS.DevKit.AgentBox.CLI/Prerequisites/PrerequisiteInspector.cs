@@ -21,9 +21,11 @@ public sealed record PrerequisiteState(string Id, string Description, Prerequisi
 
 /// <summary>
 /// Looks at one prerequisite without changing anything. Cheap by default: a PATH lookup and versions
-/// read from disk. With <c>checkUpdates</c> it also asks nuget.org or npm for the latest version.
+/// read from disk; a tool is started only when the manifest asks for a version other than "latest"
+/// and that's the only way to read it. With <c>checkUpdates</c> it also asks nuget.org or npm for the
+/// latest version.
 /// </summary>
-public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner processes, IPackageRegistryClient registry)
+public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner processes, IPackageRegistryClient registry, ToolManifest manifest)
 {
     public async Task<PrerequisiteState> InspectAsync(Prerequisite p, bool checkUpdates, CancellationToken cancellationToken)
     {
@@ -38,8 +40,18 @@ public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner process
         var version = p.Kind == PrerequisiteKind.DotnetTemplate ? TemplateVersion(p.Package!) : path is null ? null : InstalledVersion(p, path);
         if (version is null && path is null)
             return missing;
-        if (p.RequiredVersion is { } required && !await HasRequiredVersionAsync(p, required, cancellationToken).ConfigureAwait(false))
-            return missing with { Detail = $"'{p.Command} {string.Join(' ', required.Arguments)}' shows no matching version" };
+        if (manifest.SpecFor(p) is { IsAny: false } spec)
+        {
+            var installed = version is not null ? [version] : await ProbedVersionsAsync(p, cancellationToken).ConfigureAwait(false);
+            version = installed.Where(spec.IsSatisfiedBy).Max();
+            if (version is null)
+                return missing with
+                {
+                    Detail = installed.Count == 0
+                        ? $"its version couldn't be read to check it matches {spec}"
+                        : $"{string.Join(", ", installed.Select(v => v.ToNormalizedString()))} installed, {spec} needed",
+                };
+        }
 
         var current = new PrerequisiteState(p.Id, p.Description, PrerequisiteStatus.Ok)
         {
@@ -82,10 +94,17 @@ public sealed class PrerequisiteInspector(IHostInfo host, IProcessRunner process
         return new(p.Id, p.Description, failure is null ? PrerequisiteStatus.Ok : PrerequisiteStatus.Missing) { Detail = failure };
     }
 
-    private async Task<bool> HasRequiredVersionAsync(Prerequisite p, RequiredVersion required, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<NuGetVersion>> ProbedVersionsAsync(Prerequisite p, CancellationToken cancellationToken)
     {
-        var run = await processes.RunAsync(p.Command, required.Arguments, TimeSpan.FromSeconds(30), cancellationToken: cancellationToken).ConfigureAwait(false);
-        return run.Succeeded && Regex.IsMatch(run.StandardOutput, required.OutputPattern, RegexOptions.Multiline);
+        if (p.VersionProbe is not { } probe)
+            return [];
+        var run = await processes.RunAsync(p.Command, probe.Arguments, TimeSpan.FromSeconds(30), cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (!run.Succeeded)
+            return [];
+        return Regex.Matches(run.StandardOutput, probe.OutputPattern, RegexOptions.Multiline)
+            .Select(m => NuGetVersion.TryParse(m.Groups[1].Value, out var v) ? v : null)
+            .OfType<NuGetVersion>()
+            .ToList();
     }
 
     private NuGetVersion? InstalledVersion(Prerequisite p, string path) => p.Kind switch

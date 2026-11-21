@@ -12,8 +12,10 @@ docker build \
     --tag "devcontainer-feature-test-${FEATURE_ID}" \
     . << 'EOF2'
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS cli
-COPY src/cli/ /src/
-RUN dotnet pack /src/TALXIS.DevKit.AgentBox.CLI --configuration Release -p:Version=999.0.0 --output /nupkg
+# The repository layout: the CLI embeds src/container/agentbox-features.json.
+COPY src/cli/ /repo/src/cli/
+COPY src/container/agentbox-features.json /repo/src/container/
+RUN dotnet pack /repo/src/cli/TALXIS.DevKit.AgentBox.CLI --configuration Release -p:Version=999.0.0 --output /nupkg
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0
 COPY --from=cli /nupkg/ /nupkg/

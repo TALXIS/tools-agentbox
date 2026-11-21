@@ -204,6 +204,52 @@ public class PrerequisiteTests
     }
 
     [Fact]
+    public async Task In_a_container_a_present_tool_is_kept_and_one_at_a_version_the_manifest_does_not_allow_is_installed()
+    {
+        var featureLock = new FeatureLock([
+            new("ghcr.io/devcontainers/features/dotnet@sha256:a", null),
+            new("ghcr.io/devcontainers/features/azure-cli@sha256:b", null),
+            new("ghcr.io/talxis/tools-agentbox/txc-cli@sha256:c", null),
+        ]);
+        var processes = FakeProcesses.WithEverything();
+        var everythingWorks = processes.Handler;
+        // The manifest asks for .NET 10.0; this machine has 9.0 only.
+        processes.Handler = (file, args) => file == "dotnet" ? new(0, "9.0.300 [/usr/share/dotnet/sdk]\n", "", false) : everythingWorks(file, args);
+
+        Assert.Equal(["devcontainers/features/dotnet"], await InstallInContainerAsync(featureLock, processes, "dotnet", "az", "txc"));
+    }
+
+    [Fact]
+    public async Task A_present_tool_is_installed_again_when_a_Feature_it_depends_on_is()
+    {
+        var featureLock = new FeatureLock([
+            new("ghcr.io/devcontainers/features/node@sha256:a", null),
+            new("ghcr.io/talxis/tools-agentbox/pa-cli@sha256:b", null, ["devcontainers/features/node"]),
+            new("ghcr.io/devcontainers/features/azure-cli@sha256:c", null),
+        ]);
+        var processes = FakeProcesses.WithEverything();
+        var everythingWorks = processes.Handler;
+        // Node 24 (the manifest asks for 22): its Feature switches nvm to 22, which takes along a pa
+        // installed under 24, so pa must be installed again; az doesn't depend on node and stays.
+        processes.Handler = (file, args) => file == "node" ? new(0, "v24.1.0\n", "", false) : everythingWorks(file, args);
+
+        Assert.Equal(["devcontainers/features/node", "talxis/tools-agentbox/pa-cli"], await InstallInContainerAsync(featureLock, processes, "node", "pa", "az"));
+    }
+
+    [Fact]
+    public async Task Any_installed_SDK_that_matches_the_manifest_is_enough()
+    {
+        var processes = FakeProcesses.WithEverything();
+        processes.Handler = (_, _) => new(0, "9.0.300 [/usr/share/dotnet/sdk]\n10.0.404 [/usr/share/dotnet/sdk]\n11.0.100 [/usr/share/dotnet/sdk]\n", "", false);
+
+        var state = await new PrerequisiteInspector(new FakeHost(), processes, new FakeRegistry(), ToolManifest.Embedded)
+            .InspectAsync(PrerequisiteCatalog.Select(["dotnet"]).Single(), checkUpdates: false, CancellationToken.None);
+
+        Assert.Equal(PrerequisiteStatus.Ok, state.Status);
+        Assert.Equal("10.0.404", state.InstalledVersion);
+    }
+
+    [Fact]
     public async Task A_browser_that_does_not_open_is_missing_with_the_reason_and_is_still_closed()
     {
         var processes = new FakeProcesses
@@ -214,7 +260,7 @@ public class PrerequisiteTests
                 : new(0, "", "", false),
         };
 
-        var state = await new PrerequisiteInspector(new FakeHost(), processes, new FakeRegistry())
+        var state = await new PrerequisiteInspector(new FakeHost(), processes, new FakeRegistry(), ToolManifest.Embedded)
             .InspectAsync(PrerequisiteCatalog.Select(["browser"]).Single(), checkUpdates: false, CancellationToken.None);
 
         Assert.Equal(PrerequisiteStatus.Missing, state.Status);
@@ -235,7 +281,7 @@ public class PrerequisiteTests
         File.CreateSymbolicLink(command, "../lib/node_modules/@playwright/cli/playwright-cli.js");
         var processes = new FakeProcesses { OnPath = { ["playwright-cli"] = command } };
 
-        var state = await new PrerequisiteInspector(new FakeHost(), processes, new FakeRegistry())
+        var state = await new PrerequisiteInspector(new FakeHost(), processes, new FakeRegistry(), ToolManifest.Embedded)
             .InspectAsync(PrerequisiteCatalog.Select(["playwright-cli"]).Single(), checkUpdates: false, CancellationToken.None);
 
         Assert.Equal("0.1.22", state.InstalledVersion);
