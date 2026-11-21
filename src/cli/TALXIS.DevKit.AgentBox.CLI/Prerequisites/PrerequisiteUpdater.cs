@@ -123,6 +123,8 @@ public sealed class PrerequisiteUpdater(IHostInfo host, IProcessRunner processes
                     return new(p.Id, UpdateAction.Failed, current.InstalledVersion, version, copy.FailureSummary);
             }
             var run = await processes.RunAsync(file, arguments, Deadline, cancellationToken: cancellationToken).ConfigureAwait(false);
+            if (run.Succeeded && p.Kind == PrerequisiteKind.DotnetTool && inspector.IsShared(p))
+                DotnetToolStore.Prune(p.ToolPath!, logger);
             return run.Succeeded
                 ? new(p.Id, installing ? UpdateAction.Installed : UpdateAction.Updated, current.InstalledVersion, version)
                 : new(p.Id, UpdateAction.Failed, current.InstalledVersion, version, run.FailureSummary);
